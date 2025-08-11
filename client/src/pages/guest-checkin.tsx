@@ -20,6 +20,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
 import qrCodeImage from "@assets/WhatsApp Image 2025-08-08 at 19.49.44_5bbbcb18_1754653834112.jpg";
 import { NATIONALITIES } from "@/lib/nationalities";
+import { getHolidayLabel, hasPublicHoliday } from "@/lib/holidays";
 
 
 export default function GuestCheckin() {
