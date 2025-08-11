@@ -19,6 +19,7 @@ import GuestTokenGenerator from "@/components/guest-token-generator";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { NATIONALITIES } from "@/lib/nationalities";
+import { getHolidayLabel, hasPublicHoliday } from "@/lib/holidays";
 
 export default function CheckIn() {
   const labels = useAccommodationLabels();
@@ -640,6 +641,21 @@ export default function CheckIn() {
                     className="mt-1"
                     {...form.register("expectedCheckoutDate")}
                   />
+                  {(() => {
+                    const dateStr = form.watch("expectedCheckoutDate");
+                    const label = getHolidayLabel(dateStr);
+                    if (!label) return null;
+                    const isPH = hasPublicHoliday(dateStr);
+                    return (
+                      <div className={`${isPH ? "text-green-700 bg-green-50 border-green-200" : "text-blue-700 bg-blue-50 border-blue-200"} mt-2 text-sm rounded border p-2 flex items-start gap-2`}
+                      >
+                        <span>{isPH ? "🎉" : "🗓️"}</span>
+                        <span>
+                          {isPH ? "Public holiday" : "Festival"}: {label}. Consider extending stay to enjoy the celebrations.
+                        </span>
+                      </div>
+                    );
+                  })()}
                   {form.formState.errors.expectedCheckoutDate && (
                     <p className="text-hostel-error text-sm mt-1">{form.formState.errors.expectedCheckoutDate.message}</p>
                   )}
