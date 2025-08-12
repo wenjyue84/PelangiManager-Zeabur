@@ -73,10 +73,15 @@ export const capsules = pgTable("capsules", {
   cleaningStatus: text("cleaning_status").notNull().default("cleaned"), // 'cleaned', 'to_be_cleaned'
   lastCleanedAt: timestamp("last_cleaned_at"),
   lastCleanedBy: text("last_cleaned_by"),
+  color: text("color"), // Color of the capsule
+  purchaseDate: date("purchase_date"), // When the capsule was purchased
+  position: text("position"), // 'top' or 'bottom' for stacked capsules
+  remark: text("remark"), // Additional notes about the capsule
 }, (table) => ([
   index("idx_capsules_is_available").on(table.isAvailable),
   index("idx_capsules_section").on(table.section),
   index("idx_capsules_cleaning_status").on(table.cleaningStatus),
+  index("idx_capsules_position").on(table.position),
 ]));
 
 // Separate table for tracking all capsule problems
@@ -225,6 +230,16 @@ export const insertGuestSchema = createInsertSchema(guests).omit({
       return date >= today && date <= maxDate;
     }, "Expected checkout date must be between today and 1 year from now")
     .optional(),
+  checkInDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Check-in date must be in YYYY-MM-DD format")
+    .refine(val => {
+      if (!val) return true; // Optional field
+      const date = new Date(val);
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 1); // Max 1 year from now
+      return date <= maxDate;
+    }, "Check-in date cannot be more than 1 year in the future")
+    .optional(),
   gender: z.enum(["male", "female", "other", "prefer-not-to-say"], {
     required_error: "Please select a gender"
   }).optional(),
@@ -274,6 +289,10 @@ export const insertCapsuleSchema = createInsertSchema(capsules).omit({
   }).default("cleaned"),
   lastCleanedAt: z.date().optional(),
   lastCleanedBy: z.string().max(50, "Cleaner name must not exceed 50 characters").optional(),
+  color: z.string().max(50, "Color must not exceed 50 characters").optional(),
+  purchaseDate: z.date().optional(),
+  position: z.enum(["top", "bottom"]).optional(),
+  remark: z.string().max(500, "Remark must not exceed 500 characters").optional(),
   problemDescription: z.string()
     .max(500, "Problem description must not exceed 500 characters")
     .transform(val => val?.trim())
@@ -293,6 +312,10 @@ export const updateCapsuleSchema = z.object({
   cleaningStatus: z.enum(["cleaned", "to_be_cleaned"], {
     required_error: "Cleaning status must be 'cleaned' or 'to_be_cleaned'",
   }).optional(),
+  color: z.string().max(50, "Color must not exceed 50 characters").optional(),
+  purchaseDate: z.date().optional(),
+  position: z.enum(["top", "bottom"]).optional(),
+  remark: z.string().max(500, "Remark must not exceed 500 characters").optional(),
   problemDescription: z.string()
     .max(500, "Problem description must not exceed 500 characters")
     .transform(val => val?.trim())
@@ -460,6 +483,15 @@ export const guestSelfCheckinSchema = z.object({
 }).refine((data) => data.icNumber || data.passportNumber, {
   message: "Please provide either IC number or passport number",
   path: ["icNumber"],
+}).refine((data) => {
+  // At least one document upload is required for all users
+  if (!data.icDocumentUrl && !data.passportDocumentUrl) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please upload a photo of your IC or passport. This is mandatory for all guests.",
+  path: ["icDocumentUrl"],
 }).refine((data) => {
   // If IC number is provided, IC document is required
   if (data.icNumber && !data.icDocumentUrl) {

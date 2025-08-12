@@ -234,6 +234,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk checkout all currently checked-in guests
+  app.post("/api/guests/checkout-all", authenticateToken, async (_req: any, res) => {
+    try {
+      // Get all currently checked-in guests
+      const checkedInResponse = await storage.getCheckedInGuests({ page: 1, limit: 10000 });
+      const checkedIn = checkedInResponse.data || [];
+
+      if (checkedIn.length === 0) {
+        return res.json({ count: 0, checkedOutIds: [], message: "No guests currently checked in" });
+      }
+
+      const checkedOutIds: string[] = [];
+      for (const guest of checkedIn) {
+        const updated = await storage.checkoutGuest(guest.id);
+        if (updated) checkedOutIds.push(updated.id);
+      }
+
+      return res.json({ 
+        count: checkedOutIds.length, 
+        checkedOutIds,
+        message: `Successfully checked out ${checkedOutIds.length} guests`
+      });
+    } catch (error) {
+      console.error("Bulk checkout all failed:", error);
+      return res.status(500).json({ message: "Failed to bulk checkout all guests" });
+    }
+  });
+
   // Logout endpoint
   app.post("/api/auth/logout", authenticateToken, async (req: any, res) => {
     try {
@@ -404,6 +432,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update capsule by ID
+  app.patch("/api/capsules/:id", 
+    securityValidationMiddleware,
+    authenticateToken,
+    validateData(updateCapsuleSchema, 'body'),
+    async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Get capsule by ID first to check its number
+      const capsule = await storage.getCapsuleById(id);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      
+      const updatedCapsule = await storage.updateCapsule(capsule.number, updates);
+      
+      if (!updatedCapsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+
+      res.json(updatedCapsule);
+    } catch (error: any) {
+      console.error("Error updating capsule:", error);
+      res.status(400).json({ message: error.message || "Failed to update capsule" });
+    }
+  });
+
   app.patch("/api/capsules/:number", 
     securityValidationMiddleware,
     authenticateToken,
@@ -425,7 +482,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete capsule
+  // Delete capsule by ID
+  app.delete("/api/capsules/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get capsule by ID first to check its number
+      const capsule = await storage.getCapsuleById(id);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      
+      // Check if capsule has any guests or active problems first
+      const guests = await storage.getGuestsByCapsule(capsule.number);
+      if (guests.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete capsule with active guests. Please check out all guests first." 
+        });
+      }
+
+      const problems = await storage.getCapsuleProblems(capsule.number);
+      const activeProblems = problems.filter(p => !p.isResolved);
+      if (activeProblems.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete capsule with active problems. Please resolve or delete all problems first." 
+        });
+      }
+
+      const deleted = await storage.deleteCapsule(capsule.number);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+
+      res.json({ message: "Capsule deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting capsule:", error);
+      res.status(400).json({ message: error.message || "Failed to delete capsule" });
+    }
+  });
+
+  // Delete capsule by number (keep for backward compatibility)
   app.delete("/api/capsules/:number", authenticateToken, async (req: any, res) => {
     try {
       const { number } = req.params;
