@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft } from "lucide-react";
+import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft, Copy } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -449,6 +449,26 @@ export default function SortableGuestTable() {
     setSelectedGuest(null);
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: "Check-in link copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Please copy the link manually",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getCheckinLink = (token: string) => {
+    return `${window.location.origin}/guest-checkin?token=${token}`;
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -558,6 +578,7 @@ export default function SortableGuestTable() {
                       <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </>
                   )}
+                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Copy Link</th>
                   <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -651,6 +672,10 @@ export default function SortableGuestTable() {
                             </td>
                           </>
                         )}
+                        {/* Copy Link column - show dash for checked-in guests */}
+                        <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-400">
+                          —
+                        </td>
                         {/* Actions column */}
                         <td className="px-2 py-3 whitespace-nowrap">
                           <Button 
@@ -722,6 +747,18 @@ export default function SortableGuestTable() {
                             </td>
                           </>
                         )}
+                        {/* Copy Link column - show copy button for pending check-ins */}
+                        <td className="px-2 py-3 whitespace-nowrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(getCheckinLink(activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
+                            className="text-blue-600 hover:text-blue-800 font-medium p-1 text-xs"
+                            title="Copy check-in link"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </td>
                         {/* Actions column */}
                         <td className="px-2 py-3 whitespace-nowrap">
                           {isAuthenticated ? (
@@ -799,6 +836,9 @@ export default function SortableGuestTable() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <div className="h-11 w-11 rounded-full flex items-center justify-center text-gray-400 text-xs">
+                          —
+                        </div>
                         <Button 
                           variant="ghost" 
                           className="h-11 w-11 rounded-full"
@@ -853,6 +893,15 @@ export default function SortableGuestTable() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(getCheckinLink(activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
+                          className="h-11 w-11 rounded-full text-blue-600 hover:text-blue-800"
+                          title="Copy check-in link"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                         {isAuthenticated ? (
                           <Button 
                             variant="outline"
