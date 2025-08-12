@@ -133,6 +133,7 @@ export default function CheckIn() {
       emergencyContact: "",
       emergencyPhone: "",
       age: "",
+      checkInDate: new Date().toISOString().split('T')[0], // Default to current date
       expectedCheckoutDate: (() => {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -759,7 +760,15 @@ export default function CheckIn() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Date:</span>
-                  <span className="font-medium">{dateString}</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={form.watch("checkInDate") || ""}
+                      onChange={(e) => form.setValue("checkInDate", e.target.value)}
+                      className="w-32 text-sm"
+                    />
+                    <span className="text-xs text-gray-500">(Editable)</span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Time:</span>
