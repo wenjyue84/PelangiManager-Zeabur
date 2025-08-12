@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/lib/auth";
 import { updateSettingsSchema, type UpdateSettings, type CapsuleProblem, type User, type InsertUser, insertUserSchema, type PaginatedResponse, type Capsule, insertCapsuleSchema, updateCapsuleSchema } from "@shared/schema";
 import { z } from "zod";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 // Schema for self check-in message settings
 const selfCheckinMessageSchema = z.object({
@@ -407,6 +408,13 @@ function GuestGuideTab({ settings, form, updateSettingsMutation }: any) {
   const [showPreview, setShowPreview] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('mobile');
   
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setShowPreview(true);
+      setPreviewMode('desktop');
+    }
+  }, []);
+  
   const guideTemplates: Array<{ id: string; name: string; intro: string; checkin: string; other: string; faq: string; }>
     = [
       {
@@ -480,42 +488,40 @@ function GuestGuideTab({ settings, form, updateSettingsMutation }: any) {
     showFaq: form.watch('guideShowFaq'),
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Editor Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-blue-600" />
-              Guest Guide Content Editor
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant={showPreview ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowPreview(!showPreview)}
-                className="flex items-center gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                {showPreview ? "Hide Preview" : "Show Preview"}
-              </Button>
-              {showPreview && (
-                <Select value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mobile">Mobile</SelectItem>
-                    <SelectItem value="desktop">Desktop</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+  const EditorSection = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-blue-600" />
+            Guest Guide Content Editor
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={showPreview ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              className="flex items-center gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              {showPreview ? "Hide Preview" : "Show Preview"}
+            </Button>
+            {showPreview && (
+              <Select value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mobile">Mobile</SelectItem>
+                  <SelectItem value="desktop">Desktop</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+      </CardHeader>
+      <CardContent>
         {/* Templates Loader */}
         <div className="p-3 mb-4 rounded border bg-gray-50">
           <div className="flex items-center gap-3 flex-wrap">
@@ -812,209 +818,209 @@ function GuestGuideTab({ settings, form, updateSettingsMutation }: any) {
         </Form>
       </CardContent>
     </Card>
+  );
 
-    {/* Preview Section */}
-    {showPreview && (
-      <Card className="border-2 border-blue-200">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              {previewMode === 'mobile' ? <Smartphone className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
-              Preview - Guest Success Page
-            </CardTitle>
-            <Badge variant="secondary">{previewMode === 'mobile' ? 'Mobile View' : 'Desktop View'}</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-                        <div className={`preview-content ${previewMode === 'mobile' ? 'max-w-sm' : 'max-w-2xl'} mx-auto border rounded-lg overflow-hidden bg-gradient-to-br from-orange-50 to-pink-50 shadow-xl`}>
-            <div className="p-6">
-              {/* Success Header */}
-              <div className="text-center mb-6">
-                <div className={`${previewMode === 'mobile' ? 'text-3xl mb-3' : 'text-4xl mb-4'}`}>🎉</div>
-                <h1 className={`${previewMode === 'mobile' ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900 mb-2`}>Good Day, Our Honorable Guest!</h1>
-                <div className={`${previewMode === 'mobile' ? 'text-xl mb-3' : 'text-2xl mb-4'}`}>🎉</div>
+  const PreviewSection = () => (
+    <Card className="border-2 border-blue-200">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            {previewMode === 'mobile' ? <Smartphone className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+            Preview - Guest Success Page
+          </CardTitle>
+          <Badge variant="secondary">{previewMode === 'mobile' ? 'Mobile View' : 'Desktop View'}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className={`preview-content ${previewMode === 'mobile' ? 'max-w-sm' : 'max-w-2xl'} mx-auto border rounded-lg overflow-hidden bg-gradient-to-br from-orange-50 to-pink-50 shadow-xl`}>
+          <div className="p-6">
+            {/* Success Header */}
+            <div className="text-center mb-6">
+              <div className={`${previewMode === 'mobile' ? 'text-3xl mb-3' : 'text-4xl mb-4'}`}>🎉</div>
+              <h1 className={`${previewMode === 'mobile' ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900 mb-2`}>Good Day, Our Honorable Guest!</h1>
+              <div className={`${previewMode === 'mobile' ? 'text-xl mb-3' : 'text-2xl mb-4'}`}>🎉</div>
+            </div>
+
+            {/* Welcome Section */}
+            {watchedValues.showIntro && watchedValues.intro && (
+              <div className={`bg-gradient-to-r from-orange-100 to-pink-100 rounded-xl ${previewMode === 'mobile' ? 'p-4' : 'p-6'} mb-6 text-center`}>
+                <h2 className={`${previewMode === 'mobile' ? 'text-lg' : 'text-xl'} font-bold text-gray-800 mb-2 flex items-center justify-center gap-2`}>
+                  Welcome to Pelangi Capsule Hostel <span className={`${previewMode === 'mobile' ? 'text-xl' : 'text-2xl'}`}>🌈</span>
+                </h2>
+                <div className={`text-gray-700 whitespace-pre-wrap ${previewMode === 'mobile' ? 'text-sm' : ''}`}>{watchedValues.intro}</div>
+              </div>
+            )}
+
+            {/* Address Section */}
+            {watchedValues.showAddress && watchedValues.address && (
+              <div className="mb-6 text-center">
+                <div className="flex items-center justify-center gap-2 text-gray-700">
+                  <MapPin className="h-4 w-4" />
+                  <div className="whitespace-pre-wrap">{watchedValues.address}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Links */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              {watchedValues.hostelPhotosUrl && (
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2 h-auto py-3 px-4"
+                  onClick={() => window.open(watchedValues.hostelPhotosUrl, '_blank')}
+                >
+                  <Camera className="h-4 w-4" />
+                  <span className="text-sm">Hostel Photos</span>
+                </Button>
+              )}
+              {watchedValues.googleMapsUrl && (
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2 h-auto py-3 px-4"
+                  onClick={() => window.open(watchedValues.googleMapsUrl, '_blank')}
+                >
+                  <Globe className="h-4 w-4" />
+                  <span className="text-sm">Google Maps</span>
+                </Button>
+              )}
+              {watchedValues.checkinVideoUrl && (
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2 h-auto py-3 px-4"
+                  onClick={() => window.open(watchedValues.checkinVideoUrl, '_blank')}
+                >
+                  <Video className="h-4 w-4" />
+                  <span className="text-sm">Check-in Video</span>
+                </Button>
+              )}
+              {!watchedValues.hostelPhotosUrl && !watchedValues.googleMapsUrl && !watchedValues.checkinVideoUrl && (
+                <div className="col-span-3 text-center text-gray-500 text-sm py-4">
+                  No quick links configured. Add URLs in the Quick Links Configuration section above.
+                </div>
+              )}
+            </div>
+
+            {/* Check-in/out Times */}
+            <div className="border-t border-gray-200 py-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span>🕒</span>
+                  <span className="font-medium">Check-in:</span>
+                  <span>{watchedValues.checkinTime || 'From 3:00 PM'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>🕛</span>
+                  <span className="font-medium">Check-out:</span>
+                  <span>{watchedValues.checkoutTime || 'Before 12:00 PM'}</span>
+                </div>
               </div>
 
-              {/* Welcome Section */}
-              {watchedValues.showIntro && watchedValues.intro && (
-                <div className={`bg-gradient-to-r from-orange-100 to-pink-100 rounded-xl ${previewMode === 'mobile' ? 'p-4' : 'p-6'} mb-6 text-center`}>
-                  <h2 className={`${previewMode === 'mobile' ? 'text-lg' : 'text-xl'} font-bold text-gray-800 mb-2 flex items-center justify-center gap-2`}>
-                    Welcome to Pelangi Capsule Hostel <span className={`${previewMode === 'mobile' ? 'text-xl' : 'text-2xl'}`}>🌈</span>
-                  </h2>
-                  <div className={`text-gray-700 whitespace-pre-wrap ${previewMode === 'mobile' ? 'text-sm' : ''}`}>{watchedValues.intro}</div>
+              {/* Important Info */}
+              <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span>🔐</span>
+                  <span className="font-medium">Door Password:</span>
+                  <span className="font-mono text-lg font-bold text-blue-600">{watchedValues.doorPassword || '1270#'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>🛌</span>
+                  <span className="font-medium">Your Capsule No.:</span>
+                  <span className="font-bold text-lg text-orange-600">Assigned based on availability</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>🃏</span>
+                  <span className="font-medium">Capsule Access Card:</span>
+                  <span>Placed on your pillow</span>
+                </div>
+              </div>
+
+              {/* WiFi Info */}
+              {watchedValues.showWifi && (watchedValues.wifiName || watchedValues.wifiPassword) && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wifi className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">WiFi Information</span>
+                  </div>
+                  {watchedValues.wifiName && (
+                    <div className="text-sm">Network: <span className="font-mono font-bold">{watchedValues.wifiName}</span></div>
+                  )}
+                  {watchedValues.wifiPassword && (
+                    <div className="text-sm">Password: <span className="font-mono font-bold">{watchedValues.wifiPassword}</span></div>
+                  )}
                 </div>
               )}
 
-              {/* Address Section */}
-              {watchedValues.showAddress && watchedValues.address && (
-                <div className="mb-6 text-center">
-                  <div className="flex items-center justify-center gap-2 text-gray-700">
-                    <MapPin className="h-4 w-4" />
-                    <div className="whitespace-pre-wrap">{watchedValues.address}</div>
+              {/* Check-in Instructions */}
+              {watchedValues.showCheckin && watchedValues.checkin && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-gray-800">How to Check In:</h3>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">{watchedValues.checkin}</div>
+                </div>
+              )}
+
+              {/* Other Guidance */}
+              {watchedValues.showOther && watchedValues.other && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-gray-800">Additional Information:</h3>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">{watchedValues.other}</div>
+                </div>
+              )}
+
+              {/* FAQ */}
+              {watchedValues.showFaq && watchedValues.faq && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-gray-800">Frequently Asked Questions:</h3>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">{watchedValues.faq}</div>
+                </div>
+              )}
+
+              {/* Important Reminders */}
+              {watchedValues.importantReminders && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                  <h3 className="font-bold text-red-800 mb-2 flex items-center gap-2">
+                    <span>⚠</span> Important Reminders:
+                  </h3>
+                  <div className="text-sm text-red-700 whitespace-pre-wrap">
+                    {watchedValues.importantReminders}
                   </div>
                 </div>
               )}
 
-              {/* Quick Links */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                {watchedValues.hostelPhotosUrl && (
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2 h-auto py-3 px-4"
-                    onClick={() => window.open(watchedValues.hostelPhotosUrl, '_blank')}
-                  >
-                    <Camera className="h-4 w-4" />
-                    <span className="text-sm">Hostel Photos</span>
-                  </Button>
-                )}
-                {watchedValues.googleMapsUrl && (
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2 h-auto py-3 px-4"
-                    onClick={() => window.open(watchedValues.googleMapsUrl, '_blank')}
-                  >
-                    <Globe className="h-4 w-4" />
-                    <span className="text-sm">Google Maps</span>
-                  </Button>
-                )}
-                {watchedValues.checkinVideoUrl && (
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2 h-auto py-3 px-4"
-                    onClick={() => window.open(watchedValues.checkinVideoUrl, '_blank')}
-                  >
-                    <Video className="h-4 w-4" />
-                    <span className="text-sm">Check-in Video</span>
-                  </Button>
-                )}
-                {!watchedValues.hostelPhotosUrl && !watchedValues.googleMapsUrl && !watchedValues.checkinVideoUrl && (
-                  <div className="col-span-3 text-center text-gray-500 text-sm py-4">
-                    No quick links configured. Add URLs in the Quick Links Configuration section above.
-                  </div>
-                )}
+              <div className="text-center text-gray-600 text-sm">
+                For any assistance, please contact reception.<br />
+                Enjoy your stay at Pelangi Capsule Hostel! 💼🌟
               </div>
 
-              {/* Check-in/out Times */}
-              <div className="border-t border-gray-200 py-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span>🕒</span>
-                    <span className="font-medium">Check-in:</span>
-                    <span>{watchedValues.checkinTime || 'From 3:00 PM'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>🕛</span>
-                    <span className="font-medium">Check-out:</span>
-                    <span>{watchedValues.checkoutTime || 'Before 12:00 PM'}</span>
-                  </div>
-                </div>
-
-                {/* Important Info */}
-                <div className="bg-blue-50 rounded-lg p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span>🔐</span>
-                    <span className="font-medium">Door Password:</span>
-                    <span className="font-mono text-lg font-bold text-blue-600">{watchedValues.doorPassword || '1270#'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>🛌</span>
-                    <span className="font-medium">Your Capsule No.:</span>
-                    <span className="font-bold text-lg text-orange-600">Assigned based on availability</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>🃏</span>
-                    <span className="font-medium">Capsule Access Card:</span>
-                    <span>Placed on your pillow</span>
-                  </div>
-                </div>
-
-                {/* WiFi Info */}
-                {watchedValues.showWifi && (watchedValues.wifiName || watchedValues.wifiPassword) && (
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wifi className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">WiFi Information</span>
-                    </div>
-                    {watchedValues.wifiName && (
-                      <div className="text-sm">Network: <span className="font-mono font-bold">{watchedValues.wifiName}</span></div>
-                    )}
-                    {watchedValues.wifiPassword && (
-                      <div className="text-sm">Password: <span className="font-mono font-bold">{watchedValues.wifiPassword}</span></div>
-                    )}
-                  </div>
-                )}
-
-                {/* Check-in Instructions */}
-                {watchedValues.showCheckin && watchedValues.checkin && (
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-gray-800">How to Check In:</h3>
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap">{watchedValues.checkin}</div>
-                  </div>
-                )}
-
-                {/* Other Guidance */}
-                {watchedValues.showOther && watchedValues.other && (
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-gray-800">Additional Information:</h3>
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap">{watchedValues.other}</div>
-                  </div>
-                )}
-
-                {/* FAQ */}
-                {watchedValues.showFaq && watchedValues.faq && (
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-gray-800">Frequently Asked Questions:</h3>
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap">{watchedValues.faq}</div>
-                  </div>
-                )}
-
-                {/* Important Reminders */}
-                {watchedValues.importantReminders && (
-                  <div className="bg-red-50 border-l-4 border-red-400 p-4">
-                    <h3 className="font-bold text-red-800 mb-2 flex items-center gap-2">
-                      <span>⚠</span> Important Reminders:
-                    </h3>
-                    <div className="text-sm text-red-700 whitespace-pre-wrap">
-                      {watchedValues.importantReminders}
-                    </div>
-                  </div>
-                )}
-
-                <div className="text-center text-gray-600 text-sm">
-                  For any assistance, please contact reception.<br />
-                  Enjoy your stay at Pelangi Capsule Hostel! 💼🌟
-                </div>
-
-                {/* Print and Email buttons for testing */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6 pt-4 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Print the preview content
-                      const printContent = document.querySelector('.preview-content') as HTMLElement;
-                      if (printContent) {
-                        const originalDisplay = printContent.style.display;
-                        printContent.style.display = 'block';
-                        window.print();
-                        printContent.style.display = originalDisplay;
-                      }
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Printer className="h-4 w-4" />
-                    Print Check-in Slip
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Create email content for testing
-                      const guestName = "Test Guest";
-                      const capsuleNumber = "C12";
-                      const checkinTime = "From 3:00 PM";
-                      const checkoutTime = "Before 12:00 PM";
-                      
-                      const subject = encodeURIComponent('Your Check-in Slip - Pelangi Capsule Hostel');
-                      const body = encodeURIComponent(`
+              {/* Print and Email buttons for testing */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Print the preview content
+                    const printContent = document.querySelector('.preview-content') as HTMLElement;
+                    if (printContent) {
+                      const originalDisplay = printContent.style.display;
+                      printContent.style.display = 'block';
+                      window.print();
+                      printContent.style.display = originalDisplay;
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print Check-in Slip
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Create email content for testing
+                    const guestName = "Test Guest";
+                    const capsuleNumber = "C12";
+                    const checkinTime = "From 3:00 PM";
+                    const checkoutTime = "Before 12:00 PM";
+                    
+                    const subject = encodeURIComponent('Your Check-in Slip - Pelangi Capsule Hostel');
+                    const body = encodeURIComponent(`
 Dear ${guestName},
 
 Welcome to Pelangi Capsule Hostel! Here is your check-in slip:
@@ -1040,24 +1046,49 @@ Enjoy your stay at Pelangi Capsule Hostel! 💼🌟
 
 ---
 This email was generated by Pelangi Capsule Hostel Management System
-                      `);
-                      
-                      // Open email client
-                      const mailtoLink = `mailto:test@example.com?subject=${subject}&body=${body}`;
-                      window.open(mailtoLink, '_blank');
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Send className="h-4 w-4" />
-                    Send via Email Client
-                  </Button>
-                </div>
+                    `);
+                    
+                    // Open email client
+                    const mailtoLink = `mailto:test@example.com?subject=${subject}&body=${body}`;
+                    window.open(mailtoLink, '_blank');
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Send className="h-4 w-4" />
+                  Send via Email Client
+                </Button>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Mobile: stacked layout */}
+      <div className="lg:hidden space-y-6">
+        <EditorSection />
+        {showPreview && <PreviewSection />}
+      </div>
+
+      {/* Desktop: split-pane with preview on the right */}
+      <div className="hidden lg:block">
+        {showPreview ? (
+          <ResizablePanelGroup direction="horizontal" className="min-h-[70vh]">
+            <ResizablePanel defaultSize={60} minSize={40}>
+              <EditorSection />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={40} minSize={30}>
+              <PreviewSection />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <EditorSection />
+        )}
+      </div>
     </div>
   );
 }
