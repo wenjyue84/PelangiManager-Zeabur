@@ -225,6 +225,16 @@ export const insertGuestSchema = createInsertSchema(guests).omit({
       return date >= today && date <= maxDate;
     }, "Expected checkout date must be between today and 1 year from now")
     .optional(),
+  checkInDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Check-in date must be in YYYY-MM-DD format")
+    .refine(val => {
+      if (!val) return true; // Optional field
+      const date = new Date(val);
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 1); // Max 1 year from now
+      return date <= maxDate;
+    }, "Check-in date cannot be more than 1 year in the future")
+    .optional(),
   gender: z.enum(["male", "female", "other", "prefer-not-to-say"], {
     required_error: "Please select a gender"
   }).optional(),

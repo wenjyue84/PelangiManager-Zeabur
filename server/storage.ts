@@ -334,10 +334,23 @@ export class MemStorage implements IStorage {
 
   async createGuest(insertGuest: InsertGuest): Promise<Guest> {
     const id = randomUUID();
+    
+    // Use custom check-in date if provided, otherwise use current time
+    let checkinTime: Date;
+    if (insertGuest.checkInDate) {
+      // Parse the date string and set time to current time
+      const [year, month, day] = insertGuest.checkInDate.split('-').map(Number);
+      const now = new Date();
+      checkinTime = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+    } else {
+      checkinTime = new Date();
+    }
+    
+    const { checkInDate, ...guestData } = insertGuest;
     const guest: Guest = {
-      ...insertGuest,
+      ...guestData,
       id,
-      checkinTime: new Date(),
+      checkinTime,
       checkoutTime: null,
       isCheckedIn: true,
       expectedCheckoutDate: insertGuest.expectedCheckoutDate || null,
@@ -355,6 +368,7 @@ export class MemStorage implements IStorage {
       emergencyPhone: insertGuest.emergencyPhone || null,
       age: insertGuest.age || null,
       profilePhotoUrl: insertGuest.profilePhotoUrl || null,
+      selfCheckinToken: insertGuest.selfCheckinToken || null,
     };
     this.guests.set(id, guest);
     return guest;
@@ -512,7 +526,7 @@ export class MemStorage implements IStorage {
 
   async getGuestsByCapsule(capsuleNumber: string): Promise<Guest[]> {
     return Array.from(this.guests.values())
-      .filter(guest => guest.capsuleNumber === capsuleNumber && !guest.checkedOutAt);
+      .filter(guest => guest.capsuleNumber === capsuleNumber && guest.isCheckedIn);
   }
 
   // Cleaning management methods
@@ -963,7 +977,17 @@ class DatabaseStorage implements IStorage {
   }
 
   async createGuest(insertGuest: InsertGuest): Promise<Guest> {
-    const result = await this.db.insert(guests).values(insertGuest).returning();
+    // Prepare the data to insert
+    const { checkInDate, ...insertData } = insertGuest;
+    
+    // If custom check-in date is provided, override the default
+    if (checkInDate) {
+      const [year, month, day] = checkInDate.split('-').map(Number);
+      const now = new Date();
+      (insertData as any).checkinTime = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+    }
+    
+    const result = await this.db.insert(guests).values(insertData).returning();
     return result[0];
   }
 
@@ -1131,7 +1155,7 @@ class DatabaseStorage implements IStorage {
       .from(guests)
       .where(and(
         eq(guests.capsuleNumber, capsuleNumber),
-        isNull(guests.checkedOutAt)
+        eq(guests.isCheckedIn, true)
       ));
   }
 
