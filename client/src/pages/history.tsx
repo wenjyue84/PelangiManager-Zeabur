@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
 import type { Guest, PaginatedResponse, Capsule } from "@shared/schema";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
 function formatDuration(checkinTime: string, checkoutTime: string): string {
   const checkin = new Date(checkinTime);
@@ -26,6 +27,7 @@ function getInitials(name: string): string {
 }
 
 export default function History() {
+  const labels = useAccommodationLabels();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,7 +192,7 @@ export default function History() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capsule</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{labels.singular}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
@@ -282,7 +284,7 @@ export default function History() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
           <div>
             <CardTitle className="text-lg font-semibold text-hostel-text">Cleaning History</CardTitle>
-            <p className="text-sm text-gray-600">Recently cleaned capsules with timestamps</p>
+            <p className="text-sm text-gray-600">Recently cleaned {labels.lowerPlural} with timestamps</p>
           </div>
         </div>
       </CardHeader>

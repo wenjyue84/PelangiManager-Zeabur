@@ -12,6 +12,7 @@ import { User, Calendar, MapPin, Phone, Mail, CreditCard, Edit, Save, X } from "
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Guest } from "@shared/schema";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
 interface GuestDetailsModalProps {
   guest: Guest | null;
@@ -20,6 +21,7 @@ interface GuestDetailsModalProps {
 }
 
 export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetailsModalProps) {
+  const labels = useAccommodationLabels();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Guest>>({});
   const { toast } = useToast();
@@ -333,7 +335,7 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Capsule</Label>
+                <Label>{labels.singular}</Label>
                 <div className="mt-1">
                   <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">
                     <MapPin className="h-3 w-3 mr-1" />

@@ -16,6 +16,9 @@ function computeLabels(type: AccommodationType | undefined) {
     lowerPlural,
     numberLabel: `${singular} Number`,
     maintenanceTitle: `${singular} Maintenance`,
+    activeProblemsTitle: `Active Problems`,
+    resolvedProblemsTitle: `Recently Resolved`,
+    noActiveProblems: `No active problems reported. All ${lowerPlural} are in good condition!`,
   };
 }
 

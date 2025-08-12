@@ -7,6 +7,7 @@ import { UserMinus } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Guest } from "@shared/schema";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
 function formatDuration(checkinTime: string): string {
   const checkin = new Date(checkinTime);
@@ -24,6 +25,7 @@ function getInitials(name: string): string {
 }
 
 export default function GuestTable() {
+  const labels = useAccommodationLabels();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -113,7 +115,7 @@ export default function GuestTable() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capsule</th>
+                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{labels.singular}</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>

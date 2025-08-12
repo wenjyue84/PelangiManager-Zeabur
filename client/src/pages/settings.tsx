@@ -1482,7 +1482,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-orange-600" />
-              Capsule Maintenance
+              {labels.maintenanceTitle}
             </CardTitle>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
@@ -1493,20 +1493,20 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Report Capsule Problem</DialogTitle>
+                  <DialogTitle>Report {labels.singular} Problem</DialogTitle>
                 </DialogHeader>
                 <form
                   onSubmit={createProblemForm.handleSubmit((data) => createProblemMutation.mutate(data))}
                   className="space-y-4"
                 >
                   <div>
-                    <Label htmlFor="capsuleNumber">Capsule Number</Label>
+                    <Label htmlFor="capsuleNumber">{labels.numberLabel}</Label>
                     <Select
                       value={createProblemForm.watch("capsuleNumber")}
                       onValueChange={(value) => createProblemForm.setValue("capsuleNumber", value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select capsule" />
+                        <SelectValue placeholder={`Select ${labels.lowerSingular}`} />
                       </SelectTrigger>
                       <SelectContent>
                         {Array.isArray(capsules) && capsules.map((capsule) => (
@@ -1549,11 +1549,11 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
           <div className="space-y-6">
             {/* Active Problems */}
             <div>
-              <h3 className="text-lg font-semibold text-red-600 mb-4">Active Problems ({activeProblem.length})</h3>
+              <h3 className="text-lg font-semibold text-red-600 mb-4">{labels.activeProblemsTitle} ({activeProblem.length})</h3>
               {activeProblem.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Wrench className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No active problems reported. All capsules are in good condition!</p>
+                  <p>{labels.noActiveProblems}</p>
                 </div>
               ) : (
                 concise ? (
@@ -1561,7 +1561,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
                     <table className="w-full text-sm">
                       <thead className="bg-red-50">
                         <tr>
-                          <th className="px-4 py-2 text-left">Capsule</th>
+                          <th className="px-4 py-2 text-left">{labels.singular}</th>
                           <th className="px-4 py-2 text-left">Description</th>
                           <th className="px-4 py-2 text-left">Reported By</th>
                           <th className="px-4 py-2 text-left">Date</th>
@@ -1633,7 +1633,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
             {/* Resolved Problems */}
             {resolvedProblems.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-green-600 mb-4">Recently Resolved ({resolvedProblems.length})</h3>
+                <h3 className="text-lg font-semibold text-green-600 mb-4">{labels.resolvedProblemsTitle} ({resolvedProblems.length})</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {resolvedProblems.slice(0, 4).map((problem: CapsuleProblem) => (
                     <Card key={problem.id} className="border-green-200 bg-green-50">

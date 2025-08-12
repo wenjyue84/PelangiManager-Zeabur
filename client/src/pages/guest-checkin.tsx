@@ -562,11 +562,11 @@ Welcome to Pelangi Capsule Hostel! Here is your check-in slip:
 🏨 PELANGI CAPSULE HOSTEL - CHECK-IN SLIP
 
 Guest Name: ${form.getValues("nameAsInDocument") || guestInfo?.guestName || 'Guest'}
-Capsule Number: ${guestInfo?.capsuleNumber || 'Assigned based on availability'}
+${t.capsuleNumberLabel}: ${guestInfo?.capsuleNumber || 'Assigned based on availability'}
 Check-in: ${checkinTime}
 Check-out: ${checkoutTime}
 Door Password: ${doorPassword}
-Capsule Access Card: Placed on your pillow
+${t.accessCard}: Placed on your pillow
 
 ⚠️ IMPORTANT REMINDERS:
 ${importantReminders}

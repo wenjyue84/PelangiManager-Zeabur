@@ -14,6 +14,7 @@ import GuestDetailsModal from "./guest-details-modal";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
 import type { Guest, GuestToken, PaginatedResponse } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
 type SortField = 'name' | 'capsuleNumber' | 'checkinTime' | 'expectedCheckoutDate';
 type SortOrder = 'asc' | 'desc';
@@ -232,6 +233,7 @@ function SwipeableGuestRow({ guest, onCheckout, onGuestClick, isCondensedView, c
 }
 
 export default function SortableGuestTable() {
+  const labels = useAccommodationLabels();
   const queryClient = useQueryClient();
   const [isCondensedView, setIsCondensedView] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
@@ -530,7 +532,7 @@ export default function SortableGuestTable() {
                 <tr>
                   <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
                     <div className="flex items-center gap-1">
-                      Capsule
+                      {labels.singular}
                       <SortButton field="capsuleNumber" currentSort={sortConfig} onSort={handleSort} />
                     </div>
                   </th>

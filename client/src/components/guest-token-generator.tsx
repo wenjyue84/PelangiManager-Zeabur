@@ -11,12 +11,14 @@ import { Link2, Copy, Clock, MapPin, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Capsule } from "@shared/schema";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
 interface TokenGeneratorProps {
   onTokenCreated?: () => void;
 }
 
 export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorProps) {
+  const labels = useAccommodationLabels();
   const [selectedCapsule, setSelectedCapsule] = useState("auto-assign");
   const [guestName, setGuestName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -243,11 +245,11 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
             <div>
               <Label htmlFor="capsule" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Select Capsule
+                Select {labels.singular}
               </Label>
               <Select value={selectedCapsule} onValueChange={setSelectedCapsule}>
                 <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Choose capsule assignment" />
+                  <SelectValue placeholder={`Choose ${labels.lowerSingular} assignment`} />
                 </SelectTrigger>
                 <SelectContent>
                   {capsulesLoading ? (

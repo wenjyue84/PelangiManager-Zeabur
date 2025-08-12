@@ -808,7 +808,7 @@ export default function CheckIn() {
               <li>• Auto-incrementing guest names (Guest1, Guest2...)</li>
               <li>• Gender-based {labels.lowerSingular} assignment (Front for males, Back for females)</li>
               <li>• Quick payment presets: RM45, RM48, RM650 (Monthly)</li>
-              <li>• Admin form: Only name, capsule & payment required</li>
+              <li>• Admin form: Only name, {labels.lowerSingular} & payment required</li>
             </ul>
           </div>
         </CardContent>

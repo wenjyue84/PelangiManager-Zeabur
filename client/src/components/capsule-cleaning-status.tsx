@@ -40,7 +40,7 @@ function MarkCleanedDialog({ capsule, onSuccess }: MarkCleanedDialogProps) {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: `Capsule ${capsule.number} marked as cleaned successfully`,
+        description: `${labels.singular} ${capsule.number} marked as cleaned successfully`,
       });
       setOpen(false);
       onSuccess();
@@ -72,7 +72,7 @@ function MarkCleanedDialog({ capsule, onSuccess }: MarkCleanedDialogProps) {
         <DialogHeader>
           <DialogTitle>Mark {labels.singular} {capsule.number} as Cleaned</DialogTitle>
           <DialogDescription>
-            Are you sure you want to mark this capsule as cleaned?
+            Are you sure you want to mark this {labels.lowerSingular} as cleaned?
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

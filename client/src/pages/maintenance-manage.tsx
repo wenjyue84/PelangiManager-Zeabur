@@ -14,8 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/lib/auth";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import type { Capsule, CapsuleProblem, PaginatedResponse } from "@shared/schema";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
 export default function MaintenanceManage() {
+  const labels = useAccommodationLabels();
   const [selectedCapsule, setSelectedCapsule] = useState<string>("");
   const [problemDescription, setProblemDescription] = useState("");
   const [resolutionNotes, setResolutionNotes] = useState("");
@@ -177,10 +179,10 @@ export default function MaintenanceManage() {
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
             <div>
-              <Label htmlFor="capsule">Select Capsule</Label>
+              <Label htmlFor="capsule">Select {labels.singular}</Label>
               <Select value={selectedCapsule} onValueChange={setSelectedCapsule}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Choose a capsule" />
+                  <SelectValue placeholder={`Choose a ${labels.lowerSingular}`} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableCapsules.map((capsule) => (
