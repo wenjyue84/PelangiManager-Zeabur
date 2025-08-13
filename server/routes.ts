@@ -1100,12 +1100,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guideCheckinTime: await getVal('guideCheckinTime'),
         guideCheckoutTime: await getVal('guideCheckoutTime'),
         guideDoorPassword: await getVal('guideDoorPassword'),
+        selfCheckinSuccessMessage: await getVal('selfCheckinSuccessMessage'),
         guideShowIntro: (await storage.getSetting('guideShowIntro'))?.value === 'true',
         guideShowAddress: (await storage.getSetting('guideShowAddress'))?.value === 'true',
         guideShowWifi: (await storage.getSetting('guideShowWifi'))?.value === 'true',
         guideShowCheckin: (await storage.getSetting('guideShowCheckin'))?.value === 'true',
         guideShowOther: (await storage.getSetting('guideShowOther'))?.value === 'true',
         guideShowFaq: (await storage.getSetting('guideShowFaq'))?.value === 'true',
+        guideShowCapsuleIssues: (await storage.getSetting('guideShowCapsuleIssues'))?.value === 'true',
+        guideShowSelfCheckinMessage: (await storage.getSetting('guideShowSelfCheckinMessage'))?.value === 'true',
+        guideShowHostelPhotos: (await storage.getSetting('guideShowHostelPhotos'))?.value === 'true',
+        guideShowGoogleMaps: (await storage.getSetting('guideShowGoogleMaps'))?.value === 'true',
+        guideShowCheckinVideo: (await storage.getSetting('guideShowCheckinVideo'))?.value === 'true',
+        guideShowTimeAccess: (await storage.getSetting('guideShowTimeAccess'))?.value === 'true',
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch settings" });
@@ -1165,6 +1172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await maybeSet('guideCheckoutTime', 'Check-out time');
       await maybeSet('guideDoorPassword', 'Door password');
       await maybeSet('guideCustomStyles', 'Custom CSS styles');
+      await maybeSet('selfCheckinSuccessMessage', 'Self check-in success message');
       // Visibility toggles
       const setBool = async (key: string, val: any, desc: string) => {
         if (typeof val === 'boolean') {
@@ -1177,6 +1185,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await setBool('guideShowCheckin', (validatedData as any).guideShowCheckin, 'Show check-in guidance');
       await setBool('guideShowOther', (validatedData as any).guideShowOther, 'Show other guidance');
       await setBool('guideShowFaq', (validatedData as any).guideShowFaq, 'Show FAQ');
+      await setBool('guideShowCapsuleIssues', (validatedData as any).guideShowCapsuleIssues, 'Show capsule issues to guests');
+      await setBool('guideShowSelfCheckinMessage', (validatedData as any).guideShowSelfCheckinMessage, 'Show self-check-in message to guests');
+      await setBool('guideShowHostelPhotos', (validatedData as any).guideShowHostelPhotos, 'Show hostel photos to guests');
+      await setBool('guideShowGoogleMaps', (validatedData as any).guideShowGoogleMaps, 'Show Google Maps to guests');
+      await setBool('guideShowCheckinVideo', (validatedData as any).guideShowCheckinVideo, 'Show check-in video to guests');
+      await setBool('guideShowTimeAccess', (validatedData as any).guideShowTimeAccess, 'Show time and access info to guests');
 
       res.json({
         message: "Settings updated successfully",
@@ -1197,12 +1211,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guideCheckoutTime: (validatedData as any).guideCheckoutTime,
         guideDoorPassword: (validatedData as any).guideDoorPassword,
         guideCustomStyles: (validatedData as any).guideCustomStyles,
+        selfCheckinSuccessMessage: (validatedData as any).selfCheckinSuccessMessage,
         guideShowIntro: (validatedData as any).guideShowIntro,
         guideShowAddress: (validatedData as any).guideShowAddress,
         guideShowWifi: (validatedData as any).guideShowWifi,
         guideShowCheckin: (validatedData as any).guideShowCheckin,
         guideShowOther: (validatedData as any).guideShowOther,
         guideShowFaq: (validatedData as any).guideShowFaq,
+        guideShowCapsuleIssues: (validatedData as any).guideShowCapsuleIssues,
+        guideShowSelfCheckinMessage: (validatedData as any).guideShowSelfCheckinMessage,
+        guideShowHostelPhotos: (validatedData as any).guideShowHostelPhotos,
+        guideShowGoogleMaps: (validatedData as any).guideShowGoogleMaps,
+        guideShowCheckinVideo: (validatedData as any).guideShowCheckinVideo,
+        guideShowTimeAccess: (validatedData as any).guideShowTimeAccess,
       });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -1792,8 +1813,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: guestToken.email || undefined,
         gender: validatedGuestData.gender,
         nationality: validatedGuestData.nationality,
+        checkInDate: validatedGuestData.checkInDate, // Use the date from the form
         idNumber: validatedGuestData.icNumber || validatedGuestData.passportNumber || undefined,
-        expectedCheckoutDate: guestToken.expectedCheckoutDate || undefined,
+        expectedCheckoutDate: validatedGuestData.checkOutDate || guestToken.expectedCheckoutDate || undefined,
         paymentAmount: "0", // Will be updated at front desk
         paymentMethod: validatedGuestData.paymentMethod === "online_platform" ? "platform" : validatedGuestData.paymentMethod as "cash" | "bank" | "tng" | "platform",
         paymentCollector: "Self Check-in",
@@ -1816,12 +1838,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isRead: false,
       });
 
+      // Get any active capsule issues for the assigned capsule
+      const capsuleIssues = await storage.getCapsuleProblems(assignedCapsuleNumber);
+      const activeIssues = capsuleIssues.filter(issue => !issue.isResolved);
+
       res.json({
         message: "Check-in successful",
         guest: guest,
         capsuleNumber: assignedCapsuleNumber,
         editToken: token, // Provide token for editing within 1 hour
         editExpiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+        capsuleIssues: activeIssues, // Include any active capsule issues
       });
     } catch (error: any) {
       console.error("Error processing guest check-in:", error);
@@ -1915,8 +1942,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         idNumber: validatedGuestData.icNumber || validatedGuestData.passportNumber || undefined,
         age: calculatedAge, // Update age if IC number changed
         paymentMethod: validatedGuestData.paymentMethod,
+        expectedCheckoutDate: validatedGuestData.checkOutDate || undefined,
         notes: `IC: ${validatedGuestData.icNumber || 'N/A'}, Passport: ${validatedGuestData.passportNumber || 'N/A'}${validatedGuestData.icDocumentUrl ? `, IC Doc: ${validatedGuestData.icDocumentUrl}` : ''}${validatedGuestData.passportDocumentUrl ? `, Passport Doc: ${validatedGuestData.passportDocumentUrl}` : ''}`,
       });
+
+      // Update check-in time if it changed
+      if (validatedGuestData.checkInDate) {
+        const [year, month, day] = validatedGuestData.checkInDate.split('-').map(Number);
+        const now = new Date();
+        const newCheckinTime = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+        
+        await storage.updateGuest(guest.id, {
+          checkinTime: newCheckinTime,
+        });
+      }
 
       res.json({
         message: "Information updated successfully",
