@@ -94,9 +94,10 @@ interface SwipeableGuestRowProps {
   isCondensedView: boolean;
   children: React.ReactNode;
   isCheckingOut?: boolean;
+  isMobile: boolean;
 }
 
-function SwipeableGuestRow({ guest, onCheckout, onGuestClick, isCondensedView, children, isCheckingOut }: SwipeableGuestRowProps) {
+function SwipeableGuestRow({ guest, onCheckout, onGuestClick, isCondensedView, children, isCheckingOut, isMobile }: SwipeableGuestRowProps) {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef<number>(0);
@@ -611,6 +612,7 @@ export default function SortableGuestTable() {
                         onCheckout={handleCheckout}
                         onGuestClick={handleGuestClick}
                         isCondensedView={isCondensedView}
+                        isMobile={isMobile}
                         isCheckingOut={isGuestCheckingOut}
                       >
                         {/* Accommodation column - sticky first column */}
@@ -633,16 +635,16 @@ export default function SortableGuestTable() {
                                 <span className={`${genderIcon.textColor} font-medium text-xs`}>{getInitials(guest.name)}</span>
                               )}
                             </div>
-                            {!isCondensedView && (
-                              <button 
-                                onClick={() => handleGuestClick(guest)}
-                                className="text-sm font-medium text-hostel-text hover:text-orange-700 hover:underline cursor-pointer transition-colors"
-                              >
-                                {truncateName(guest.name)}
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                              {!isCondensedView && (
+                                <button
+                                  onClick={() => handleGuestClick(guest)}
+                                  className="text-sm font-medium text-hostel-text hover:text-orange-700 hover:underline cursor-pointer transition-colors"
+                                >
+                                  {isMobile ? truncateName(guest.name) : guest.name}
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         {/* Nationality column - only in detailed view */}
                         {!isCondensedView && (
                           <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
