@@ -9,6 +9,71 @@
 
 ## Issue Database
 
+### 006 - JSX Syntax Error: Expected corresponding JSX closing tag for <CardContent> (SOLVED)
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Vite dev server shows: "Internal server error: Expected corresponding JSX closing tag for <CardContent>. (1344:12)"
+- React application fails to compile and run
+- Browser shows "localhost refused to connect" or "ERR_CONNECTION_REFUSED"
+- Server crashes due to JSX parsing error
+
+**Root Cause:**
+- Unbalanced JSX tags in `client/src/pages/settings.tsx`
+- `<CardContent>` tag opened at line 1059 in `GuestGuideTab` function was never properly closed
+- Multiple nested `<div>` tags created structural imbalance
+- JSX parser expected `</CardContent>` but found `</div>` at line 1344
+
+**Solution Steps:**
+1. **Identify the JSX structure issue:**
+   ```typescript
+   // Line 1059: CardContent opens
+   <CardContent>
+     <div className={`preview-content...`}>
+       // ... complex nested content ...
+   
+   // Line 1344: Should be </CardContent> but was </div>
+   </div>  // WRONG - should be </CardContent>
+   </Card>
+   ```
+
+2. **Fix the JSX structure:**
+   ```typescript
+   // Remove extra nested div and properly close CardContent
+   </div>
+   </div>
+   </div>
+   </CardContent>  // FIXED - proper closing tag
+   </Card>
+   ```
+
+3. **Verify tag balance:**
+   - Count opening `<CardContent>` tags: 15
+   - Count closing `</CardContent>` tags: 15 (after fix)
+   - Ensure all JSX tags are properly nested and closed
+
+**Technical Fix Applied:**
+- Modified `client/src/pages/settings.tsx` to properly close the `<CardContent>` tag
+- Removed extra nested `<div>` elements that caused structural imbalance
+- Balanced opening and closing tags for proper JSX syntax
+
+**Files Modified:**
+- `client/src/pages/settings.tsx` - Fixed JSX structure and tag balance
+
+**Verification:**
+- Server starts without JSX syntax errors
+- http://localhost:5000 loads successfully
+- React application compiles and runs
+- No "Expected corresponding JSX closing tag" errors in console
+
+**Prevention:**
+- Always verify JSX tag balance when making structural changes
+- Use proper indentation to visualize JSX nesting
+- Count opening/closing tags to ensure balance
+- Test server startup after major JSX modifications
+
+---
+
 ### 001 - Connection Problem / Server Crashes (SOLVED)
 
 **Date Solved:** August 9, 2025  
