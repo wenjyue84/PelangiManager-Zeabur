@@ -2,6 +2,26 @@
 
 A comprehensive **Capsule System Management Platform** for hostels and capsule hotels, built with modern web technologies.
 
+## 🆕 **What's New - Major Settings Overhaul** *(Latest Update)*
+
+🎉 **Complete Settings Page Redesign** - We've completely transformed the settings interface into a powerful, organized management system!
+
+### ✨ **New Features Added:**
+- **🏗️ Modular Tab System**: Organized settings into logical, easy-to-navigate sections
+- **📦 Capsule Management**: Full capsule lifecycle management with visual interfaces
+- **👥 User Administration**: Complete user management with role-based access control
+- **🔧 Maintenance System**: Advanced problem tracking and resolution workflows
+- **💬 Message Templates**: Customizable communication templates for guests
+- **🧪 Testing Tools**: Built-in system validation and testing capabilities
+- **📚 Guest Guides**: Customizable check-in instructions and hostel information
+- **🏷️ Flexible Terminology**: Support for different accommodation types (Capsule/Room/House)
+
+### 🎯 **Business Benefits:**
+- **Streamlined Operations**: Faster access to all system configurations
+- **Better User Experience**: Intuitive interface for staff and administrators
+- **Enhanced Flexibility**: Easily adapt the system for different business models
+- **Improved Efficiency**: Centralized management of all system settings
+
 ## 🌐 Live Demo
 
 **Visit our live application:** [https://pelangi-manager.replit.app/](https://pelangi-manager.replit.app/)
@@ -18,6 +38,16 @@ Use these credentials to explore the system:
 - Interactive occupancy calendar visualization
 - Daily notifications and admin alerts
 - Sortable guest tables with advanced filtering
+
+### ⚙️ **Enhanced Settings Management** *(Latest Update)*
+- **Modular Settings Interface**: Completely redesigned settings page with organized tabs
+- **Capsule Management**: Full CRUD operations for capsules with visual grid/list/table views
+- **User Management**: Comprehensive user administration with role-based permissions
+- **Maintenance Tracking**: Advanced problem reporting and resolution workflow
+- **Message Templates**: Customizable notification and communication templates
+- **System Testing**: Built-in testing tools for system validation
+- **Guest Guide Configuration**: Customizable check-in instructions and hostel information
+- **Accommodation Terminology**: Flexible labeling system (Capsule/Room/House) for different business types
 
 ### 🏠 **Guest Management**
 - **Check-in System**: Streamlined guest registration and capsule assignment
@@ -52,6 +82,9 @@ Use these credentials to explore the system:
 - **Real-time**: WebSocket support
 - **Testing**: Jest testing framework
 - **Build Tools**: Vite + ESBuild
+- **UI Components**: Shadcn/ui with Radix UI primitives
+- **Form Management**: React Hook Form with Zod validation
+- **State Management**: TanStack Query for server state
 
 ## 📱 Responsive Design
 
