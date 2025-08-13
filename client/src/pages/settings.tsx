@@ -237,6 +237,7 @@ export default function SettingsPage() {
             isLoading={problemsLoading}
             queryClient={queryClient}
             toast={toast}
+            labels={labels}
           />
         </TabsContent>
 
@@ -271,23 +272,24 @@ export default function SettingsPage() {
 function GeneralSettingsTab({ settings, isLoading, form, onSubmit, resetToDefault, updateSettingsMutation }: any) {
   return (
     <div className="grid grid-cols-1 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
-            Guest Check-In Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
-            </div>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {isLoading ? (
+        <div className="space-y-4">
+          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
+        </div>
+      ) : (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Accommodation Term Pane */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5 text-purple-600" />
+                  Accommodation Terminology
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <FormField
                   control={form.control}
                   name={"accommodationType" as any}
@@ -307,10 +309,37 @@ function GeneralSettingsTab({ settings, isLoading, form, onSubmit, resetToDefaul
                       <div className="text-sm text-gray-600">
                         This term will be used across the system (e.g., Check-in forms, Maintenance, Dashboard).
                       </div>
+                      <div className="text-sm text-gray-500 mt-2 space-y-1">
+                        <div className="font-medium">Affected areas:</div>
+                        <ol className="list-decimal list-inside space-y-1 ml-2 text-xs">
+                          <li>Dashboard page &gt; Occupancy Cards &amp; Table</li>
+                          <li>Guest Check-in page &gt; Assignment field</li>
+                          <li>Guest Check-out page &gt; Entity selector</li>
+                          <li>Cleaning page &gt; Status indicators</li>
+                          <li>Maintenance pages &gt; Problem tables</li>
+                          <li>Guest Details modal &gt; Summary fields</li>
+                          <li>Dashboard/Guests table &gt; Column headers</li>
+                          <li>Notifications &gt; Entity references</li>
+                          <li>Token generation &gt; Field labels</li>
+                          <li>Settings &gt; General configuration</li>
+                        </ol>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
+
+            {/* Guest Check-In Settings Pane */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  Guest Check-In Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <FormField
                   control={form.control}
                   name="guestTokenExpirationHours"
@@ -363,47 +392,47 @@ function GeneralSettingsTab({ settings, isLoading, form, onSubmit, resetToDefaul
                     Reset to Default (24h)
                   </Button>
                 </div>
-              </form>
-            </Form>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
 
-      {/* Current Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Configuration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-gray-900">Token Validity</p>
-                <p className="text-xs text-gray-500">Time before tokens expire</p>
-              </div>
-              <div className="text-right">
-                <p className="text-lg font-semibold text-blue-600">
-                  {settings?.guestTokenExpirationHours || 24}h
-                </p>
-                <p className="text-xs text-gray-500">
-                  {settings?.guestTokenExpirationHours === 24 ? "Default" : "Custom"}
-                </p>
-              </div>
-            </div>
+            {/* Current Status Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Configuration</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Token Validity</p>
+                      <p className="text-xs text-gray-500">Time before tokens expire</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-blue-600">
+                        {settings?.guestTokenExpirationHours || 24}h
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {settings?.guestTokenExpirationHours === 24 ? "Default" : "Custom"}
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-gray-900">Edit Window</p>
-                <p className="text-xs text-gray-500">After guest completes check-in</p>
-              </div>
-              <div className="text-right">
-                <p className="text-lg font-semibold text-green-600">1h</p>
-                <p className="text-xs text-gray-500">Fixed</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Edit Window</p>
+                      <p className="text-xs text-gray-500">After guest completes check-in</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-green-600">1h</p>
+                      <p className="text-xs text-gray-500">Fixed</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
+      )}
     </div>
   );
 }
@@ -2287,7 +2316,7 @@ function CapsulesTab({ capsules, queryClient, toast, labels }: any) {
 }
 
 // Maintenance Tab Component
-function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: any) {
+function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast, labels }: any) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<CapsuleProblem | null>(null);
@@ -2318,7 +2347,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
       createProblemForm.reset();
       toast({
         title: "Problem Reported",
-        description: "The capsule problem has been reported successfully.",
+        description: `The ${labels.singular.toLowerCase()} problem has been reported successfully.`,
       });
     },
     onError: (error: any) => {
@@ -2388,7 +2417,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-orange-600" />
-              Capsule Maintenance
+              {labels.singular} Maintenance
             </CardTitle>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
@@ -2399,21 +2428,21 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Report Capsule Problem</DialogTitle>
+                  <DialogTitle>Report {labels.singular} Problem</DialogTitle>
                 </DialogHeader>
                 <form
                   onSubmit={createProblemForm.handleSubmit((data) => createProblemMutation.mutate(data))}
                   className="space-y-4"
                 >
                   <div>
-                    <Label htmlFor="capsuleNumber">Capsule Number</Label>
+                    <Label htmlFor="capsuleNumber">{labels.singular} Number</Label>
                     <Select
                       value={createProblemForm.watch("capsuleNumber")}
                       onValueChange={(value) => createProblemForm.setValue("capsuleNumber", value)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select capsule" />
-                      </SelectTrigger>
+                                              <SelectTrigger>
+                          <SelectValue placeholder={`Select ${labels.singular.toLowerCase()}`} />
+                        </SelectTrigger>
                       <SelectContent>
                         {Array.isArray(capsules) && capsules.map((capsule) => (
                           <SelectItem key={capsule.number} value={capsule.number}>
@@ -2459,7 +2488,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
               {activeProblem.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Wrench className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No active problems reported. All capsules are in good condition!</p>
+                  <p>No active problems reported. All {labels.plural} are in good condition!</p>
                 </div>
               ) : (
                 concise ? (
@@ -2467,7 +2496,7 @@ function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast }: a
                     <table className="w-full text-sm">
                       <thead className="bg-red-50">
                         <tr>
-                          <th className="px-4 py-2 text-left">Capsule</th>
+                          <th className="px-4 py-2 text-left">{labels.singular}</th>
                           <th className="px-4 py-2 text-left">Description</th>
                           <th className="px-4 py-2 text-left">Reported By</th>
                           <th className="px-4 py-2 text-left">Date</th>
