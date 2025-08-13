@@ -10,7 +10,11 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -52,6 +56,7 @@
     "@types/memoizee": "^0.4.12",
     "@types/multer": "^2.0.0",
     "@types/passport-google-oauth20": "^2.0.16",
+    "@types/react-window": "^1.8.8",
     "@uppy/aws-s3": "^4.3.2",
     "@uppy/core": "^4.5.2",
     "@uppy/dashboard": "^4.4.3",
@@ -102,6 +107,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@replit/vite-plugin-cartographer": "^0.2.8",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",

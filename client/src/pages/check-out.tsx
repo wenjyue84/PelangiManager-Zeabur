@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -58,6 +59,7 @@ function getGenderIcon(gender?: string) {
 }
 
 export default function CheckOut() {
+  const labels = useAccommodationLabels();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -326,14 +328,16 @@ export default function CheckOut() {
                             </>
                           )}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Button 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleCheckout(guest.id)}
                               disabled={checkoutMutation.isPending}
                               isLoading={checkoutMutation.isPending && checkoutMutation.variables === guest.id}
-                              className="bg-hostel-error hover:bg-red-600 text-white font-medium"
+                              className="text-hostel-error hover:text-red-700 font-medium p-1"
+                              title="Checkout"
                             >
-                              <UserMinus className="mr-2 h-4 w-4" />
-                              Check Out
+                              <UserMinus className="h-3 w-3" />
                             </Button>
                           </td>
                         </tr>

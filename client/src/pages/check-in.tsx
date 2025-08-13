@@ -20,6 +20,13 @@ import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { NATIONALITIES } from "@/lib/nationalities";
 import { getHolidayLabel, hasPublicHoliday } from "@/lib/holidays";
+import {
+  getCurrentDateTime,
+  getNextDayDate,
+  getNextGuestNumber,
+  getDefaultCollector,
+  getRecommendedCapsule
+} from "@/components/check-in/utils";
 
 import { SmartPhotoUploader } from "@/components/SmartPhotoUploader";
 import { Camera, Upload } from "lucide-react";
@@ -42,16 +49,7 @@ export default function CheckIn() {
   });
 
   // Get the default collector name
-  const getDefaultCollector = useCallback(() => {
-    if (!user) return "";
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-    if (user.email === "admin@pelangi.com") {
-      return "Admin";
-    }
-    return user.email || "";
-  }, [user]);
+  const defaultCollector = getDefaultCollector(user);
 
   // Fetch current guest count for auto-incrementing names
   const { data: guestData = { data: [] } } = useVisibilityQuery<{ data: Guest[] }>({
@@ -59,67 +57,8 @@ export default function CheckIn() {
   });
 
   // Get the next guest number
-  const getNextGuestNumber = useCallback(() => {
-    const existingGuests = guestData.data || [];
-    const guestNumbers = existingGuests
-      .map(guest => {
-        const match = guest.name.match(/^Guest(\d+)$/);
-        return match ? parseInt(match[1]) : 0;
-      })
-      .filter(num => num > 0);
-    
-    const maxNumber = guestNumbers.length > 0 ? Math.max(...guestNumbers) : 0;
-    return `Guest${maxNumber + 1}`;
-  }, [guestData]);
+  const nextGuestNumber = getNextGuestNumber(guestData.data || []);
 
-  // Gender-based capsule assignment logic
-  const getRecommendedCapsule = useCallback((gender: string) => {
-    if (!availableCapsules || availableCapsules.length === 0) return "";
-    
-    // Parse capsule numbers for sorting
-    const capsulesWithNumbers = availableCapsules.map(capsule => {
-      const match = capsule.number.match(/C(\d+)/);
-      const numericValue = match ? parseInt(match[1]) : 0;
-      return { ...capsule, numericValue, originalNumber: capsule.number };
-    });
-
-    if (gender === "female") {
-      // For females: back capsules with lowest number first, prefer bottom (even numbers)
-      const backCapsules = capsulesWithNumbers
-        .filter(c => c.section === "back") // Back section
-        .sort((a, b) => {
-          const aIsBottom = a.numericValue % 2 === 0;
-          const bIsBottom = b.numericValue % 2 === 0;
-          if (aIsBottom && !bIsBottom) return -1;
-          if (!aIsBottom && bIsBottom) return 1;
-          return a.numericValue - b.numericValue;
-        });
-      
-      if (backCapsules.length > 0) {
-        return backCapsules[0].originalNumber;
-      }
-    } else {
-      // For non-females: front bottom capsules with lowest number first
-      const frontBottomCapsules = capsulesWithNumbers
-        .filter(c => c.section === "front" && c.numericValue % 2 === 0) // Front section, bottom (even numbers)
-        .sort((a, b) => a.numericValue - b.numericValue);
-      
-      if (frontBottomCapsules.length > 0) {
-        return frontBottomCapsules[0].originalNumber;
-      }
-    }
-
-    // Fallback: any available capsule, prefer bottom (even numbers)
-    const sortedCapsules = capsulesWithNumbers.sort((a, b) => {
-      const aIsBottom = a.numericValue % 2 === 0;
-      const bIsBottom = b.numericValue % 2 === 0;
-      if (aIsBottom && !bIsBottom) return -1;
-      if (!aIsBottom && bIsBottom) return 1;
-      return a.numericValue - b.numericValue;
-    });
-
-    return sortedCapsules[0]?.originalNumber || "";
-  }, [availableCapsules]);
 
   const form = useForm<InsertGuest>({
     resolver: zodResolver(insertGuestSchema),
@@ -128,7 +67,7 @@ export default function CheckIn() {
       capsuleNumber: "",
               paymentAmount: "45", // Default to RM45 per night
       paymentMethod: "cash" as const,
-      paymentCollector: "",
+      paymentCollector: defaultCollector,
       gender: undefined,
       nationality: "Malaysian",
       phoneNumber: "",
@@ -138,40 +77,30 @@ export default function CheckIn() {
       emergencyPhone: "",
       age: "",
       checkInDate: new Date().toISOString().split('T')[0], // Default to current date
-      expectedCheckoutDate: (() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().split('T')[0];
-      })(),
+      expectedCheckoutDate: getNextDayDate(),
     },
   });
 
-  // Get next day date for default checkout
-  const getNextDayDate = useCallback(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-  }, []);
 
   // Set defaults when user is available
   useEffect(() => {
     if (user && !form.getValues("paymentCollector")) {
-      form.setValue("paymentCollector", getDefaultCollector());
+      form.setValue("paymentCollector", defaultCollector);
     }
     if (!form.getValues("name")) {
-      form.setValue("name", getNextGuestNumber());
+      form.setValue("name", nextGuestNumber);
     }
     if (!form.getValues("expectedCheckoutDate")) {
       form.setValue("expectedCheckoutDate", getNextDayDate());
     }
-  }, [user, form, getDefaultCollector, getNextGuestNumber, getNextDayDate]);
+  }, [user, form, defaultCollector, nextGuestNumber]);
 
   // Auto-assign capsule based on gender
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "gender" && value.gender && availableCapsules.length > 0) {
         // Always suggest a new capsule when gender changes
-        const recommendedCapsule = getRecommendedCapsule(value.gender);
+        const recommendedCapsule = getRecommendedCapsule(value.gender, availableCapsules);
         
         if (recommendedCapsule && recommendedCapsule !== form.getValues("capsuleNumber")) {
           form.setValue("capsuleNumber", recommendedCapsule);
@@ -179,7 +108,7 @@ export default function CheckIn() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [availableCapsules, getRecommendedCapsule]); // Removed 'form' from dependencies to prevent infinite loop
+  }, [availableCapsules, form]); // Removed 'form' from dependencies to prevent infinite loop
 
   const checkinMutation = useMutation({
     mutationFn: async (data: InsertGuest) => {
@@ -226,11 +155,11 @@ export default function CheckIn() {
 
   const confirmClear = () => {
     form.reset({
-      name: getNextGuestNumber(),
+      name: getNextGuestNumber(guestData.data || []),
       capsuleNumber: "",
               paymentAmount: "45", // Reset to default RM45 per night
       paymentMethod: "cash" as const,
-      paymentCollector: getDefaultCollector(),
+      paymentCollector: getDefaultCollector(user),
       gender: undefined,
       nationality: "Malaysian",
       phoneNumber: "",
@@ -252,21 +181,6 @@ export default function CheckIn() {
   // Handle payment amount preset selection
   const handlePaymentPreset = (amount: string) => {
     form.setValue("paymentAmount", amount);
-  };
-
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-    const dateString = now.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-    return { timeString, dateString };
   };
 
   const { timeString, dateString } = getCurrentDateTime();
@@ -325,10 +239,10 @@ export default function CheckIn() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => form.setValue("name", getNextGuestNumber())}
+                    onClick={() => form.setValue("name", getNextGuestNumber(guestData.data || []))}
                     className="text-xs"
                   >
-                    Reset to {getNextGuestNumber()}
+                    Reset to {nextGuestNumber}
                   </Button>
                 </div>
               </div>
@@ -515,7 +429,7 @@ export default function CheckIn() {
                       <SelectValue placeholder="Select payment collector" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={getDefaultCollector()}>{getDefaultCollector()} (Current User)</SelectItem>
+                      <SelectItem value={defaultCollector}>{defaultCollector} (Current User)</SelectItem>
                       <SelectItem value="Alston">Alston</SelectItem>
                       <SelectItem value="Jay">Jay</SelectItem>
                       <SelectItem value="Le">Le</SelectItem>
