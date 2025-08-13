@@ -1570,7 +1570,7 @@ function CapsulesTab({ capsules, queryClient, toast, labels }: any) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCapsule, setSelectedCapsule] = useState<any>(null);
   const [problemsByCapsule, setProblemsByCapsule] = useState<Record<string, any[]>>({});
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('table');
 
   const items = Array.isArray(capsules) ? capsules : [];
 
