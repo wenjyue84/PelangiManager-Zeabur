@@ -113,6 +113,22 @@ export default function Navigation() {
             >
               Logout
             </Button>
+            
+            {/* Memory Storage Warning - Only show when using in-memory storage */}
+            {storageInfo && !storageInfo.isDatabase && (
+              <div 
+                className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-xs text-orange-700 border border-orange-200 cursor-help"
+                title="⚠️ DEVELOPMENT MODE: You are using in-memory storage (no database). All data will be lost when you restart the server. This is intended for local development only. For production, set DATABASE_URL environment variable to use a real database."
+              >
+                <HardDrive className="h-3 w-3 text-orange-600" />
+                <span className="font-medium hidden sm:inline">
+                  Memory
+                </span>
+                <span className="font-medium sm:hidden">
+                  Mem
+                </span>
+              </div>
+            )}
           </>
                  ) : (
            <div className="flex items-center gap-2">
