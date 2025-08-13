@@ -95,7 +95,7 @@ const handleQueryError = (error: unknown) => {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.name === 'NetworkError') {
       toast({
         title: "Connection Problem",
-        description: "Please check your internet connection and try again.",
+        description: "Please check your internet connection and try again. If you're running locally, make sure the server is started: run 'npm run dev' in the project root.",
         variant: "destructive",
       });
       return;
@@ -120,6 +120,15 @@ const handleMutationError = (error: unknown) => {
   console.error('Mutation error:', error);
   
   if (error instanceof Error) {
+    // Network/connection failures for mutations
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.name === 'NetworkError') {
+      toast({
+        title: "Connection Problem",
+        description: "Please check your internet connection and try again. If you're running locally, make sure the server is started: run 'npm run dev' in the project root.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Handle validation errors (400)
     if (error.message.includes('400:')) {
       try {

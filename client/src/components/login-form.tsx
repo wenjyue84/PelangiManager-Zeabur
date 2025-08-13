@@ -77,11 +77,32 @@ export function LoginForm() {
         setLocation("/dashboard");
       }, 1500);
     } else {
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password",
-        variant: "destructive"
-      });
+      // Differentiate between network/connection error vs invalid credentials
+      try {
+        const res = await fetch('/api/storage/info', { credentials: 'include', cache: 'no-store' });
+        if (!res.ok) {
+          // Server reachable but returned an error → treat as invalid credentials for login
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password",
+            variant: "destructive"
+          });
+        } else {
+          // Server reachable and healthy; invalid credentials
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password",
+            variant: "destructive"
+          });
+        }
+      } catch (err) {
+        // Network error / server not started
+        toast({
+          title: "Connection Problem",
+          description: "Please check your internet connection and try again. If you're running locally, make sure the server is started: run 'npm run dev' in the project root.",
+          variant: "destructive",
+        });
+      }
     }
     
     setIsLoading(false);
@@ -120,9 +141,12 @@ export function LoginForm() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-orange-700">Pelangi Capsule Hostel</CardTitle>
           <CardDescription>Management System Login</CardDescription>
-          <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-600">
-            <strong>Demo Login:</strong> admin / admin123
-          </div>
+          {typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+              <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-600">
+                <strong>Demo Login:</strong> admin / admin123
+              </div>
+            )}
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -161,9 +185,12 @@ export function LoginForm() {
           
           <div id="google-signin-button" className="w-full"></div>
           
-          <div className="mt-4 text-sm text-gray-600 text-center">
-            <p>Demo Login: admin@pelangi.com / admin123</p>
-          </div>
+          {typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+              <div className="mt-4 text-sm text-gray-600 text-center">
+                <p>Demo Login: admin@pelangi.com / admin123</p>
+              </div>
+            )}
         </CardContent>
       </Card>
     </div>

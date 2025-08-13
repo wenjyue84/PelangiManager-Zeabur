@@ -686,19 +686,37 @@ export const updateSettingsSchema = z.object({
     .optional()
     .transform((v) => (v ?? '').trim()),
 
-  // Quick Links Settings
+  // Quick Links Settings (treat empty strings as undefined, validate only when provided)
   guideHostelPhotosUrl: z.string()
-    .url("Hostel photos URL must be a valid URL")
     .optional()
-    .transform((v) => (v ?? '').trim()),
+    .transform((v) => {
+      const t = (v ?? '').trim();
+      return t === '' ? undefined : t;
+    })
+    .refine((val) => {
+      if (val === undefined) return true;
+      try { new URL(val); return true; } catch { return false; }
+    }, "Hostel photos URL must be a valid URL"),
   guideGoogleMapsUrl: z.string()
-    .url("Google Maps URL must be a valid URL")
     .optional()
-    .transform((v) => (v ?? '').trim()),
+    .transform((v) => {
+      const t = (v ?? '').trim();
+      return t === '' ? undefined : t;
+    })
+    .refine((val) => {
+      if (val === undefined) return true;
+      try { new URL(val); return true; } catch { return false; }
+    }, "Google Maps URL must be a valid URL"),
   guideCheckinVideoUrl: z.string()
-    .url("Check-in video URL must be a valid URL")
     .optional()
-    .transform((v) => (v ?? '').trim()),
+    .transform((v) => {
+      const t = (v ?? '').trim();
+      return t === '' ? undefined : t;
+    })
+    .refine((val) => {
+      if (val === undefined) return true;
+      try { new URL(val); return true; } catch { return false; }
+    }, "Check-in video URL must be a valid URL"),
 
   // Guest Guide Time and Access Settings
   guideCheckinTime: z.string()

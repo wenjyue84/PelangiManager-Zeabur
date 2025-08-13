@@ -1100,7 +1100,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maybeSet = async (key: keyof typeof validatedData, desc: string) => {
         const value = (validatedData as any)[key];
         if (typeof value === 'string') {
-          await storage.setSetting(key as string, value, desc, updatedBy);
+          const trimmed = value.trim();
+          if (trimmed.length === 0) {
+            return; // Skip empty optional strings
+          }
+          await storage.setSetting(key as string, trimmed, desc, updatedBy);
         }
       };
       await maybeSet('guideIntro', 'Guest guide introduction');
