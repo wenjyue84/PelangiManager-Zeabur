@@ -10,20 +10,30 @@ import { createI18nProvider } from "./lib/i18n";
 import { LoginForm } from "./components/login-form";
 import { useAuth } from "./lib/auth";
 import NotFound from "./pages/not-found";
-import Dashboard from "./pages/dashboard";
-import CheckIn from "./pages/check-in";
-import CheckOut from "./pages/check-out";
-import History from "./pages/history";
-import Cleaning from "./pages/cleaning";
-import Settings from "./pages/settings";
-import GuestCheckin from "./pages/guest-checkin";
-import GuestEdit from "./pages/guest-edit";
 import Header from "./components/header";
 import Navigation from "./components/navigation";
 import MobileBottomNav from "./components/mobile-bottom-nav";
 import { VisibilityIndicator } from "./components/visibility-indicator";
 import { toast } from "@/hooks/use-toast";
 import GlobalTopProgress from "./components/global-top-progress";
+import { lazy, Suspense } from "react";
+
+// Lazy load page components
+const Dashboard = lazy(() => import("./pages/dashboard"));
+const CheckIn = lazy(() => import("./pages/check-in"));
+const CheckOut = lazy(() => import("./pages/check-out"));
+const History = lazy(() => import("./pages/history"));
+const Cleaning = lazy(() => import("./pages/cleaning"));
+const Settings = lazy(() => import("./pages/settings"));
+const GuestCheckin = lazy(() => import("./pages/guest-checkin"));
+const GuestEdit = lazy(() => import("./pages/guest-edit"));
+
+// Loading component for lazy-loaded routes
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+  </div>
+);
 
 function Router() {
   return (
@@ -32,29 +42,57 @@ function Router() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-24 md:pb-4 animate-fade-in">
         <Navigation />
         <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/">
+            <Suspense fallback={<PageLoader />}>
+              <Dashboard />
+            </Suspense>
+          </Route>
+          <Route path="/dashboard">
+            <Suspense fallback={<PageLoader />}>
+              <Dashboard />
+            </Suspense>
+          </Route>
           <Route path="/check-in">
             <ProtectedRoute requireAuth={true}>
-              <CheckIn />
+              <Suspense fallback={<PageLoader />}>
+                <CheckIn />
+              </Suspense>
             </ProtectedRoute>
           </Route>
           <Route path="/check-out">
             <ProtectedRoute requireAuth={true}>
-              <CheckOut />
+              <Suspense fallback={<PageLoader />}>
+                <CheckOut />
+              </Suspense>
             </ProtectedRoute>
           </Route>
           <Route path="/cleaning">
             <ProtectedRoute requireAuth={true}>
-              <Cleaning />
+              <Suspense fallback={<PageLoader />}>
+                <Cleaning />
+              </Suspense>
             </ProtectedRoute>
           </Route>
-          <Route path="/history" component={History} />
-          <Route path="/guest-checkin" component={GuestCheckin} />
-          <Route path="/guest-edit" component={GuestEdit} />
+          <Route path="/history">
+            <Suspense fallback={<PageLoader />}>
+              <History />
+            </Suspense>
+          </Route>
+          <Route path="/guest-checkin">
+            <Suspense fallback={<PageLoader />}>
+              <GuestCheckin />
+            </Suspense>
+          </Route>
+          <Route path="/guest-edit">
+            <Suspense fallback={<PageLoader />}>
+              <GuestEdit />
+            </Suspense>
+          </Route>
           <Route path="/settings">
             <ProtectedRoute requireAuth={true}>
-              <Settings />
+              <Suspense fallback={<PageLoader />}>
+                <Settings />
+              </Suspense>
             </ProtectedRoute>
           </Route>
           <Route path="/login" component={LoginForm} />
