@@ -140,10 +140,12 @@ export default function DailyNotifications() {
   }
 
   return (
+
     <Card className="mb-6 border-orange-200 bg-gradient-to-br from-orange-50/50 to-white overflow-hidden shadow-sm">
       <CardHeader className="pb-3 bg-gradient-to-r from-orange-100/50 to-orange-50/30 border-b border-orange-200">
         <CardTitle className="text-xl font-semibold text-orange-800 flex items-center">
           <Bell className="mr-3 h-6 w-6" />
+
           Daily Checkout Notifications
           {isNoonTime && (
             <Badge className="ml-3 bg-orange-600 text-white">
@@ -153,6 +155,7 @@ export default function DailyNotifications() {
           )}
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-6 p-6">
         {/* Today's Expected Checkouts */}
         {checkingOutToday.length > 0 && (
@@ -172,10 +175,11 @@ export default function DailyNotifications() {
                 {bulkCheckoutTodayMutation.isPending ? "Checking Out..." : "Check Out All"}
               </Button>
             </div>
+
               <Accordion type="multiple">
                 {checkingOutToday.map((guest) => (
                   <AccordionItem key={guest.id} value={guest.id}>
-                    <AccordionTrigger className="px-4 py-3">
+                    <AccordionTrigger className="px-3 py-2">
                       <div className="flex w-full items-center gap-3 text-left">
                         <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
                           <User className="h-4 w-4 text-orange-600" />
@@ -203,7 +207,14 @@ export default function DailyNotifications() {
                         {guest.paymentAmount && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Payment</span>
-                            <span className="font-medium">{guest.paymentAmount} {guest.isPaid ? "(Paid)" : "(Unpaid)"}</span>
+                            <span className={`font-medium ${guest.isPaid ? '' : 'text-red-600'}`}>
+                              RM {guest.paymentAmount}
+                              {!guest.isPaid && guest.notes && (
+                                <span className="text-red-600 text-xs font-medium ml-1">
+                                  (Balance: RM{guest.notes.match(/RM(\d+)/)?.[1] || '0'})
+                                </span>
+                              )}
+                            </span>
                           </div>
                         )}
                         {guest.notes && (
@@ -232,6 +243,7 @@ export default function DailyNotifications() {
             </div>
           )}
 
+
         {/* Overdue Checkouts */}
         {overdueCheckouts.length > 0 && (
           <div className="rounded-lg border border-red-200 bg-red-50/30 shadow-sm">
@@ -251,10 +263,11 @@ export default function DailyNotifications() {
                 {bulkCheckoutOverdueMutation.isPending ? "Checking Out..." : "Check Out All"}
               </Button>
             </div>
+
               <Accordion type="multiple">
                 {overdueCheckouts.map((guest) => (
                   <AccordionItem key={guest.id} value={guest.id}>
-                    <AccordionTrigger className="px-4 py-3">
+                    <AccordionTrigger className="px-3 py-2">
                       <div className="flex w-full items-center gap-3 text-left">
                         <div className="w-9 h-9 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                           <User className="h-4 w-4 text-red-600" />
@@ -282,7 +295,14 @@ export default function DailyNotifications() {
                         {guest.paymentAmount && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Payment</span>
-                            <span className="font-medium">{guest.paymentAmount} {guest.isPaid ? "(Paid)" : "(Unpaid)"}</span>
+                            <span className={`font-medium ${guest.isPaid ? '' : 'text-red-600'}`}>
+                              RM {guest.paymentAmount}
+                              {!guest.isPaid && guest.notes && (
+                                <span className="text-red-600 text-xs font-medium ml-1">
+                                  (Balance: RM{guest.notes.match(/RM(\d+)/)?.[1] || '0'})
+                                </span>
+                              )}
+                            </span>
                           </div>
                         )}
                         {guest.notes && (
