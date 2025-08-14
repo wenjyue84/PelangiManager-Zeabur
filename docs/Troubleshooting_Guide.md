@@ -2,7 +2,7 @@
 # PelangiManager - Capsule Hostel Management System
 
 **Document Version:** 2.0  
-**Date:** December 2024  
+**Date:** January 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 
 ---

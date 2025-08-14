@@ -24,6 +24,9 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [expectedCheckoutDate, setExpectedCheckoutDate] = useState("");
+  const [checkInDate, setCheckInDate] = useState("");
+  const [prefillGender, setPrefillGender] = useState<string>("");
+  const [prefillNationality, setPrefillNationality] = useState<string>("");
   const [expiresInHours, setExpiresInHours] = useState("24");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [overrideGuide, setOverrideGuide] = useState(false);
@@ -134,6 +137,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       guestName: guestName.trim() || undefined,
       phoneNumber: phoneNumber.trim() || undefined,
       email: email.trim() || undefined,
+      checkInDate: checkInDate || undefined,
       expectedCheckoutDate: expectedCheckoutDate || undefined,
       expiresInHours: parseInt(expiresInHours),
       // Optional per-token guide overrides
@@ -239,6 +243,17 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                   className="mt-1"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="checkInDate">Planned Check-in Date (Optional)</Label>
+                <Input
+                  id="checkInDate"
+                  type="date"
+                  value={checkInDate}
+                  onChange={(e) => setCheckInDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
               
               <div>
                 <Label htmlFor="expectedCheckout">Expected Checkout</Label>
@@ -249,6 +264,40 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                   onChange={(e) => setExpectedCheckoutDate(e.target.value)}
                   className="mt-1"
                 />
+              </div>
+            </div>
+
+            {/* Optional Guest Prefill */}
+            <div className="border rounded-md">
+              <div className="px-3 py-2">
+                <Label className="text-sm font-medium">Optional Guest Prefill</Label>
+                <p className="text-xs text-gray-500 mt-1">These values will prefill the self check-in form (guest can still change them).</p>
+              </div>
+              <div className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="prefillGender">Gender (Optional)</Label>
+                  <Select value={prefillGender || ""} onValueChange={setPrefillGender}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="prefillNationality">Nationality (Optional)</Label>
+                  <Input
+                    id="prefillNationality"
+                    value={prefillNationality}
+                    onChange={(e) => setPrefillNationality(e.target.value)}
+                    placeholder="e.g., Malaysian"
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </div>
             
@@ -404,15 +453,30 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
             <div>
               <Label className="text-sm font-medium">Guest Check-in Link:</Label>
               <div className="flex gap-2 mt-1">
-                <Input
-                  value={generatedToken.link}
-                  readOnly
-                  className="flex-1 text-xs"
-                />
+              {(() => {
+                const url = new URL(generatedToken.link);
+                if (checkInDate) url.searchParams.set("ci", checkInDate);
+                if (prefillGender) url.searchParams.set("g", prefillGender);
+                if (prefillNationality) url.searchParams.set("nat", prefillNationality);
+                const finalLink = url.toString();
+                return (
+                  <Input
+                    value={finalLink}
+                    readOnly
+                    className="flex-1 text-xs"
+                  />
+                );
+              })()}
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => copyToClipboard(generatedToken.link)}
+                onClick={() => {
+                  const url = new URL(generatedToken.link);
+                  if (checkInDate) url.searchParams.set("ci", checkInDate);
+                  if (prefillGender) url.searchParams.set("g", prefillGender);
+                  if (prefillNationality) url.searchParams.set("nat", prefillNationality);
+                  copyToClipboard(url.toString());
+                }}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -432,6 +496,9 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                   setPhoneNumber("");
                   setEmail("");
                   setExpectedCheckoutDate("");
+                  setCheckInDate("");
+                  setPrefillGender("");
+                  setPrefillNationality("");
                   setExpiresInHours("24");
                 }}
                 className="flex-1"

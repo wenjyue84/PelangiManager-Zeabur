@@ -2,7 +2,7 @@
 # PelangiManager - Capsule Hostel Management System
 
 **Document Version:** 3.0  
-**Date:** December 2024  
+**Date:** August 2025  
 **Author:** System Analyst  
 **Project:** Pelangi Capsule Hostel Management System  
 
@@ -33,7 +33,7 @@
 PelangiManager is a comprehensive capsule hostel management system designed specifically for Pelangi Capsule Hostel. The system provides real-time management of guest check-ins/check-outs, capsule occupancy tracking, maintenance management, and administrative operations.
 
 ### 1.2 System Scope
-The system manages **26 capsules** organized in three physical sections:
+The system manages **22 capsules** organized in three physical sections:
 - **Back Section:** C1-C6 (6 capsules)
 - **Front Section:** C11-C24 (14 capsules) 
 - **Middle Section:** C25-C26 (2 capsules)
@@ -143,9 +143,9 @@ The system manages **26 capsules** organized in three physical sections:
 ### 3.3 Database & Storage
 - **PostgreSQL**: Primary database (Neon serverless)
 - **Drizzle ORM**: Type-safe database operations
-- **In-Memory Storage**: Development and testing storage
+- **In-Memory Storage**: Development and testing storage (automatic fallback)
 - **Google Cloud Storage**: File storage (production)
-- **Local File System**: File storage (development)
+- **Local File System**: File storage (development; dev upload fallback with CORS)
 
 ### 3.4 Development Tools
 - **Jest**: Testing framework
@@ -204,38 +204,37 @@ The system manages **26 capsules** organized in three physical sections:
 ### 5.1 RESTful Endpoints
 
 #### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/me` - Get current user
-- `GET /api/auth/google` - Google OAuth initiation
-- `GET /api/auth/google/callback` - Google OAuth callback
+- `POST /api/auth/login` - User login (returns Bearer token)
+- `POST /api/auth/logout` - User logout (Bearer token invalidation)
+- `GET /api/auth/me` - Get current user (Bearer)
+- `POST /api/auth/google` - Verify Google ID token and create session
 
 #### Guest Management
-- `GET /api/guests` - List all guests (paginated)
-- `POST /api/guests` - Create new guest
-- `PUT /api/guests/:id` - Update guest
-- `DELETE /api/guests/:id` - Delete guest
-- `POST /api/guests/checkin` - Guest check-in
-- `POST /api/guests/checkout` - Guest check-out
+- `GET /api/guests/checked-in` - Paginated checked-in
+- `GET /api/guests/history` - Paginated history
+- `POST /api/guests/checkin` - Check-in
+- `POST /api/guests/checkout` - Check-out
+- `POST /api/guests/recheckin` - Undo check-out
+- Bulk: `/api/guests/checkout-overdue`, `/api/guests/checkout-today`, `/api/guests/checkout-all`
+- `PATCH /api/guests/:id` - Update guest
 
 #### Capsule Management
-- `GET /api/capsules` - List all capsules
-- `POST /api/capsules` - Create new capsule
-- `PUT /api/capsules/:id` - Update capsule
-- `DELETE /api/capsules/:id` - Delete capsule
-- `POST /api/capsules/:id/clean` - Mark capsule as cleaned
+- `GET /api/capsules`, `/api/capsules/available`, `/api/capsules/cleaning-status/:status`
+- `POST /api/capsules`
+- `PATCH /api/capsules/:id` and `PATCH /api/capsules/:number`
+- `DELETE /api/capsules/:id` and `DELETE /api/capsules/:number`
+- `POST /api/capsules/:number/mark-cleaned`, `POST /api/capsules/mark-cleaned-all`
 
 #### Maintenance
-- `GET /api/problems` - List all problems (paginated)
-- `POST /api/problems` - Report new problem
-- `PUT /api/problems/:id` - Update problem
-- `DELETE /api/problems/:id` - Delete problem
-- `POST /api/problems/:id/resolve` - Resolve problem
+- `GET /api/problems`, `GET /api/problems/active`
+- `GET /api/capsules/:number/problems`
+- `POST /api/problems`
+- `PATCH /api/problems/:id/resolve`
+- `DELETE /api/problems/:id`
 
-#### Configuration
-- `GET /api/config` - Get system configuration
-- `PUT /api/config` - Update system configuration
-- `POST /api/config/reset` - Reset to defaults
+#### Settings & Configuration
+- `GET /api/settings`, `PATCH /api/settings`
+- `GET /api/admin/config`, `PUT /api/admin/config`, `POST /api/admin/config/reset`
 
 #### File Management
 - `POST /api/upload` - Upload file
@@ -417,8 +416,8 @@ GOOGLE_CLOUD_KEY_FILE=path/to/key.json
 
 ### 10.1 Production Environment
 - **Hosting**: Cloud-based deployment (Replit, Vercel, etc.)
-- **Database**: Neon PostgreSQL (serverless)
-- **File Storage**: Google Cloud Storage
+- **Database**: Neon PostgreSQL (serverless) with in-memory fallback on failure
+- **File Storage**: Google Cloud Storage (with dev/local fallback upload endpoint)
 - **CDN**: Content delivery network for static assets
 
 ### 10.2 Deployment Process

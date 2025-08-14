@@ -1,8 +1,8 @@
 # API Documentation
 # PelangiManager - Capsule Hostel Management System
 
-**Document Version:** 1.0  
-**Date:** December 2024  
+**Document Version:** 1.1  
+**Date:** August 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 
 ---
@@ -33,7 +33,7 @@ The PelangiManager API provides a comprehensive RESTful interface for managing c
 ### Features
 - **RESTful Design**: Standard HTTP methods and status codes
 - **Real-time Updates**: WebSocket-based live data synchronization
-- **Authentication**: JWT-based session management
+ - **Authentication**: Token-based session management
 - **Validation**: Comprehensive input validation with Zod schemas
 - **Pagination**: Built-in pagination for large datasets
 - **File Uploads**: Support for file and image uploads
@@ -44,34 +44,55 @@ The PelangiManager API provides a comprehensive RESTful interface for managing c
 
 ### Authentication Methods
 
-#### 1. Local Authentication
+#### 1. Local Authentication (Email or Username + Password)
 ```http
 POST /api/auth/login
 Content-Type: application/json
 
 {
-  "username": "admin",
+  "email": "admin@pelangi.com", // or username in this field
   "password": "admin123"
 }
 ```
 
-#### 2. Google OAuth
-```http
-GET /api/auth/google
-# Redirects to Google OAuth consent screen
+Response:
+```json
+{
+  "token": "<bearer_token>",
+  "user": {
+    "id": "...",
+    "email": "admin@pelangi.com",
+    "firstName": "Admin",
+    "lastName": "User",
+    "role": "staff"
+  }
+}
 ```
+
+Use the token in the Authorization header for protected routes:
+```http
+Authorization: Bearer <bearer_token>
+```
+
+#### 2. Google Sign-In (ID Token Verification)
+```http
+POST /api/auth/google
+Content-Type: application/json
+
+{
+  "token": "<google_id_token>"
+}
+```
+
+On success, returns the same shape as local login with a Pelangi session token.
 
 #### 3. Session Management
-- **Session Token**: Stored in HTTP-only cookies
-- **Session Expiry**: Configurable session timeout
-- **Automatic Renewal**: Sessions refresh on activity
+- **Session Token**: Bearer token returned by the API
+- **Session Expiry**: Configurable via sessionExpirationHours
+- **Storage**: Store token client-side
 
 ### Protected Endpoints
-Most endpoints require authentication. Include the session cookie in requests:
-```http
-GET /api/guests
-Cookie: session=your_session_token_here
-```
+Most endpoints require `Authorization: Bearer <token>`.
 
 ---
 
@@ -89,7 +110,7 @@ Accept: application/json
 
 ### Optional Headers
 ```http
-Authorization: Bearer <jwt_token>  # Alternative to session cookies
+Authorization: Bearer <token>
 User-Agent: YourApp/1.0
 ```
 
@@ -162,6 +183,32 @@ User-Agent: YourApp/1.0
 ---
 
 ## 6. Endpoints
+
+### Quick Reference (Updated August 2025)
+
+- Auth:
+  - POST `/api/auth/login`, POST `/api/auth/logout`, GET `/api/auth/me`, POST `/api/auth/google`
+- Settings & Config:
+  - GET `/api/settings`, PATCH `/api/settings`
+  - GET `/api/admin/config`, PUT `/api/admin/config`, POST `/api/admin/config/reset`
+- Guests:
+  - GET `/api/guests/checked-in`, GET `/api/guests/history`
+  - POST `/api/guests/checkin`, POST `/api/guests/checkout`, POST `/api/guests/recheckin`
+  - POST `/api/guests/checkout-overdue`, POST `/api/guests/checkout-today`, POST `/api/guests/checkout-all`
+  - PATCH `/api/guests/:id`
+  - Tokens & self check-in: POST `/api/guest-tokens`, GET `/api/guest-tokens/:token`, GET `/api/guest-tokens/active`, DELETE `/api/guest-tokens/:id`, POST `/api/guest-tokens/send-slip`, POST `/api/guest-checkin/:token`, GET `/api/guest-edit/:token`, PUT `/api/guest-edit/:token`
+  - Profiles: GET `/api/guests/profiles`, GET `/api/guests/profiles/:idNumber`, PATCH `/api/guests/profiles/:idNumber`
+- Capsules:
+  - GET `/api/capsules`, GET `/api/capsules/available`, GET `/api/capsules/cleaning-status/:status`
+  - POST `/api/capsules`, PATCH `/api/capsules/:id`, PATCH `/api/capsules/:number`
+  - DELETE `/api/capsules/:id`, DELETE `/api/capsules/:number`
+  - POST `/api/capsules/:number/mark-cleaned`, POST `/api/capsules/mark-cleaned-all`
+- Maintenance:
+  - GET `/api/problems`, GET `/api/problems/active`, GET `/api/capsules/:number/problems`
+  - POST `/api/problems`, PATCH `/api/problems/:id/resolve`, DELETE `/api/problems/:id`
+- Objects & Uploads:
+  - POST `/api/objects/upload` → returns uploadURL; dev fallback supports PUT `/api/objects/dev-upload/:id` (CORS/OPTIONS enabled)
+  - GET `/objects/uploads/:id` (dev), GET `/objects/:objectPath(*)`
 
 ### Authentication Endpoints
 
@@ -797,14 +844,14 @@ X-RateLimit-Reset: 1640995200
 ```bash
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"email": "admin@pelangi.com", "password": "admin123"}'
 ```
 
 #### 2. Check in Guest
 ```bash
 curl -X POST http://localhost:5000/api/guests/checkin \
   -H "Content-Type: application/json" \
-  -H "Cookie: session=your_session_token" \
+  -H "Authorization: Bearer <token>" \
   -d '{
     "name": "John Doe",
     "capsuleNumber": "C1",
@@ -814,13 +861,10 @@ curl -X POST http://localhost:5000/api/guests/checkin \
   }'
 ```
 
-#### 3. Upload Guest Photo
+#### 3. Get Upload URL for Profile Photo (dev or cloud)
 ```bash
-curl -X POST http://localhost:5000/api/upload \
-  -H "Cookie: session=your_session_token" \
-  -F "file=@guest_photo.jpg" \
-  -F "type=guest_photo" \
-  -F "relatedId=guest_id_here"
+curl -X POST http://localhost:5000/api/objects/upload
+# Use returned uploadURL with PUT (dev fallback) or as instructed for cloud storage.
 ```
 
 ### Real-time Dashboard Updates

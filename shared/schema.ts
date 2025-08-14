@@ -606,6 +606,16 @@ export const createTokenSchema = z.object({
       return date >= today && date <= maxDate;
     }, "Expected checkout date must be between today and 1 year from now")
     .optional(),
+  checkInDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Check-in date must be in YYYY-MM-DD format")
+    .refine(val => {
+      if (!val) return true;
+      const date = new Date(val);
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 1);
+      return date <= maxDate;
+    }, "Check-in date cannot be more than 1 year in the future")
+    .optional(),
   expiresInHours: z.number()
     .min(1, "Token must expire in at least 1 hour")
     .max(168, "Token cannot expire later than 168 hours (7 days)")

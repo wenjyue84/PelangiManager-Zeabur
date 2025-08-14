@@ -5,7 +5,7 @@ import { type IStorage } from "./storage";
 export const DEFAULT_CONFIG: UpdateSettings = {
   // Token and Session Settings
   guestTokenExpirationHours: 24,
-  sessionExpirationHours: 24,
+  sessionExpirationHours: 720,
   
   // System Settings
   defaultUserRole: "staff",

@@ -1443,9 +1443,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique token
       const tokenValue = randomUUID();
-      const expiresAt = new Date();
-      const expirationHours = await storage.getGuestTokenExpirationHours();
-      expiresAt.setHours(expiresAt.getHours() + expirationHours);
+      // New expiry logic: token valid until 24 hours before the planned check-in datetime
+      // If admin provided createTokenSchema.checkInDate, use that; else if client will prefill via URL only, fallback to today's check-in time to avoid indefinite tokens
+      const plannedDateStr: string | undefined = (req.body as any).checkInDate;
+      const checkinSetting = await storage.getSetting('guideCheckinTime');
+      const parseTime = (timeStr?: string): { hour: number; minute: number } => {
+        const fallback = '3:00 PM';
+        const cleaned = (timeStr || fallback).replace(/^From\s+/i, '');
+        const m = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+        if (!m) return { hour: 15, minute: 0 };
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        const ap = m[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12;
+        if (ap === 'AM' && h === 12) h = 0;
+        return { hour: h, minute: min };
+      };
+      const { hour, minute } = parseTime(checkinSetting?.value);
+      const baseDate = plannedDateStr || new Date().toISOString().split('T')[0];
+      const [yy, mm, dd] = baseDate.split('-').map((n: string) => parseInt(n, 10));
+      const plannedCheckinDateTime = new Date(yy, (mm || 1) - 1, dd || 1, hour, minute, 0, 0);
+      // Token expires exactly at the planned check-in datetime (form can be filled within the 24h window we enforce at POST)
+      const expiresAt = new Date(plannedCheckinDateTime);
 
       const token = await storage.createGuestToken({
         token: tokenValue,
@@ -1457,19 +1476,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expectedCheckoutDate: validatedData.expectedCheckoutDate,
         createdBy: userId,
         expiresAt,
-        // Optional per-token guide overrides
-        guideOverrideEnabled: (validatedData as any).guideOverrideEnabled,
-        guideShowIntro: (validatedData as any).guideShowIntro,
-        guideShowAddress: (validatedData as any).guideShowAddress,
-        guideShowWifi: (validatedData as any).guideShowWifi,
-        guideShowCheckin: (validatedData as any).guideShowCheckin,
-        guideShowOther: (validatedData as any).guideShowOther,
-        guideShowFaq: (validatedData as any).guideShowFaq,
+        // No per-token guide overrides persisted on token record
       });
+
+      // Build link with optional overrides and prefill parameters
+      const url = new URL(`${req.protocol}://${req.get('host')}/guest-checkin`);
+      url.searchParams.set('token', token.token);
+      if ((validatedData as any).checkInDate) url.searchParams.set('ci', (validatedData as any).checkInDate);
+      if ((validatedData as any).prefillGender) url.searchParams.set('g', (validatedData as any).prefillGender);
+      if ((validatedData as any).prefillNationality) url.searchParams.set('nat', (validatedData as any).prefillNationality);
 
       res.json({
         token: token.token,
-        link: `${req.protocol}://${req.get('host')}/guest-checkin?token=${token.token}`,
+        link: url.toString(),
         capsuleNumber: token.capsuleNumber,
         guestName: token.guestName,
         expiresAt: token.expiresAt,
@@ -1756,6 +1775,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedGuestData = guestSelfCheckinSchema.parse(req.body);
+
+      // Enforce 24-hour window prior to default check-in time
+      try {
+        const getTimeParts = (timeStr?: string): { hour: number; minute: number } => {
+          const fallback = "3:00 PM";
+          const cleaned = (timeStr || fallback).replace(/^From\s+/i, "");
+          const m = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+          if (!m) return { hour: 15, minute: 0 };
+          let h = parseInt(m[1], 10);
+          const min = parseInt(m[2], 10);
+          const ap = m[3].toUpperCase();
+          if (ap === "PM" && h !== 12) h += 12;
+          if (ap === "AM" && h === 12) h = 0;
+          return { hour: h, minute: min };
+        };
+
+        // Determine check-in day from form (YYYY-MM-DD) or default to today
+        const dateStr = validatedGuestData.checkInDate || new Date().toISOString().split('T')[0];
+        const setting = await storage.getSetting('guideCheckinTime');
+        const { hour, minute } = getTimeParts(setting?.value);
+        const [yy, mm, dd] = dateStr.split('-').map((n: string) => parseInt(n, 10));
+        const checkinDateTime = new Date(yy, (mm || 1) - 1, dd || 1, hour, minute, 0, 0);
+        const allowedStart = new Date(checkinDateTime.getTime() - 24 * 60 * 60 * 1000);
+        if (new Date() < allowedStart) {
+          return res.status(400).json({
+            message: `Self check-in opens on ${allowedStart.toLocaleString()}. Please try again later.`,
+          });
+        }
+      } catch (_) {
+        // If parsing fails, fall back to allowing (client already guards it)
+      }
 
       // Auto-assign capsule based on gender if needed
       let assignedCapsuleNumber = guestToken.capsuleNumber;

@@ -133,7 +133,7 @@ export default function SuccessScreen({
                   <div className="flex items-center gap-2">
                     <span className="text-blue-600">🕒</span>
                     <span className="font-medium">Check-in:</span>
-                    <span className="font-semibold">{settings?.guideCheckinTime || '2:00 PM'}</span>
+                    <span className="font-semibold">{settings?.guideCheckinTime || '3:00 PM'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-blue-600">🕛</span>

@@ -33,6 +33,10 @@ import ContactInformationSection from "@/components/check-in/ContactInformationS
 import IdentificationPersonalSection from "@/components/check-in/IdentificationPersonalSection";
 import EmergencyContactSection from "@/components/check-in/EmergencyContactSection";
 import AdditionalNotesSection from "@/components/check-in/AdditionalNotesSection";
+import CapsuleAssignmentSection from "@/components/check-in/CapsuleAssignmentSection";
+import CheckInDetailsSection from "@/components/check-in/CheckInDetailsSection";
+import SmartFeaturesSection from "@/components/check-in/SmartFeaturesSection";
+import StepProgressIndicator from "@/components/check-in/StepProgressIndicator";
 
 import { SmartPhotoUploader } from "@/components/SmartPhotoUploader";
 import { Camera, Upload } from "lucide-react";
@@ -203,27 +207,7 @@ export default function CheckIn() {
           <div className="text-center">
             <CardTitle className="text-2xl font-bold text-hostel-text">Guest Check-In</CardTitle>
             <p className="text-gray-600 mt-2">Smart check-in with auto-assignment and preset payment options</p>
-            <div className="mt-4">
-              <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
-                <div className={`flex items-center gap-2`}>
-                  <span className={`h-2.5 w-2.5 rounded-full ${currentStep >= 1 ? 'bg-blue-600' : 'bg-gray-300'}`}></span>
-                  <span>Details</span>
-                </div>
-                <div className={`h-[2px] w-10 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-                <div className={`flex items-center gap-2`}>
-                  <span className={`h-2.5 w-2.5 rounded-full ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></span>
-                  <span>Payment</span>
-                </div>
-                <div className={`h-[2px] w-10 ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-                <div className={`flex items-center gap-2`}>
-                  <span className={`h-2.5 w-2.5 rounded-full ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></span>
-                  <span>Confirm</span>
-                </div>
-              </div>
-              {completed && (
-                <div className="mt-2 text-green-700 text-sm">Completed successfully!</div>
-              )}
-            </div>
+            <StepProgressIndicator currentStep={currentStep} completed={completed} />
             <div className="flex justify-center mt-4">
               <GuestTokenGenerator onTokenCreated={() => queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] })} />
             </div>
@@ -287,163 +271,11 @@ export default function CheckIn() {
               )}
             </div>
 
-            <div>
-               <Label htmlFor="capsuleNumber" className="flex items-center text-sm font-medium text-hostel-text mb-2">
-                <Bed className="mr-2 h-4 w-4" />
-                 {labels.singular} Assignment *
-              </Label>
-              <p className="text-xs text-gray-600 mb-2">
-                💡 Smart Assignment: Select gender first for automatic {labels.lowerSingular} recommendation!
-              </p>
-              {capsulesLoading ? (
-                <Skeleton className="w-full h-10" />
-              ) : (
-                <Select
-                  value={form.watch("capsuleNumber") || undefined}
-                  onValueChange={(value) => form.setValue("capsuleNumber", value)}
-                >
-                  <SelectTrigger className="w-full">
-                     <SelectValue placeholder={`Select ${labels.lowerSingular} (⭐ = bottom/preferred)`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                     {availableCapsules.length === 0 ? (
-                       <SelectItem value="no-capsules" disabled>No {labels.lowerPlural} available</SelectItem>
-                    ) : (
-                      (() => {
-                        try {
-                          // Validate and filter capsules with comprehensive error handling
-                          const validCapsules = availableCapsules.filter(capsule => {
-                            try {
-                              if (!capsule || typeof capsule !== 'object') {
-                                console.warn('Invalid capsule object (not an object):', capsule);
-                                return false;
-                              }
-                              
-                              if (!capsule.number || typeof capsule.number !== 'string') {
-                                console.warn('Invalid capsule number:', capsule);
-                                return false;
-                              }
-                              
-                              const match = capsule.number.match(/^C(\d+)$/);
-                              if (!match) {
-                                console.warn('Capsule number does not match pattern:', capsule.number);
-                                return false;
-                              }
-                              
-                              const num = parseInt(match[1]);
-                              if (isNaN(num)) {
-                                console.warn('Capsule number is not a valid integer:', capsule.number);
-                                return false;
-                              }
-                              
-                              return true;
-                            } catch (error) {
-                              console.warn('Error validating capsule:', capsule, error);
-                              return false;
-                            }
-                          });
-
-                          // Sort capsules safely
-                          const sortedCapsules = validCapsules.sort((a, b) => {
-                            try {
-                              const aMatch = a.number.match(/^C(\d+)$/);
-                              const bMatch = b.number.match(/^C(\d+)$/);
-                              
-                              if (!aMatch || !bMatch) return 0;
-                              
-                              const aNum = parseInt(aMatch[1]);
-                              const bNum = parseInt(bMatch[1]);
-                              
-                              const aIsBottom = aNum % 2 === 0;
-                              const bIsBottom = bNum % 2 === 0;
-                              
-                              // Bottom capsules first
-                              if (aIsBottom && !bIsBottom) return -1;
-                              if (!aIsBottom && bIsBottom) return 1;
-                              
-                              // Within same position, sort by number
-                              return aNum - bNum;
-                            } catch (error) {
-                              console.warn('Error sorting capsules:', a?.number, b?.number, error);
-                              return 0;
-                            }
-                          });
-
-                          // Map to SelectItems safely
-                          return sortedCapsules.map((capsule) => {
-                            try {
-                              const match = capsule.number.match(/^C(\d+)$/);
-                              if (!match) {
-                                // Fallback for non-standard capsule numbers
-                                return (
-                                  <SelectItem key={capsule.number} value={capsule.number}>
-                                    <div className="flex items-center justify-between w-full">
-                                      <span>{capsule.number}</span>
-                                      <span className="text-xs text-gray-500 capitalize">
-                                        {capsule.section || 'unknown'}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                );
-                              }
-                              
-                              const capsuleNum = parseInt(match[1]);
-                              const isBottom = capsuleNum % 2 === 0;
-                              const position = isBottom ? "Bottom" : "Top";
-                              const preference = isBottom ? "⭐ Preferred" : "";
-                              const genderMatch = form.watch("gender");
-                              
-                              let suitability = "";
-                              if (genderMatch === "female" && capsule.section === "back") {
-                                suitability = " 🎯 Recommended";
-                              } else if (genderMatch && genderMatch !== "female" && capsule.section === "front" && isBottom) {
-                                suitability = " 🎯 Recommended";
-                              }
-                              
-                              const labelText = `${capsule.number} - ${position} ${preference}${suitability}`.trim();
-                              return (
-                                <SelectItem key={capsule.number} value={capsule.number} textValue={labelText}>
-                                  <div className="flex items-center justify-between w-full">
-                                    <span>
-                                      {capsule.number} - {position} {preference}{suitability}
-                                    </span>
-                                    <span className="text-xs text-gray-500 capitalize">
-                                      {capsule.section || 'unknown'}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              );
-                            } catch (error) {
-                              console.warn('Error rendering capsule:', capsule?.number, error);
-                              // Return a safe fallback
-                              return (
-                                <SelectItem key={`fallback-${Math.random()}`} value={capsule?.number || ''} textValue={capsule?.number || 'Unknown'}>
-                                  <div className="flex items-center justify-between w-full">
-                                    <span>{capsule?.number || 'Unknown'}</span>
-                                    <span className="text-xs text-gray-500">Error loading details</span>
-                                  </div>
-                                </SelectItem>
-                              );
-                            }
-                          });
-                        } catch (error) {
-                          console.error('Critical error in capsule selection:', error);
-                          // Return a safe fallback for the entire selection
-                          return (
-                            <SelectItem value="error" disabled>
-                              Error loading capsules. Please refresh the page.
-                            </SelectItem>
-                          );
-                        }
-                      })()
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
-              {form.formState.errors.capsuleNumber && (
-                <p className="text-hostel-error text-sm mt-1">{form.formState.errors.capsuleNumber.message}</p>
-              )}
-            </div>
+            <CapsuleAssignmentSection 
+              form={form} 
+              availableCapsules={availableCapsules} 
+              capsulesLoading={capsulesLoading} 
+            />
 
             <PaymentInformationSection form={form} defaultCollector={defaultCollector} />
 
@@ -459,37 +291,7 @@ export default function CheckIn() {
 
             <AdditionalNotesSection form={form} />
 
-            <div className="bg-gray-50 rounded-lg p-4 border">
-              <h3 className="text-sm font-medium text-hostel-text mb-3">Check-in Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Date:</span>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="date"
-                      value={form.watch("checkInDate") || ""}
-                      onChange={(e) => form.setValue("checkInDate", e.target.value)}
-                      className="w-32 text-sm"
-                    />
-                    <span className="text-xs text-gray-500">(Editable)</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Time:</span>
-                  <span className="font-medium">{timeString}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Staff:</span>
-                  <span className="font-medium">Admin User</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-hostel-accent bg-opacity-10 text-hostel-accent">
-                    Pending Check-in
-                  </span>
-                </div>
-              </div>
-            </div>
+            <CheckInDetailsSection form={form} />
 
             <div className="flex space-x-4">
               <Button 
@@ -514,16 +316,7 @@ export default function CheckIn() {
           </form>
           </Form>
           
-          {/* Smart Features - Moved to bottom */}
-          <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">✨ Smart Features:</h4>
-            <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Auto-incrementing guest names (Guest1, Guest2...)</li>
-              <li>• Gender-based {labels.lowerSingular} assignment (Front for males, Back for females)</li>
-              <li>• Quick payment presets: RM45, RM48, RM650 (Monthly)</li>
-              <li>• Admin form: Only name, capsule & payment required</li>
-            </ul>
-          </div>
+          <SmartFeaturesSection />
         </CardContent>
       </Card>
 

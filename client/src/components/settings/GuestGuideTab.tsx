@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimeSelect } from "@/components/ui/time-select";
+import { GuideTimeSelect } from "./GuideTimeSelect";
 import { Badge } from "@/components/ui/badge";
 import { 
   BookOpen, MessageSquare, FileText, Camera, Globe, Video, Clock, CheckCircle, Wifi, MapPin, Smartphone, Monitor, Printer, Send, Save, Key, ClipboardList, HelpCircle, AlertTriangle
@@ -470,10 +471,11 @@ export default function GuestGuideTab({ settings, form, updateSettingsMutation }
                           <span>🕒</span>
                           Check-in Time
                         </FormLabel>
-                        <TimeSelect 
-                          value={field.value} 
+                        <GuideTimeSelect 
+                          value={field.value}
                           onValueChange={field.onChange}
                           placeholder="Select check-in time"
+                          mode="checkin"
                         />
                         <FormMessage />
                       </FormItem>
@@ -485,10 +487,11 @@ export default function GuestGuideTab({ settings, form, updateSettingsMutation }
                           <span>🕛</span>
                           Check-out Time
                         </FormLabel>
-                        <TimeSelect 
-                          value={field.value} 
+                        <GuideTimeSelect 
+                          value={field.value}
                           onValueChange={field.onChange}
                           placeholder="Select check-out time"
+                          mode="checkout"
                         />
                         <FormMessage />
                       </FormItem>

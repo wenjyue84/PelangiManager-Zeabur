@@ -2,7 +2,7 @@
 # PelangiManager - Capsule Hostel Management System
 
 **Document Version:** 2.0  
-**Date:** December 2024  
+**Date:** August 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 
 ---
@@ -38,7 +38,7 @@ PelangiManager is a full-stack web application that provides:
 - Comprehensive error handling and validation
 
 ### 1.3 Product Overview
-The system manages 26 capsules organized in three sections:
+The system manages 22 capsules organized in three sections:
 - **Back Section:** C1-C6 (6 capsules)
 - **Front Section:** C11-C24 (14 capsules)
 - **Middle Section:** C25-C26 (2 capsules)
@@ -357,7 +357,7 @@ Self-service check-in system for guests using generated tokens.
 - **Memory Usage:** In-memory development mode limited to available RAM
 
 ### 8.2 Business Constraints
-- **Capsule Layout:** Fixed 24-capsule configuration with specific numbering
+- **Capsule Layout:** Fixed 22-capsule configuration with specific numbering
 - **User Roles:** Two-tier role system (staff/admin)
 - **Operating Hours:** 24/7 system availability required
 - **Data Retention:** Guest data retention per privacy regulations

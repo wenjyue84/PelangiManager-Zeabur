@@ -1,6 +1,6 @@
 # PelangiManager – GPT Project Notes
 
-Last updated: 2025-08-13
+Last updated: 2025-08-13 (session default now 30 days)
 
 ## Project location
 - Windows path: `C:\Users\Jyue\Desktop\PelangiManager`
@@ -34,6 +34,9 @@ Note: On WSL this environment did not have `npm` installed when checked. Prefer 
   - For items requiring auth, unauthenticated clicks go to `/login?redirect=<targetPath>`.
 
 ### Protected routes
+### Session duration
+- Default session duration is set via `server/config.ts` → `DEFAULT_CONFIG.sessionExpirationHours`.
+- Currently configured to 720 hours (30 days). Existing sessions continue until their original expiry; new logins use the new duration.
 - `check-in`, `check-out`, `cleaning`, `settings` are wrapped in `ProtectedRoute` with `requireAuth={true}` in `App.tsx`.
 
 ## Recent changes (context)

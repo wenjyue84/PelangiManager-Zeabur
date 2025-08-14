@@ -53,6 +53,9 @@ export function useTokenValidation({ t, form }: UseTokenValidationProps): TokenV
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token');
+    const urlCheckInDate = urlParams.get('ci');
+    const urlGender = urlParams.get('g');
+    const urlNationality = urlParams.get('nat');
     
     if (!urlToken) {
       toast({
@@ -66,6 +69,21 @@ export function useTokenValidation({ t, form }: UseTokenValidationProps): TokenV
 
     setToken(urlToken);
     validateToken(urlToken);
+    // Apply optional prefill from URL
+    try {
+      if (urlCheckInDate) {
+        form.setValue('checkInDate', urlCheckInDate);
+      }
+      if (urlGender) {
+        const allowed = ['male','female','other','prefer-not-to-say'];
+        if (allowed.includes(urlGender)) {
+          form.setValue('gender', urlGender);
+        }
+      }
+      if (urlNationality) {
+        form.setValue('nationality', urlNationality);
+      }
+    } catch {}
   }, [toast, setLocation]);
 
   // Countdown timer effect

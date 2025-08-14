@@ -2,7 +2,7 @@
 # PelangiManager - Capsule Hostel Management System
 
 **Document Version:** 1.0  
-**Date:** December 2024  
+**Date:** August 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 
 ---
@@ -98,7 +98,7 @@ npm run test:watch   # Run tests in watch mode
 
 # Code Quality
 npm run check        # TypeScript type checking
-npm run db:push      # Push database schema changes
+npm run db:push      # Push database schema changes (Drizzle)
 ```
 
 ---

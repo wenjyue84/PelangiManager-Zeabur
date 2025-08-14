@@ -896,7 +896,7 @@ export class MemStorage implements IStorage {
     this.setSetting('guideShowFaq', 'true', 'Show FAQ');
     
     // Default time and access settings
-    this.setSetting('guideCheckinTime', '2:00 PM', 'Check-in time');
+    this.setSetting('guideCheckinTime', '3:00 PM', 'Check-in time');
     this.setSetting('guideCheckoutTime', '12:00 PM', 'Check-out time');
     this.setSetting('guideDoorPassword', '1270#', 'Door access password');
     this.setSetting('guideImportantReminders', 'Please keep your room key safe. Quiet hours are from 10:00 PM to 7:00 AM. No smoking inside the building. Keep shared spaces clean.', 'Important reminders for guests');
