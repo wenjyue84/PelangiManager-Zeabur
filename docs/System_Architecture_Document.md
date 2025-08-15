@@ -1,7 +1,7 @@
 # System Architecture Document
 # PelangiManager - Capsule Hostel Management System
 
-**Document Version:** 3.0  
+**Document Version:** 2025.08  
 **Date:** August 2025  
 **Author:** System Analyst  
 **Project:** Pelangi Capsule Hostel Management System  

@@ -38,7 +38,7 @@ export default function SettingsPage() {
   const labels = useAccommodationLabels();
 
   // General settings queries
-  const { data: settings, isLoading } = useQuery<{ guestTokenExpirationHours: number; accommodationType?: string; selfCheckinSuccessMessage?: string }>({
+  const { data: settings, isLoading } = useQuery<{ accommodationType?: string; selfCheckinSuccessMessage?: string }>({
     queryKey: ["/api/settings"],
     enabled: isAuthenticated,
   });
@@ -66,7 +66,6 @@ export default function SettingsPage() {
   const form = useForm<UpdateSettings>({
     resolver: zodResolver(updateSettingsSchema),
     defaultValues: {
-      guestTokenExpirationHours: settings?.guestTokenExpirationHours || 24,
       accommodationType: (settings as any)?.accommodationType || "capsule",
     },
   });
@@ -74,11 +73,9 @@ export default function SettingsPage() {
   // Update form when settings are loaded - use useEffect instead of if statement
   useEffect(() => {
     if (settings && (
-      form.getValues().guestTokenExpirationHours !== settings.guestTokenExpirationHours ||
       (form.getValues() as any).accommodationType !== (settings as any).accommodationType
     )) {
       form.reset({
-        guestTokenExpirationHours: settings.guestTokenExpirationHours,
         accommodationType: (settings as any).accommodationType || "capsule",
       } as any);
     }
@@ -122,7 +119,6 @@ export default function SettingsPage() {
   };
 
   const resetToDefault = () => {
-    form.setValue("guestTokenExpirationHours", 24);
     (form as any).setValue?.("accommodationType", "capsule");
   };
 
@@ -248,6 +244,7 @@ export default function SettingsPage() {
         <TabsContent value="tests" className="space-y-6">
           <TestsTab />
         </TabsContent>
+
       </Tabs>
     </div>
   );

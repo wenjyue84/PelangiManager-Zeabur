@@ -155,7 +155,6 @@ export default function CheckIn() {
       setCurrentStep(3);
       const payload: InsertGuest = {
         ...formDataToSubmit,
-        // Persist uploaded photo if available
         ...(profilePhotoUrl ? { profilePhotoUrl } : {}),
       } as InsertGuest;
       checkinMutation.mutate(payload);

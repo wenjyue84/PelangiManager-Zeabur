@@ -1,7 +1,7 @@
 # Troubleshooting Guide
 # PelangiManager - Capsule Hostel Management System
 
-**Document Version:** 2.0  
+**Document Version:** 2025.08  
 **Date:** January 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 

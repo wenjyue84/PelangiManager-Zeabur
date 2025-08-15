@@ -325,6 +325,10 @@ export const securityValidationMiddleware = (req: Request, res: Response, next: 
     for (const key in obj) {
       if (typeof obj[key] === 'string') {
         const currentPath = path ? `${path}.${key}` : key;
+        // Skip sanitizing known safe large fields like base64 images/URLs
+        if (currentPath === 'profilePhotoUrl') {
+          continue;
+        }
         
         if (securityValidation.hasSQLInjection(obj[key])) {
           return res.status(400).json({

@@ -5,12 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft, Copy } from "lucide-react";
+import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft, Copy, Filter as FilterIcon, CalendarPlus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import GuestDetailsModal from "./guest-details-modal";
+import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
 import type { Guest, GuestToken, PaginatedResponse } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,6 +32,7 @@ import {
 } from "@/components/guest-table/utils";
 import { SortButton } from "@/components/guest-table/SortButton";
 import { SwipeableGuestRow } from "@/components/guest-table/SwipeableGuestRow";
+import { SwipeableGuestCard } from "@/components/guest-table/SwipeableGuestCard";
 import { DesktopRow } from "@/components/guest-table/DesktopRow";
 import { getGuestBalance, isGuestPaid } from "@/lib/guest";
 
@@ -40,6 +46,8 @@ export default function SortableGuestTable() {
   const [isCondensedView, setIsCondensedView] = useState(() => isMobile);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [extendGuest, setExtendGuest] = useState<Guest | null>(null);
+  const [isExtendOpen, setIsExtendOpen] = useState(false);
   const [checkoutGuest, setCheckoutGuest] = useState<Guest | null>(null);
   const [showCheckoutConfirmation, setShowCheckoutConfirmation] = useState(false);
   const { toast } = useToast();
@@ -81,6 +89,44 @@ export default function SortableGuestTable() {
   
   const activeTokens = activeTokensResponse?.data || [];
 
+  // Filters
+  const [filters, setFilters] = useState({
+    gender: 'any' as 'any' | 'male' | 'female',
+    nationality: 'any' as 'any' | 'malaysian' | 'non-malaysian',
+    outstandingOnly: false,
+    checkoutTodayOnly: false,
+  });
+
+  const hasActiveGuestFilters = filters.gender !== 'any' || filters.nationality !== 'any' || filters.outstandingOnly || filters.checkoutTodayOnly;
+
+  const calculatePlannedStayDays = (checkinTime: string | Date, expectedCheckoutDate?: string | Date | null): number => {
+    try {
+      if (!expectedCheckoutDate) return 0;
+      const checkin = new Date(checkinTime);
+      const plannedCheckout = new Date(expectedCheckoutDate);
+      const diffMs = plannedCheckout.getTime() - checkin.getTime();
+      if (Number.isNaN(diffMs)) return 0;
+      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    } catch {
+      return 0;
+    }
+  };
+
+  const isDateToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    try {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      // dateStr in DB is often YYYY-MM-DD; fallback to local date string compare
+      return dateStr.slice(0, 10) === todayStr;
+    } catch {
+      return false;
+    }
+  };
+
   // Create a combined list of guests and pending check-ins
   const combinedData = useMemo(() => {
     const guestData = guests.map(guest => ({ type: 'guest' as const, data: guest }));
@@ -99,10 +145,30 @@ export default function SortableGuestTable() {
     return [...guestData, ...pendingData];
   }, [guests, activeTokens]);
 
-  const sortedData = useMemo(() => {
+  const filteredData = useMemo(() => {
     if (!combinedData.length) return [];
+    return combinedData.filter(item => {
+      if (item.type !== 'guest') {
+        // Hide pending rows when any guest-specific filter is active
+        return !hasActiveGuestFilters;
+      }
+      const g = item.data as Guest;
+      if (filters.gender !== 'any' && g.gender !== filters.gender) return false;
+      if (filters.nationality === 'malaysian' && g.nationality !== 'Malaysian') return false;
+      if (filters.nationality === 'non-malaysian' && g.nationality === 'Malaysian') return false;
+      if (filters.outstandingOnly && isGuestPaid(g)) return false;
+      if (filters.checkoutTodayOnly) {
+        if (!g.expectedCheckoutDate) return false;
+        if (!isDateToday(g.expectedCheckoutDate)) return false;
+      }
+      return true;
+    });
+  }, [combinedData, filters, hasActiveGuestFilters]);
+
+  const sortedData = useMemo(() => {
+    if (!filteredData.length) return [];
     
-    return [...combinedData].sort((a, b) => {
+    return [...filteredData].sort((a, b) => {
       let aValue: any;
       let bValue: any;
       
@@ -137,7 +203,7 @@ export default function SortableGuestTable() {
       if (aValue > bValue) return sortConfig.order === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [combinedData, sortConfig]);
+  }, [filteredData, sortConfig]);
 
   const handleSort = (field: SortField) => {
     setSortConfig(prev => ({
@@ -251,6 +317,11 @@ export default function SortableGuestTable() {
     setIsDetailsModalOpen(true);
   };
 
+  const handleExtend = (guest: Guest) => {
+    setExtendGuest(guest);
+    setIsExtendOpen(true);
+  };
+
   const handleCloseModal = () => {
     setIsDetailsModalOpen(false);
     setSelectedGuest(null);
@@ -310,14 +381,93 @@ export default function SortableGuestTable() {
       <CardHeader className="pb-4">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-bold text-hostel-text flex items-center">
-            Dashboard
+            Current Guest
             {occupancy && (
               <span className="ml-2 text-sm font-normal text-gray-600">
-                ({occupancy.available}/{occupancy.total})
+                ({occupancy.occupied}/{occupancy.total})
               </span>
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-2">
+                  <FilterIcon className="h-4 w-4" />
+                  Filter Guests
+                  {hasActiveGuestFilters && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-blue-600" />}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase text-gray-500">Gender</Label>
+                    <RadioGroup
+                      value={filters.gender}
+                      onValueChange={(val) => setFilters(prev => ({ ...prev, gender: val as any }))}
+                      className="grid grid-cols-3 gap-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="gender-any" value="any" />
+                        <Label htmlFor="gender-any">Any</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="gender-male" value="male" />
+                        <Label htmlFor="gender-male">Male</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="gender-female" value="female" />
+                        <Label htmlFor="gender-female">Female</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase text-gray-500">Nationality</Label>
+                    <RadioGroup
+                      value={filters.nationality}
+                      onValueChange={(val) => setFilters(prev => ({ ...prev, nationality: val as any }))}
+                      className="grid grid-cols-3 gap-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="nat-any" value="any" />
+                        <Label htmlFor="nat-any">Any</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="nat-my" value="malaysian" />
+                        <Label htmlFor="nat-my">Malaysian</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="nat-nonmy" value="non-malaysian" />
+                        <Label htmlFor="nat-nonmy">Non‑MY</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase text-gray-500">Quick filters</Label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={filters.outstandingOnly}
+                          onCheckedChange={(val) => setFilters(prev => ({ ...prev, outstandingOnly: Boolean(val) }))}
+                        />
+                        Outstanding payment only
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={filters.checkoutTodayOnly}
+                          onCheckedChange={(val) => setFilters(prev => ({ ...prev, checkoutTodayOnly: Boolean(val) }))}
+                        />
+                        Expected to check out today
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex justify-between pt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setFilters({ gender: 'any', nationality: 'any', outstandingOnly: false, checkoutTodayOnly: false })}>
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             {/* Mobile: icons with tooltips */}
             <div className="md:hidden">
               <Tooltip>
@@ -394,7 +544,6 @@ export default function SortableGuestTable() {
                       <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </>
                   )}
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Copy Link</th>
                   <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -405,12 +554,14 @@ export default function SortableGuestTable() {
                     const guest = item.data;
                     const genderIcon = getGenderIcon(guest.gender || undefined);
                     const isGuestCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === guest.id;
+                    const stayDays = calculatePlannedStayDays(guest.checkinTime, guest.expectedCheckoutDate);
                     return (
                       <SwipeableGuestRow
                         key={guest.id}
                         guest={guest}
                         onCheckout={handleCheckout}
                         onGuestClick={handleGuestClick}
+                        onExtend={handleExtend}
                         isCondensedView={isCondensedView}
                         isMobile={isMobile}
                         isCheckingOut={isGuestCheckingOut}
@@ -421,7 +572,8 @@ export default function SortableGuestTable() {
                             {guest.capsuleNumber}
                           </Badge>
                         </td>
-                        {/* Guest column */}
+                        {/* Guest column */
+                        }
                         <td className="px-2 py-3 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className={`w-6 h-6 ${genderIcon.bgColor} rounded-full flex items-center justify-center mr-2`}>
@@ -436,12 +588,14 @@ export default function SortableGuestTable() {
                               )}
                             </div>
                               {!isCondensedView && (
-                                <button
-                                  onClick={() => handleGuestClick(guest)}
-                                  className="text-sm font-medium text-hostel-text hover:text-orange-700 hover:underline cursor-pointer transition-colors"
-                                >
-                                  {isMobile ? truncateName(guest.name) : guest.name}
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleGuestClick(guest)}
+                                    className={`text-sm font-medium hover:underline cursor-pointer transition-colors ${stayDays >= 7 ? 'text-amber-800 bg-amber-50 rounded px-1' : 'text-hostel-text hover:text-orange-700'}`}
+                                  >
+                                    {isMobile ? truncateName(guest.name) : guest.name}
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -497,22 +651,30 @@ export default function SortableGuestTable() {
                             </td>
                           </>
                         )}
-                        {/* Copy Link column - show dash for checked-in guests */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-400">
-                          —
-                        </td>
                         {/* Actions column */}
                         <td className="px-2 py-3 whitespace-nowrap">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleCheckout(guest.id)}
-                            disabled={checkoutMutation.isPending}
-                            isLoading={checkoutMutation.isPending && checkoutMutation.variables === guest.id}
-                            className="text-hostel-error hover:text-red-700 font-medium p-1"
-                          >
-                            <UserMinus className="h-3 w-3" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleExtend(guest)}
+                              className="text-green-700 border-green-600 hover:bg-green-50 font-medium p-1"
+                              title="Extend"
+                            >
+                              <CalendarPlus className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleCheckout(guest.id)}
+                              disabled={checkoutMutation.isPending}
+                              isLoading={checkoutMutation.isPending && checkoutMutation.variables === guest.id}
+                              className="text-hostel-error hover:text-red-700 font-medium p-1"
+                              title="Checkout"
+                            >
+                              <UserMinus className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </td>
                       </SwipeableGuestRow>
                     );
@@ -521,11 +683,22 @@ export default function SortableGuestTable() {
                     const pendingData = item.data;
                     return (
                       <tr key={`pending-${pendingData.id}`} className="bg-orange-50">
-                        {/* Accommodation column - sticky first column */}
+                        {/* Accommodation column with copy icon - sticky first column */}
                         <td className="px-2 py-3 whitespace-nowrap sticky left-0 bg-orange-50 z-10">
-                          <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">
-                            {pendingData.capsuleNumber}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">
+                              {pendingData.capsuleNumber}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(getCheckinLink(activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
+                              className="text-blue-600 hover:text-blue-800 font-medium p-1 text-xs"
+                              title="Copy check-in link"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </td>
                         {/* Guest column */}
                         <td className="px-2 py-3 whitespace-nowrap">
@@ -572,18 +745,6 @@ export default function SortableGuestTable() {
                             </td>
                           </>
                         )}
-                        {/* Copy Link column - show copy button for pending check-ins */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(getCheckinLink(activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
-                            className="text-blue-600 hover:text-blue-800 font-medium p-1 text-xs"
-                            title="Copy check-in link"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </td>
                         {/* Actions column */}
                         <td className="px-2 py-3 whitespace-nowrap">
                           {isAuthenticated ? (
@@ -619,8 +780,14 @@ export default function SortableGuestTable() {
                 const isGuestCheckingOut = checkoutGuest?.id === guest.id;
                 const genderIcon = getGenderIcon(guest.gender || undefined);
                 return (
-                  <Card key={`guest-${guest.id}`} className="p-3 hover-card-pop">
-                    <div className="flex items-center justify-between gap-3">
+                  <Card key={`guest-${guest.id}`} className="p-0 overflow-hidden hover-card-pop">
+                    <SwipeableGuestCard
+                      guest={guest}
+                      onCheckout={handleCheckout}
+                      onExtend={handleExtend}
+                      isCheckingOut={isGuestCheckingOut}
+                    >
+                    <div className="p-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 ${genderIcon.bgColor} rounded-full flex items-center justify-center text-sm font-semibold ${genderIcon.textColor}`}>
                           {getFirstInitial(guest.name)}
@@ -689,6 +856,7 @@ export default function SortableGuestTable() {
                         </Button>
                       </div>
                     </div>
+                    </SwipeableGuestCard>
                   </Card>
                 );
               } else {
@@ -758,6 +926,15 @@ export default function SortableGuestTable() {
         guest={selectedGuest}
         isOpen={isDetailsModalOpen}
         onClose={handleCloseModal}
+      />
+
+      <ExtendStayDialog
+        guest={extendGuest}
+        open={isExtendOpen}
+        onOpenChange={(open) => {
+          setIsExtendOpen(open);
+          if (!open) setExtendGuest(null);
+        }}
       />
 
       {/* Checkout Confirmation Dialog */}

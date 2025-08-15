@@ -1080,13 +1080,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Settings routes
   app.get("/api/settings", authenticateToken, async (req, res) => {
     try {
-      const guestTokenExpirationHours = await storage.getGuestTokenExpirationHours();
       const accommodationTypeSetting = await storage.getSetting('accommodationType');
       const accommodationType = accommodationTypeSetting?.value || 'capsule';
       // Load guide fields (fallback empty strings)
       const getVal = async (k: string) => (await storage.getSetting(k))?.value || "";
       res.json({
-        guestTokenExpirationHours,
         accommodationType,
         guideIntro: await getVal('guideIntro'),
         guideAddress: await getVal('guideAddress'),
@@ -1129,14 +1127,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = req.body;
       const updatedBy = req.user.username || req.user.email || "Unknown";
-      
-      // Update guest token expiration setting
-      await storage.setSetting(
-        'guestTokenExpirationHours',
-        validatedData.guestTokenExpirationHours.toString(),
-        'Hours before guest check-in tokens expire',
-        updatedBy
-      );
 
       // Update accommodation type setting
       if (validatedData.accommodationType) {
@@ -1235,10 +1225,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export all settings and capsules as JSON
+  app.get("/api/settings/export",
+    authenticateToken,
+    async (_req: any, res) => {
+      try {
+        const [allSettings, allCapsules] = await Promise.all([
+          storage.getAllSettings(),
+          storage.getAllCapsules(),
+        ]);
+
+        const exportPayload = {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          settings: allSettings.map(s => ({ key: s.key, value: s.value, description: s.description || undefined })),
+          capsules: allCapsules,
+        };
+
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(200).send(JSON.stringify(exportPayload, null, 2));
+      } catch (error) {
+        console.error("Export settings failed:", error);
+        return res.status(500).json({ message: "Failed to export settings" });
+      }
+    }
+  );
+
+  // Import settings and capsules from JSON
+  app.post("/api/settings/import",
+    securityValidationMiddleware,
+    authenticateToken,
+    async (req: any, res) => {
+      try {
+        const updatedBy = req.user?.username || req.user?.email || "Unknown";
+        const body = req.body || {};
+        const settingsPayload = body.settings;
+        const capsulesPayload = body.capsules;
+        const mode = (body.mode === 'replace' ? 'replace' : 'merge') as 'merge' | 'replace';
+
+        const summary = {
+          settingsUpserted: 0,
+          capsulesCreated: 0,
+          capsulesUpdated: 0,
+          capsulesDeleted: 0,
+          mode,
+        };
+
+        // Handle settings import
+        if (settingsPayload) {
+          if (Array.isArray(settingsPayload)) {
+            for (const s of settingsPayload) {
+              if (!s || !s.key) continue;
+              const val = s.value;
+              await storage.setSetting(String(s.key), typeof val === 'string' ? val : String(val), s.description, updatedBy);
+              summary.settingsUpserted++;
+            }
+          } else if (typeof settingsPayload === 'object') {
+            for (const [key, val] of Object.entries(settingsPayload)) {
+              await storage.setSetting(String(key), typeof val === 'string' ? val : String(val), undefined, updatedBy);
+              summary.settingsUpserted++;
+            }
+          }
+        }
+
+        // Handle capsules import
+        if (Array.isArray(capsulesPayload)) {
+          const importNumbers = new Set<string>();
+          for (const c of capsulesPayload) {
+            if (!c || !c.number || !c.section) continue;
+            importNumbers.add(c.number);
+          }
+
+          if (mode === 'replace') {
+            const existing = await storage.getAllCapsules();
+            for (const ex of existing) {
+              if (!importNumbers.has(ex.number)) {
+                try {
+                  const ok = await storage.deleteCapsule(ex.number);
+                  if (ok) summary.capsulesDeleted++;
+                } catch {}
+              }
+            }
+          }
+
+          for (const c of capsulesPayload) {
+            if (!c || !c.number || !c.section) continue;
+            const existing = await storage.getCapsule(c.number);
+            const updates: any = {
+              section: c.section,
+            };
+            if (typeof c.isAvailable === 'boolean') updates.isAvailable = c.isAvailable;
+            if (typeof c.cleaningStatus === 'string') updates.cleaningStatus = c.cleaningStatus;
+            if (c.color !== undefined) updates.color = c.color || null;
+            if (c.remark !== undefined) updates.remark = c.remark || null;
+            if (c.position !== undefined) updates.position = c.position || null;
+            if (c.purchaseDate) {
+              try { updates.purchaseDate = new Date(c.purchaseDate); } catch { /* ignore invalid */ }
+            }
+
+            if (existing) {
+              await storage.updateCapsule(c.number, updates);
+              summary.capsulesUpdated++;
+            } else {
+              const toCreate: any = {
+                number: c.number,
+                section: c.section,
+              };
+              if (updates.isAvailable !== undefined) toCreate.isAvailable = updates.isAvailable;
+              if (updates.cleaningStatus !== undefined) toCreate.cleaningStatus = updates.cleaningStatus;
+              if (updates.color !== undefined) toCreate.color = updates.color;
+              if (updates.remark !== undefined) toCreate.remark = updates.remark;
+              if (updates.position !== undefined) toCreate.position = updates.position;
+              if (updates.purchaseDate !== undefined) toCreate.purchaseDate = updates.purchaseDate;
+              await storage.createCapsule(toCreate);
+              summary.capsulesCreated++;
+            }
+          }
+        }
+
+        return res.json({ message: "Import completed", summary });
+      } catch (error) {
+        console.error("Import settings failed:", error);
+        return res.status(500).json({ message: "Failed to import settings" });
+      }
+    }
+  );
+
   // Check-in a guest
   app.post("/api/guests/checkin", 
     securityValidationMiddleware,
-    authenticateToken, 
+    authenticateToken,
     validateData(insertGuestSchema, 'body'),
     async (req: any, res) => {
     try {
@@ -1443,28 +1559,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique token
       const tokenValue = randomUUID();
-      // New expiry logic: token valid until 24 hours before the planned check-in datetime
-      // If admin provided createTokenSchema.checkInDate, use that; else if client will prefill via URL only, fallback to today's check-in time to avoid indefinite tokens
-      const plannedDateStr: string | undefined = (req.body as any).checkInDate;
-      const checkinSetting = await storage.getSetting('guideCheckinTime');
-      const parseTime = (timeStr?: string): { hour: number; minute: number } => {
-        const fallback = '3:00 PM';
-        const cleaned = (timeStr || fallback).replace(/^From\s+/i, '');
-        const m = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-        if (!m) return { hour: 15, minute: 0 };
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        const ap = m[3].toUpperCase();
-        if (ap === 'PM' && h !== 12) h += 12;
-        if (ap === 'AM' && h === 12) h = 0;
-        return { hour: h, minute: min };
-      };
-      const { hour, minute } = parseTime(checkinSetting?.value);
-      const baseDate = plannedDateStr || new Date().toISOString().split('T')[0];
-      const [yy, mm, dd] = baseDate.split('-').map((n: string) => parseInt(n, 10));
-      const plannedCheckinDateTime = new Date(yy, (mm || 1) - 1, dd || 1, hour, minute, 0, 0);
-      // Token expires exactly at the planned check-in datetime (form can be filled within the 24h window we enforce at POST)
-      const expiresAt = new Date(plannedCheckinDateTime);
+      // Links should never expire. Persist a far-future expiry timestamp to satisfy the schema
+      // while effectively making the token non-expiring.
+      const expiresAt = new Date('2099-12-31T23:59:59.000Z');
 
       const token = await storage.createGuestToken({
         token: tokenValue,
@@ -2147,6 +2244,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // but you could add ACL checks here if needed
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
+      // Fallback for local dev uploads when cloud object storage is not configured
+      try {
+        // Only attempt local fallback for uploads path
+        if (req.path.startsWith("/objects/uploads/")) {
+          const id = req.path.split("/").pop();
+          const devUploadsDirFallback = path.join(process.cwd(), "uploads");
+          const filePath = path.join(devUploadsDirFallback, id || "");
+          const metaPath = path.join(devUploadsDirFallback, `${id}.meta.json`);
+          if (fs.existsSync(filePath)) {
+            // Read content type from meta file if present
+            let contentType = "application/octet-stream";
+            try {
+              if (fs.existsSync(metaPath)) {
+                const meta = JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+                if (meta?.contentType) contentType = meta.contentType;
+              }
+            } catch {}
+            res.set({
+              "Content-Type": contentType,
+              "Cache-Control": "public, max-age=3600",
+            });
+            fs.createReadStream(filePath)
+              .on("error", () => res.sendStatus(500))
+              .pipe(res);
+            return;
+          }
+        }
+      } catch {}
       console.error("Error accessing object:", error);
       if (error instanceof ObjectNotFoundError) {
         return res.sendStatus(404);
@@ -2242,9 +2367,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const photoUrl = `/uploads/photos/${req.file.filename}`;
+      // Extra: return absolute URL too for clients that prefer it
+      const protocol = req.protocol;
+      const host = req.get('host');
+      const absoluteUrl = `${protocol}://${host}${photoUrl}`;
       
       res.json({ 
         url: photoUrl,
+        absoluteUrl,
         filename: req.file.filename,
         size: req.file.size,
         message: 'Photo uploaded successfully' 

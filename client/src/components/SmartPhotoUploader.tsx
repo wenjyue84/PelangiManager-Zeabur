@@ -15,49 +15,26 @@ export function SmartPhotoUploader({
   className = "w-full" 
 }: SmartPhotoUploaderProps) {
   const { toast } = useToast();
-  const [isReplitAvailable, setIsReplitAvailable] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
-  // Detect if we're on Replit
-  useEffect(() => {
-    const checkReplitStorage = async () => {
-      try {
-        // Try to call a Replit-specific endpoint
-        const response = await fetch('/api/storage/check-replit');
-        if (response.ok) {
-          const data = await response.json();
-          setIsReplitAvailable(data.available);
-        } else {
-          setIsReplitAvailable(false);
-        }
-      } catch {
-        setIsReplitAvailable(false);
-      }
-    };
-    
-    checkReplitStorage();
-  }, []);
+  // No environment detection needed; always try server upload first
 
   const handleFileSelect = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    // 5MB client-side limit with clear guidance
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please select an image under 5MB",
+        description: "Please select an image under 5 MB. Tip: choose 'Small' when exporting/sharing from your phone.",
         variant: "destructive",
       });
       return;
     }
 
-    if (isReplitAvailable) {
-      // Upload to Replit storage
-      await uploadToReplit(file);
-    } else {
-      // Use Base64 for local development
-      convertToBase64(file);
-    }
+    // Always try to upload to server first; fallback to Base64
+    const ok = await uploadToServer(file);
+    if (!ok) convertToBase64(file);
   };
 
-  const uploadToReplit = async (file: File) => {
+  const uploadToServer = async (file: File): Promise<boolean> => {
     setIsUploading(true);
     try {
       const formData = new FormData();
@@ -71,16 +48,21 @@ export function SmartPhotoUploader({
       if (!response.ok) throw new Error('Upload failed');
       
       const data = await response.json();
-      onPhotoSelected(data.url, file);
+      const chosenUrl: string | undefined = (typeof data?.url === 'string' && data.url) || (typeof data?.absoluteUrl === 'string' && data.absoluteUrl);
+      if (!chosenUrl) {
+        throw new Error('Invalid upload response');
+      }
+      onPhotoSelected(chosenUrl, file);
       
       toast({
-        title: "Photo uploaded to Replit",
-        description: "Photo stored permanently on server",
+        title: "Photo uploaded",
+        description: "Stored on server",
       });
+      return true;
     } catch (error) {
-      console.error('Replit upload failed, falling back to Base64:', error);
-      // Fallback to Base64 if Replit upload fails
-      convertToBase64(file);
+      console.error('Server upload failed, falling back to Base64:', error);
+      // Return false so caller can fallback to Base64
+      return false;
     } finally {
       setIsUploading(false);
     }
@@ -119,13 +101,6 @@ export function SmartPhotoUploader({
       >
         <Camera className="mr-2 h-4 w-4" />
         {isUploading ? "Uploading..." : buttonText}
-        <span className={`ml-2 text-xs px-2 py-1 rounded ${
-          isReplitAvailable 
-            ? "text-green-600 bg-green-100" 
-            : "text-blue-600 bg-blue-100"
-        }`}>
-          {isReplitAvailable ? "Replit Storage" : "Local Storage"}
-        </span>
       </label>
     </div>
   );

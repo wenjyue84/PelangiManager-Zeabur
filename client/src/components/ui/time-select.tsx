@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel, SelectSeparator, SelectGroup } from "./select"
 
 interface TimeSelectProps {
   value?: string
@@ -110,26 +109,23 @@ export function TimeSelect({ value, onValueChange, placeholder, className }: Tim
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        <div className="p-2">
-          <div className="text-xs font-medium text-muted-foreground mb-2 px-2">Common Times</div>
+        <SelectGroup>
+          <SelectLabel>Common Times</SelectLabel>
           {commonTimes.map((time) => (
             <SelectItem key={`common-${time.value}`} value={time.value}>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                {time.label}
-              </div>
+              {time.label}
             </SelectItem>
           ))}
-          <div className="text-xs font-medium text-muted-foreground mb-2 px-2 mt-4">All Times (30-min intervals)</div>
+        </SelectGroup>
+        <SelectSeparator />
+        <SelectGroup>
+          <SelectLabel>All Times (30-min intervals)</SelectLabel>
           {allTimesExcludingCommon.map((time) => (
             <SelectItem key={`all-${time.value}`} value={time.value}>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                {time.label}
-              </div>
+              {time.label}
             </SelectItem>
           ))}
-        </div>
+        </SelectGroup>
       </SelectContent>
     </Select>
   )

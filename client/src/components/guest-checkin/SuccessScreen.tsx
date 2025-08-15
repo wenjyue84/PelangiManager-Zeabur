@@ -48,6 +48,18 @@ export default function SuccessScreen({
   handleSendEmail,
 }: SuccessScreenProps) {
   const { t } = useI18n();
+  // Derive a reliable capsule number
+  const storedCapsuleNumber = (typeof window !== 'undefined') ? localStorage.getItem('lastAssignedCapsule') : null;
+  const displayCapsuleNumber = assignedCapsuleNumber || guestInfo?.capsuleNumber || storedCapsuleNumber || "";
+  if (process.env.NODE_ENV !== 'production') {
+    // Lightweight debug to help diagnose missing capsule numbers during development
+    console.log('[SuccessScreen] capsule numbers', {
+      assignedCapsuleNumber,
+      guestInfoCapsule: guestInfo?.capsuleNumber,
+      storedCapsuleNumber,
+      displayCapsuleNumber,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50 py-8">
@@ -161,7 +173,7 @@ export default function SuccessScreen({
                     <span className="text-green-600">🛌</span>
                     <span className="font-medium">Capsule:</span>
                     <span className="font-bold text-lg text-orange-600 bg-white px-2 py-1 rounded border">
-                      {assignedCapsuleNumber || guestInfo?.capsuleNumber || 'Assigned based on availability'}
+                      {displayCapsuleNumber}
                     </span>
                   </div>
                 </div>

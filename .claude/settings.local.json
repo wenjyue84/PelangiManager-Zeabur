@@ -11,7 +11,8 @@
       "Bash(move:*)",
       "Bash(mv:*)",
       "Bash(find:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(rm:*)"
     ],
     "defaultMode": "acceptEdits"
   }

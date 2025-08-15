@@ -165,6 +165,16 @@ const handleMutationError = (error: unknown) => {
       return;
     }
     
+    // Specific: request entity too large (413)
+    if (error.message.includes('413:')) {
+      toast({
+        title: "Photo too large",
+        description: "Please upload an image under 5 MB. If you took it on a phone, use the 'Small' size or compress it and try again. If this keeps happening with small images, try refreshing the page and reselecting the file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Generic error fallback
     toast({
       title: "Operation Failed",

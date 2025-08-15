@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserMinus, CheckCheck, ToggleLeft, ToggleRight, ChevronRight, User, Calendar, Bell } from "lucide-react";
+import { UserMinus, CheckCheck, ToggleLeft, ToggleRight, ChevronRight, User, Calendar, Bell, Filter as FilterIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -77,6 +81,41 @@ export default function CheckOut() {
   });
   
   const guests = guestsResponse?.data || [];
+
+  // Filters (replicated from Dashboard)
+  const [filters, setFilters] = useState({
+    gender: 'any' as 'any' | 'male' | 'female',
+    nationality: 'any' as 'any' | 'malaysian' | 'non-malaysian',
+    outstandingOnly: false,
+    checkoutTodayOnly: false,
+  });
+
+  const hasActiveGuestFilters = filters.gender !== 'any' || filters.nationality !== 'any' || filters.outstandingOnly || filters.checkoutTodayOnly;
+
+  const isDateToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    try {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      return dateStr.slice(0, 10) === todayStr;
+    } catch {
+      return false;
+    }
+  };
+
+  const filteredGuests = useMemo(() => {
+    return guests.filter((g) => {
+      if (filters.gender !== 'any' && g.gender !== filters.gender) return false;
+      if (filters.nationality === 'malaysian' && g.nationality !== 'Malaysian') return false;
+      if (filters.nationality === 'non-malaysian' && g.nationality === 'Malaysian') return false;
+      if (filters.outstandingOnly && isGuestPaid(g)) return false;
+      if (filters.checkoutTodayOnly && !isDateToday(g.expectedCheckoutDate || undefined)) return false;
+      return true;
+    });
+  }, [guests, filters]);
 
   const checkoutMutation = useMutation({
     mutationFn: async (guestId: string) => {
@@ -202,6 +241,85 @@ export default function CheckOut() {
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 gap-2">
+                          <FilterIcon className="h-4 w-4" />
+                          Filter Guests
+                          {hasActiveGuestFilters && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-blue-600" />}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80" align="end">
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs uppercase text-gray-500">Gender</Label>
+                            <RadioGroup
+                              value={filters.gender}
+                              onValueChange={(val) => setFilters(prev => ({ ...prev, gender: val as any }))}
+                              className="grid grid-cols-3 gap-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem id="co-gender-any" value="any" />
+                                <Label htmlFor="co-gender-any">Any</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem id="co-gender-male" value="male" />
+                                <Label htmlFor="co-gender-male">Male</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem id="co-gender-female" value="female" />
+                                <Label htmlFor="co-gender-female">Female</Label>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs uppercase text-gray-500">Nationality</Label>
+                            <RadioGroup
+                              value={filters.nationality}
+                              onValueChange={(val) => setFilters(prev => ({ ...prev, nationality: val as any }))}
+                              className="grid grid-cols-3 gap-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem id="co-nat-any" value="any" />
+                                <Label htmlFor="co-nat-any">Any</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem id="co-nat-my" value="malaysian" />
+                                <Label htmlFor="co-nat-my">Malaysian</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem id="co-nat-nonmy" value="non-malaysian" />
+                                <Label htmlFor="co-nat-nonmy">Non‑MY</Label>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs uppercase text-gray-500">Quick filters</Label>
+                            <div className="flex flex-col gap-2">
+                              <label className="flex items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={filters.outstandingOnly}
+                                  onCheckedChange={(val) => setFilters(prev => ({ ...prev, outstandingOnly: Boolean(val) }))}
+                                />
+                                Outstanding payment only
+                              </label>
+                              <label className="flex items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={filters.checkoutTodayOnly}
+                                  onCheckedChange={(val) => setFilters(prev => ({ ...prev, checkoutTodayOnly: Boolean(val) }))}
+                                />
+                                Expected to check out today
+                              </label>
+                            </div>
+                          </div>
+                          <div className="flex justify-between pt-2">
+                            <Button variant="ghost" size="sm" onClick={() => setFilters({ gender: 'any', nationality: 'any', outstandingOnly: false, checkoutTodayOnly: false })}>
+                              Clear
+                            </Button>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     {/* Mobile: icons with tooltips */}
                     <div className="sm:hidden">
                       <Tooltip>
@@ -252,7 +370,7 @@ export default function CheckOut() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {guests.map((guest) => {
+                    {filteredGuests.map((guest) => {
                       const genderIcon = getGenderIcon(guest.gender || undefined);
                       const isGuestCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === guest.id;
                       const isOverdue = guest.expectedCheckoutDate && guest.expectedCheckoutDate < today;
@@ -350,7 +468,7 @@ export default function CheckOut() {
 
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
-                {guests.map((guest) => {
+                {filteredGuests.map((guest) => {
                   const genderIcon = getGenderIcon(guest.gender || undefined);
                   const isGuestCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === guest.id;
                   const isOverdue = guest.expectedCheckoutDate && guest.expectedCheckoutDate < today;

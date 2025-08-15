@@ -471,12 +471,14 @@ export default function GuestGuideTab({ settings, form, updateSettingsMutation }
                           <span>🕒</span>
                           Check-in Time
                         </FormLabel>
-                        <GuideTimeSelect 
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select check-in time"
-                          mode="checkin"
-                        />
+                        <FormControl>
+                          <GuideTimeSelect 
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select check-in time"
+                            mode="checkin"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -487,12 +489,14 @@ export default function GuestGuideTab({ settings, form, updateSettingsMutation }
                           <span>🕛</span>
                           Check-out Time
                         </FormLabel>
-                        <GuideTimeSelect 
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select check-out time"
-                          mode="checkout"
-                        />
+                        <FormControl>
+                          <GuideTimeSelect 
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select check-out time"
+                            mode="checkout"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />

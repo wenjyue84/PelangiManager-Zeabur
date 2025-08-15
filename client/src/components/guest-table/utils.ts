@@ -31,7 +31,8 @@ export function formatShortDateTime(dateString: string): string {
   const ampm = hours >= 12 ? 'pm' : 'am';
   const displayHours = hours % 12 || 12;
   
-  return `${month}/${day} ${displayHours}:${minutes.toString().padStart(2, '0')}${ampm}`;
+  // Malaysian standard: day/month
+  return `${day}/${month} ${displayHours}:${minutes.toString().padStart(2, '0')}${ampm}`;
 }
 
 export function formatShortDate(dateString: string): string {
@@ -39,7 +40,8 @@ export function formatShortDate(dateString: string): string {
   const month = date.getMonth() + 1;
   const day = date.getDate();
   
-  return `${month}/${day}`;
+  // Malaysian standard: day/month
+  return `${day}/${month}`;
 }
 
 export const ROW_HEIGHT = 56;

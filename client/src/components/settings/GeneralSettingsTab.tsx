@@ -1,11 +1,229 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building, Clock, Save, RotateCcw } from "lucide-react";
+import { Building, Save, Download, Upload, FileText } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function GeneralSettingsTab({ settings, isLoading, form, onSubmit, resetToDefault, updateSettingsMutation }: any) {
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<'merge' | 'replace'>('merge');
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleExportJSON = async () => {
+    try {
+      console.log('Starting JSON export...');
+      const res = await apiRequest("GET", "/api/settings/export");
+      console.log('API response status:', res.status);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      console.log('Export data received:', data);
+      const jsonString = JSON.stringify(data, null, 2);
+      console.log('JSON string length:', jsonString.length);
+      
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const stamp = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
+      const filename = `pelangi-settings-export-${stamp}.json`;
+      console.log('Attempting to download file:', filename);
+      
+      // Alternative approach - try window.open first
+      const url = URL.createObjectURL(blob);
+      console.log('Blob URL created:', url);
+      
+      // Try direct window download first
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        console.log('Link element added to DOM');
+        
+        // Force click
+        link.click();
+        console.log('Link clicked');
+        
+        // Cleanup after a delay
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+          URL.revokeObjectURL(url);
+          console.log('Cleanup completed');
+        }, 1000);
+        
+      } catch (downloadError) {
+        console.error('Download error:', downloadError);
+        // Fallback: open in new window
+        window.open(url, '_blank');
+      }
+      
+      toast({ title: "JSON Export", description: `File: ${filename} - Check your downloads folder.` });
+    } catch (e: any) {
+      console.error('Export error:', e);
+      toast({ title: "Export failed", description: e?.message || "Unable to export.", variant: "destructive" });
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      console.log('Starting CSV export...');
+      const res = await apiRequest("GET", "/api/settings/export");
+      console.log('API response status:', res.status);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      console.log('Export data received:', data);
+      
+      // Create CSV content for settings
+      const csvRows = [
+        'Setting Key,Current Value,Description',
+        ...data.settings.map((setting: any) => {
+          const key = setting.key || '';
+          const value = (setting.value || '').toString().replace(/"/g, '""'); // Escape quotes
+          const description = (setting.description || '').replace(/"/g, '""');
+          return `"${key}","${value}","${description}"`;
+        })
+      ];
+      
+      // Add capsule information
+      csvRows.push('');
+      csvRows.push('Capsule Number,Section,Available,Cleaning Status');
+      data.capsules.forEach((capsule: any) => {
+        const number = capsule.number || '';
+        const section = capsule.section || '';
+        const available = capsule.isAvailable ? 'Yes' : 'No';
+        const cleaningStatus = capsule.cleaningStatus || '';
+        csvRows.push(`"${number}","${section}","${available}","${cleaningStatus}"`);
+      });
+      
+      const csvContent = csvRows.join('\n');
+      console.log('CSV content length:', csvContent.length);
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const stamp = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
+      const filename = `pelangi-settings-export-${stamp}.csv`;
+      console.log('Attempting to download file:', filename);
+      
+      // Alternative approach with more debugging
+      const url = URL.createObjectURL(blob);
+      console.log('Blob URL created:', url);
+      
+      // Try direct window download first
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        console.log('Link element added to DOM');
+        
+        // Force click
+        link.click();
+        console.log('Link clicked');
+        
+        // Cleanup after a delay
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+          URL.revokeObjectURL(url);
+          console.log('Cleanup completed');
+        }, 1000);
+        
+      } catch (downloadError) {
+        console.error('Download error:', downloadError);
+        // Fallback: open in new window
+        window.open(url, '_blank');
+      }
+      
+      toast({ title: "CSV Export", description: `File: ${filename} - Check your downloads folder.` });
+    } catch (e: any) {
+      console.error('Export error:', e);
+      toast({ title: "Export failed", description: e?.message || "Unable to export.", variant: "destructive" });
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    setFile(f);
+  };
+
+  const parseCSV = (csvText: string) => {
+    const lines = csvText.split('\n');
+    const settings = [];
+    let i = 0;
+    
+    // Skip to settings section
+    if (lines[0]?.includes('Setting Key')) {
+      i = 1; // Skip header
+      while (i < lines.length && lines[i].trim() !== '') {
+        const line = lines[i].trim();
+        if (line) {
+          // Simple CSV parsing - handle quoted values
+          const matches = line.match(/^"([^"]*)","([^"]*)","([^"]*)"$/);
+          if (matches) {
+            settings.push({
+              key: matches[1],
+              value: matches[2],
+              description: matches[3]
+            });
+          }
+        }
+        i++;
+      }
+    }
+    
+    return { settings, capsules: [] }; // For now, only handle settings from CSV
+  };
+
+  const handleImport = async () => {
+    if (!file) {
+      toast({ title: "No file", description: "Choose a JSON or CSV file to import.", variant: "destructive" });
+      return;
+    }
+    try {
+      setIsImporting(true);
+      const text = await file.text();
+      
+      let data;
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        // Handle CSV import
+        const csvData = parseCSV(text);
+        data = {
+          version: 1,
+          settings: csvData.settings,
+          capsules: csvData.capsules
+        };
+      } else {
+        // Handle JSON import
+        data = JSON.parse(text);
+      }
+      
+      const payload = { ...data, mode };
+      const res = await apiRequest("POST", "/api/settings/import", payload);
+      const result = await res.json();
+      toast({ title: "Import completed", description: `Settings: ${result?.summary?.settingsUpserted || 0}, Capsules created: ${result?.summary?.capsulesCreated || 0}, updated: ${result?.summary?.capsulesUpdated || 0}, deleted: ${result?.summary?.capsulesDeleted || 0}` });
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message || "Invalid file format or server error.", variant: "destructive" });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6">
       {isLoading ? (
@@ -67,101 +285,72 @@ export default function GeneralSettingsTab({ settings, isLoading, form, onSubmit
               </CardContent>
             </Card>
 
-            {/* Guest Check-In Settings Pane */}
+            {/* Export Configuration Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  Guest Check-In Settings
+                  <Download className="h-5 w-5 text-blue-600" />
+                  Export Configuration
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <FormField
-                  control={form.control}
-                  name="guestTokenExpirationHours"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Token Expiration Time</FormLabel>
-                      <div className="flex items-center gap-2">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="168"
-                            placeholder="24"
-                            className="max-w-xs"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <span className="text-sm text-gray-500">hours</span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        How long guest check-in tokens remain valid after creation.
-                        <br />
-                        <span className="text-xs text-gray-500">
-                          Range: 1-168 hours (1 hour to 7 days)
-                        </span>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex items-center gap-3 pt-4 border-t">
-                  <Button
-                    type="submit"
-                    disabled={updateSettingsMutation.isPending}
-                    className="flex items-center gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    {updateSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                <p className="text-sm text-gray-600 mb-4">
+                  Download your settings and capsule data in different formats:
+                </p>
+                <div className="flex gap-3 flex-wrap">
+                  <Button type="button" onClick={handleExportCSV} className="flex items-center gap-2" variant="default">
+                    <FileText className="h-4 w-4" />
+                    Export CSV (Excel)
                   </Button>
-                  
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetToDefault}
-                    className="flex items-center gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Reset to Default (24h)
+                  <Button type="button" onClick={handleExportJSON} className="flex items-center gap-2" variant="outline">
+                    <FileText className="h-4 w-4" />
+                    Export JSON (Backup)
                   </Button>
+                </div>
+                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                  <div><strong>CSV:</strong> Easy to edit in Excel - perfect for updating Guest Guide settings, WiFi details, addresses, etc.</div>
+                  <div><strong>JSON:</strong> Complete backup format for importing back into the system</div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Current Status Card */}
+            {/* Import Configuration Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Current Configuration</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5 text-green-600" />
+                  Import Configuration
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Token Validity</p>
-                      <p className="text-xs text-gray-500">Time before tokens expire</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-blue-600">
-                        {settings?.guestTokenExpirationHours || 24}h
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {settings?.guestTokenExpirationHours === 24 ? "Default" : "Custom"}
-                      </p>
-                    </div>
+                <div className="space-y-4">
+                  <div className="grid gap-2 max-w-md">
+                    <Label htmlFor="importFile">Choose JSON or CSV file</Label>
+                    <Input id="importFile" type="file" accept="application/json,.json,.csv,text/csv" onChange={handleFileChange} />
+                    <p className="text-xs text-gray-500">
+                      Upload CSV files exported from this system, or JSON backup files
+                    </p>
                   </div>
-
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Edit Window</p>
-                      <p className="text-xs text-gray-500">After guest completes check-in</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-green-600">1h</p>
-                      <p className="text-xs text-gray-500">Fixed</p>
-                    </div>
+                  <div className="grid gap-2 max-w-xs">
+                    <Label>Import Mode</Label>
+                    <Select value={mode} onValueChange={(v) => setMode(v as 'merge' | 'replace')}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="merge">Merge (update existing, add new)</SelectItem>
+                        <SelectItem value="replace">Replace (delete missing capsules, then import)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      Replace will delete capsules not present in the file. Settings are always upserted.
+                    </p>
+                  </div>
+                  <div>
+                    <Button type="button" onClick={handleImport} disabled={!file || isImporting} className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      {isImporting ? 'Importing…' : file?.name.toLowerCase().endsWith('.csv') ? 'Import CSV' : 'Import File'}
+                    </Button>
                   </div>
                 </div>
               </CardContent>

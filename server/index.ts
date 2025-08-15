@@ -5,8 +5,10 @@ import { initializeConfig, AppConfig, getConfig, getConfigUtils } from "./config
 import { storage } from "./storage";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Increase body size limits to accommodate small images embedded as Base64 in JSON
+// Staff check-in may include a profile photo string. Keep reasonable cap.
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();

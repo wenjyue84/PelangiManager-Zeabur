@@ -34,6 +34,19 @@ export function DesktopRow({ index, style, data }: ListChildComponentProps<RowDa
     const guest = item.data as Guest;
     const genderIcon = getGenderIcon(guest.gender || undefined);
     const isGuestCheckingOut = data.checkoutMutation.isPending && data.checkoutMutation.variables === guest.id;
+    const calculatePlannedStayDays = (checkinTime: string | Date, expectedCheckoutDate?: string | Date | null): number => {
+      try {
+        if (!expectedCheckoutDate) return 0;
+        const checkin = new Date(checkinTime);
+        const plannedCheckout = new Date(expectedCheckoutDate);
+        const diffMs = plannedCheckout.getTime() - checkin.getTime();
+        if (Number.isNaN(diffMs)) return 0;
+        return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      } catch {
+        return 0;
+      }
+    };
+    const stayDays = calculatePlannedStayDays(guest.checkinTime, guest.expectedCheckoutDate);
     return (
       <div style={style} className="min-w-full">
         <table className="min-w-full divide-y divide-gray-200">
@@ -41,6 +54,7 @@ export function DesktopRow({ index, style, data }: ListChildComponentProps<RowDa
             <SwipeableGuestRow
               guest={guest}
               onCheckout={data.onCheckout}
+              onExtend={(g) => data.onGuestClick(g)}
               onGuestClick={data.onGuestClick}
               isCondensedView={data.isCondensedView}
               isCheckingOut={isGuestCheckingOut}
@@ -65,12 +79,14 @@ export function DesktopRow({ index, style, data }: ListChildComponentProps<RowDa
                     )}
                   </div>
                   {!data.isCondensedView && (
-                    <button
-                      onClick={() => data.onGuestClick(guest)}
-                      className="text-sm font-medium text-hostel-text hover:text-orange-700 hover:underline cursor-pointer transition-colors"
-                    >
-                      {truncateName(guest.name)}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => data.onGuestClick(guest)}
+                        className={`text-sm font-medium hover:underline cursor-pointer transition-colors ${stayDays >= 7 ? 'text-amber-800 bg-amber-50 rounded px-1' : 'text-hostel-text hover:text-orange-700'}`}
+                      >
+                        {truncateName(guest.name)}
+                      </button>
+                    </>
                   )}
                 </div>
               </td>
@@ -147,9 +163,20 @@ export function DesktopRow({ index, style, data }: ListChildComponentProps<RowDa
           <tbody className="bg-white">
             <tr className="hover:bg-orange-50 border-l-2 border-orange-300">
               <td className="px-2 py-3 whitespace-nowrap sticky left-0 bg-white z-10">
-                <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-300">
-                  {pendingData.capsuleNumber}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-300">
+                    {pendingData.capsuleNumber}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => data.copyToClipboard(data.getCheckinLink(data.activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
+                    className="text-blue-600 hover:text-blue-800 font-medium p-1 text-xs"
+                    title="Copy check-in link"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
               </td>
               <td className="px-2 py-3 whitespace-nowrap">
                 <div className="flex items-center">
@@ -186,17 +213,7 @@ export function DesktopRow({ index, style, data }: ListChildComponentProps<RowDa
                   </td>
                 </>
               )}
-              <td className="px-2 py-3 whitespace-nowrap">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => data.copyToClipboard(data.getCheckinLink(data.activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
-                  className="text-blue-600 hover:text-blue-800 font-medium p-1 text-xs"
-                  title="Copy check-in link"
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </td>
+              
               <td className="px-2 py-3 whitespace-nowrap">
                 {data.isAuthenticated ? (
                   <Button

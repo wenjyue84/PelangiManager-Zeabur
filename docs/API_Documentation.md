@@ -1,7 +1,7 @@
 # API Documentation
 # PelangiManager - Capsule Hostel Management System
 
-**Document Version:** 1.1  
+**Document Version:** 2025.08  
 **Date:** August 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 

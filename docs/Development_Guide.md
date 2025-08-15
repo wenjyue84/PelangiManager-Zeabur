@@ -1,7 +1,7 @@
 # Development Guide
 # PelangiManager - Capsule Hostel Management System
 
-**Document Version:** 1.0  
+**Document Version:** 2025.08  
 **Date:** August 2025  
 **Project:** Pelangi Capsule Hostel Management System  
 
