@@ -67,12 +67,25 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       const response = await apiRequest("POST", "/api/guest-tokens", data);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setGeneratedToken(data);
-      toast({
-        title: "Check-in Link Created",
-        description: `Generated self-check-in link for capsule ${data.capsuleNumber}`,
-      });
+      const url = new URL(data.link);
+      if (checkInDate) url.searchParams.set("ci", checkInDate);
+      if (prefillGender) url.searchParams.set("g", prefillGender);
+      if (prefillNationality) url.searchParams.set("nat", prefillNationality);
+      const finalLink = url.toString();
+      try {
+        await navigator.clipboard.writeText(finalLink);
+        toast({
+          title: "Check-in Link Created & Copied!",
+          description: `Generated self-check-in link for capsule ${data.capsuleNumber}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Check-in Link Created",
+          description: `Generated self-check-in link for capsule ${data.capsuleNumber}. Manual copy needed.`,
+        });
+      }
       onTokenCreated?.();
     },
     onError: (error: any) => {
