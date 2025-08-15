@@ -120,7 +120,7 @@ export function DesktopRow({ index, style, data }: ListChildComponentProps<RowDa
                           RM {guest.paymentAmount}
                           {!isGuestPaid(guest) && getGuestBalance(guest) > 0 && (
                             <span className="text-red-600 text-xs font-medium ml-1">
-                              (Balance: RM{getGuestBalance(guest)})
+                              (Bal: RM{getGuestBalance(guest)})
                             </span>
                           )}
                         </div>

@@ -644,7 +644,7 @@ export default function SortableGuestTable() {
                                     RM {guest.paymentAmount}
                                     {!isGuestPaid(guest) && getGuestBalance(guest) > 0 && (
                                       <span className="text-red-600 text-xs font-medium ml-1">
-                                        (Balance: RM{getGuestBalance(guest)})
+                                        (Bal: RM{getGuestBalance(guest)})
                                       </span>
                                     )}
                                   </div>
@@ -826,7 +826,7 @@ export default function SortableGuestTable() {
                               <Badge variant={isGuestPaid(guest) ? 'default' : 'destructive'}>{isGuestPaid(guest) ? 'Paid' : 'Outstanding'}</Badge>
                               {!isGuestPaid(guest) && getGuestBalance(guest) > 0 && (
                                 <span className="text-red-600 text-xs font-medium">
-                                  Balance: RM{getGuestBalance(guest)}
+                                  Bal: RM{getGuestBalance(guest)}
                                 </span>
                               )}
                             </div>
