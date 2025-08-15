@@ -4,12 +4,13 @@ This is a capsule hostel management system called "Pelangi Capsule Hostel" built
 
 ## Recent Updates (August 15, 2025)
 
-### **Fixed Dependencies and Startup Issues**
+### **Fixed Dependencies and Database Schema Issues**
 - **Issue Resolution**: Fixed application startup problems after GitHub pull
 - **Missing Dependencies**: Installed react-copy-to-clipboard, jspdf, html2canvas packages
+- **Database Schema Fix**: Added missing 'status' column to guests table in PostgreSQL
 - **Database Connection**: Verified PostgreSQL database connection working correctly
 - **Authentication System**: Confirmed admin login (admin/admin123) functioning properly
-- **Application Status**: Production-ready system with persistent data storage
+- **Application Status**: Production-ready system with persistent data storage and correct schema
 - **Expected Behavior**: 401 errors on some API calls are normal due to unauthenticated dashboard access feature
 
 ## Previous Updates (August 12, 2025)
