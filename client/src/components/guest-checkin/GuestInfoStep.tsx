@@ -113,7 +113,7 @@ export function GuestInfoStep({
               {...form.register("checkInDate")}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Default is today's date. You can change this if you plan to arrive on a different date.
+              Defaults to today's date ({new Date().toLocaleDateString()}). Change if you plan to arrive on a different date.
             </p>
             <ValidationHelpers 
               errors={errors} 
@@ -133,7 +133,7 @@ export function GuestInfoStep({
               {...form.register("checkOutDate", { required: "Check-out date is required" })}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Please select your planned check-out date.
+              Defaults to tomorrow ({new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString()}). Change to your planned check-out date.
             </p>
             <ValidationHelpers 
               errors={errors} 

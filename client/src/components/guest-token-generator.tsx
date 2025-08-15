@@ -27,7 +27,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
   const [checkInDate, setCheckInDate] = useState("");
   const [prefillGender, setPrefillGender] = useState<string>("");
   const [prefillNationality, setPrefillNationality] = useState<string>("");
-  const [expiresInHours, setExpiresInHours] = useState("24");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [overrideGuide, setOverrideGuide] = useState(false);
   const [guideShowIntro, setGuideShowIntro] = useState<boolean | undefined>(undefined);
@@ -63,7 +62,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       phoneNumber?: string;
       email?: string;
       expectedCheckoutDate?: string;
-      expiresInHours: number 
+ 
     }) => {
       const response = await apiRequest("POST", "/api/guest-tokens", data);
       return response.json();
@@ -89,7 +88,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/guest-tokens", {
         autoAssign: true,
-        expiresInHours: 24
       });
       return response.json();
     },
@@ -139,7 +137,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       email: email.trim() || undefined,
       checkInDate: checkInDate || undefined,
       expectedCheckoutDate: expectedCheckoutDate || undefined,
-      expiresInHours: parseInt(expiresInHours),
       // Optional per-token guide overrides
       guideOverrideEnabled: overrideGuide || undefined,
       guideShowIntro: overrideGuide ? guideShowIntro : undefined,
@@ -196,7 +193,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
             Create Link
           </Button>
         </DialogTrigger>
-      <DialogContent className="w-full max-w-sm sm:max-w-md mx-4">
+        <DialogContent className="w-full max-w-sm sm:max-w-md mx-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-orange-600" />
@@ -362,26 +359,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
               )}
             </div>
 
-            <div>
-              <Label htmlFor="expires" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Link Expires In
-              </Label>
-              <Select value={expiresInHours} onValueChange={setExpiresInHours}>
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 hour</SelectItem>
-                  <SelectItem value="6">6 hours</SelectItem>
-                  <SelectItem value="12">12 hours</SelectItem>
-                  <SelectItem value="24">24 hours (recommended)</SelectItem>
-                  <SelectItem value="48">48 hours</SelectItem>
-                  <SelectItem value="72">72 hours</SelectItem>
-                  <SelectItem value="168">1 week</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             {/* Advanced: Guest Guide Override */}
             <div className="border rounded-md">
@@ -440,9 +417,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                 </Badge>
                 <span className="text-sm text-green-700">Check-in link created!</span>
               </div>
-              <div className="text-xs text-green-600">
-                Expires: {new Date(generatedToken.expiresAt).toLocaleString()}
-              </div>
               {!generatedToken.capsuleNumber && (
                 <div className="text-xs text-blue-600 mt-1 font-medium">
                   {labels.singular} will be auto-assigned based on guest's gender
@@ -499,7 +473,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                   setCheckInDate("");
                   setPrefillGender("");
                   setPrefillNationality("");
-                  setExpiresInHours("24");
                 }}
                 className="flex-1"
               >

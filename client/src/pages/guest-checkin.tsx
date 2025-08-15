@@ -112,8 +112,17 @@ export default function GuestCheckin() {
       phoneNumber: "",
       gender: undefined,
       nationality: "Malaysian",
-      checkInDate: new Date().toISOString().split('T')[0], // Default to today
-      checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow
+      checkInDate: (() => {
+        // Always get today's date fresh when form initializes
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+      })(),
+      checkOutDate: (() => {
+        // Always get tomorrow's date fresh when form initializes
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toISOString().split('T')[0];
+      })(),
       icNumber: "",
       passportNumber: "",
       icDocumentUrl: "",
@@ -204,6 +213,25 @@ export default function GuestCheckin() {
   } = useTokenValidation({ t, form });
   
   useAutoSave({ form, token });
+
+  // Ensure dates are always set to today/tomorrow if not already set or if they need refresh
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    const currentCheckIn = form.watch("checkInDate");
+    const currentCheckOut = form.watch("checkOutDate");
+    
+    // Set default dates if they're empty or invalid
+    if (!currentCheckIn) {
+      form.setValue("checkInDate", today);
+    }
+    if (!currentCheckOut) {
+      form.setValue("checkOutDate", tomorrowStr);
+    }
+  }, [form]);
 
   // Clear the disabled field when the other field is filled
   useEffect(() => {

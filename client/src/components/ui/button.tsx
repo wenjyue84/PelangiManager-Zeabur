@@ -43,19 +43,37 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, isLoading = false, disabled, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }), isLoading && "relative text-transparent pointer-events-none")}
-        ref={ref}
-        disabled={disabled || isLoading}
-        {...props}
-      >
+    
+    // When asChild is true and isLoading is true, we need to wrap both elements in a single container
+    // to satisfy React.Children.only requirement of Slot component
+    const content = asChild && isLoading ? (
+      <span className={cn("relative", isLoading && "text-transparent pointer-events-none")}>
         {isLoading && (
           <span className="absolute inset-0 flex items-center justify-center">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
           </span>
         )}
         {children}
+      </span>
+    ) : (
+      <>
+        {isLoading && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+          </span>
+        )}
+        {children}
+      </>
+    )
+    
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }), !asChild && isLoading && "relative text-transparent pointer-events-none")}
+        ref={ref}
+        disabled={disabled || isLoading}
+        {...props}
+      >
+        {content}
       </Comp>
     )
   }
