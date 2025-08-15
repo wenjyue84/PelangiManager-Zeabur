@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import { DashboardModal } from "@uppy/react";
@@ -8,6 +8,7 @@ import AwsS3 from "@uppy/aws-s3";
 import type { UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
@@ -23,6 +24,8 @@ interface ObjectUploaderProps {
   buttonClassName?: string;
   children: ReactNode;
   disabled?: boolean;
+  directFileUpload?: boolean; // New prop to enable direct file selection
+  showCameraOption?: boolean; // New prop to show camera option on mobile
 }
 
 /**
@@ -66,8 +69,13 @@ export function ObjectUploader({
   buttonClassName,
   children,
   disabled = false,
+  directFileUpload = false,
+  showCameraOption = false,
 }: ObjectUploaderProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [showModal, setShowModal] = useState(false);
   const [uppy] = useState(() =>
     new Uppy({
@@ -124,24 +132,183 @@ export function ObjectUploader({
       })
   );
 
+  // Direct file upload handling
+  const handleDirectFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type
+    const isValidType = allowedFileTypes.some(type => {
+      if (type === 'image/*') return file.type.startsWith('image/');
+      if (type.startsWith('.')) return file.name.toLowerCase().endsWith(type.toLowerCase());
+      return file.type === type;
+    });
+
+    if (!isValidType) {
+      toast({
+        title: 'File not allowed',
+        description: 'Please choose a supported image file (HEIC/HEIF/JPG/PNG).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size
+    if (file.size > maxFileSize) {
+      toast({
+        title: 'File too large',
+        description: `Please choose a file under ${Math.round(maxFileSize / (1024 * 1024))}MB.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Get upload parameters
+      const uploadParams = await onGetUploadParameters();
+      
+      // Upload directly to S3
+      const uploadResponse = await fetch(uploadParams.url, {
+        method: uploadParams.method,
+        headers: {
+          'Content-Type': file.type,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+
+      // Create a mock result that matches the Uppy format
+      const mockResult: UploadResult<Record<string, unknown>, Record<string, unknown>> = {
+        successful: [{
+          id: file.name,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadURL: uploadParams.url,
+          data: file,
+          meta: {},
+          source: 'direct',
+          isRemote: false,
+          remote: '',
+          preview: undefined
+        }],
+        failed: []
+      };
+
+      // Call the completion callback
+      onComplete?.(mockResult);
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: 'Please check your internet connection and try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handleDirectFileUpload(event.target.files);
+    // Reset input so the same file can be selected again
+    event.target.value = '';
+  };
+
+  const triggerFileSelect = () => {
+    if (directFileUpload) {
+      fileInputRef.current?.click();
+    } else {
+      setShowModal(true);
+    }
+  };
+
+  const triggerCameraCapture = () => {
+    if (directFileUpload && showCameraOption && isMobile) {
+      cameraInputRef.current?.click();
+    }
+  };
+
   return (
     <div>
-      <Button 
-        onClick={() => setShowModal(true)} 
-        className={buttonClassName}
-        disabled={disabled}
-        type="button"
-      >
-        {children}
-      </Button>
+      {/* Hidden file inputs for direct upload */}
+      {directFileUpload && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={allowedFileTypes.join(',')}
+            onChange={handleFileInputChange}
+            style={{ display: 'none' }}
+            multiple={maxNumberOfFiles > 1}
+          />
+          {showCameraOption && isMobile && (
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment" // Use back camera for documents
+              onChange={handleFileInputChange}
+              style={{ display: 'none' }}
+            />
+          )}
+        </>
+      )}
 
-      <DashboardModal
-        uppy={uppy}
-        open={showModal}
-        onRequestClose={() => setShowModal(false)}
-        proudlyDisplayPoweredByUppy={false}
-        note="📷 Upload a clear photo of your document"
-      />
+      {/* Main upload button */}
+      {directFileUpload ? (
+        showCameraOption && isMobile ? (
+          <div className="flex gap-2">
+            <Button 
+              onClick={triggerFileSelect} 
+              className={buttonClassName}
+              disabled={disabled}
+              type="button"
+            >
+              {children}
+            </Button>
+            <Button 
+              onClick={triggerCameraCapture}
+              className={buttonClassName}
+              disabled={disabled}
+              type="button"
+              variant="outline"
+            >
+              📷 Camera
+            </Button>
+          </div>
+        ) : (
+          <Button 
+            onClick={triggerFileSelect} 
+            className={buttonClassName}
+            disabled={disabled}
+            type="button"
+          >
+            {children}
+          </Button>
+        )
+      ) : (
+        <Button 
+          onClick={() => setShowModal(true)} 
+          className={buttonClassName}
+          disabled={disabled}
+          type="button"
+        >
+          {children}
+        </Button>
+      )}
+
+      {/* Modal for non-direct uploads */}
+      {!directFileUpload && (
+        <DashboardModal
+          uppy={uppy}
+          open={showModal}
+          onRequestClose={() => setShowModal(false)}
+          proudlyDisplayPoweredByUppy={false}
+          note="📷 Upload a clear photo of your document"
+        />
+      )}
     </div>
   );
 }

@@ -157,6 +157,8 @@ export function DocumentUploadSection({
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={(result) => handleDocumentUpload(result, 'ic')}
                     buttonClassName="flex-1 h-12 text-sm"
+                    directFileUpload={true}
+                    showCameraOption={true}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Change IC Photo</span>
@@ -169,6 +171,8 @@ export function DocumentUploadSection({
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={(result) => handleDocumentUpload(result, 'passport')}
                     buttonClassName="flex-1 h-12 text-sm"
+                    directFileUpload={true}
+                    showCameraOption={true}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Change Passport Photo</span>
@@ -204,6 +208,8 @@ export function DocumentUploadSection({
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={(result) => handleDocumentUpload(result, 'ic')}
                     buttonClassName="flex-1 h-12 text-sm"
+                    directFileUpload={true}
+                    showCameraOption={true}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Select IC Photo</span>
@@ -216,6 +222,8 @@ export function DocumentUploadSection({
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={(result) => handleDocumentUpload(result, 'passport')}
                     buttonClassName="flex-1 h-12 text-sm"
+                    directFileUpload={true}
+                    showCameraOption={true}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Select Passport Photo</span>
