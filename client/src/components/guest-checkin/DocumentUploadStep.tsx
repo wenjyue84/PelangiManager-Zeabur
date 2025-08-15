@@ -179,7 +179,7 @@ export function DocumentUploadStep({
                 </div>
               </div>
             ) : (
-              <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[40vh]">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Camera className="h-8 w-8 text-gray-400" />
                   <span className="text-2xl">📸</span>
@@ -197,7 +197,7 @@ export function DocumentUploadStep({
                     <p>Photos upload automatically once selected. No need to click upload button.</p>
                   </div>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 justify-center items-center w-full">
                   <ObjectUploader
                     maxNumberOfFiles={1}
                     maxFileSize={10485760} // 10MB
