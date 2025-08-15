@@ -67,12 +67,25 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       const response = await apiRequest("POST", "/api/guest-tokens", data);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setGeneratedToken(data);
-      toast({
-        title: "Check-in Link Created",
-        description: `Generated self-check-in link for capsule ${data.capsuleNumber}`,
-      });
+      const url = new URL(data.link);
+      if (checkInDate) url.searchParams.set("ci", checkInDate);
+      if (prefillGender) url.searchParams.set("g", prefillGender);
+      if (prefillNationality) url.searchParams.set("nat", prefillNationality);
+      const finalLink = url.toString();
+      try {
+        await navigator.clipboard.writeText(finalLink);
+        toast({
+          title: "Check-in Link Created & Copied!",
+          description: `Generated self-check-in link for capsule ${data.capsuleNumber}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Check-in Link Created",
+          description: `Generated self-check-in link for capsule ${data.capsuleNumber}. Manual copy needed.`,
+        });
+      }
       onTokenCreated?.();
     },
     onError: (error: any) => {
@@ -92,17 +105,20 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       return response.json();
     },
     onSuccess: async (data) => {
-      // Automatically copy to clipboard
       try {
         await navigator.clipboard.writeText(data.link);
         toast({
-          title: "Instant Link Created & Copied!",
-          description: `Auto-assign link copied to clipboard. ${labels.singular}: ${data.capsuleNumber}`,
+          title: "Instant link copied",
+          description: data.capsuleNumber
+            ? `${labels.singular} ${data.capsuleNumber} link copied to clipboard`
+            : `Link copied to clipboard. ${labels.singular} will be auto-assigned`,
         });
       } catch (error) {
         toast({
-          title: "Link Created",
-          description: `Auto-assign link created for capsule ${data.capsuleNumber}. Manual copy needed.`,
+          title: "Instant link created",
+          description: data.capsuleNumber
+            ? `${labels.singular} ${data.capsuleNumber} link created. Copy manually if needed.`
+            : `Link created. ${labels.singular} will be auto-assigned. Copy manually if needed.`,
         });
       }
       onTokenCreated?.();
