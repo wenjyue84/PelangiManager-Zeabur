@@ -778,7 +778,6 @@ export default function SortableGuestTable() {
               if (item.type === 'guest') {
                 const guest = item.data as Guest;
                 const isGuestCheckingOut = checkoutGuest?.id === guest.id;
-                const genderIcon = getGenderIcon(guest.gender || undefined);
                 return (
                   <Card key={`guest-${guest.id}`} className="p-0 overflow-hidden hover-card-pop">
                     <SwipeableGuestCard
@@ -789,18 +788,18 @@ export default function SortableGuestTable() {
                     >
                     <div className="p-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 ${genderIcon.bgColor} rounded-full flex items-center justify-center text-sm font-semibold ${genderIcon.textColor}`}>
-                          {getFirstInitial(guest.name)}
-                        </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-blue-600 text-white border-blue-600">{guest.capsuleNumber}</Badge>
-                            <button onClick={() => handleGuestClick(guest)} className="font-medium hover:underline focus:outline-none">
-                              {guest.name}
+                            <button
+                              onClick={() => handleGuestClick(guest)}
+                              className={`font-medium hover:underline focus:outline-none ${!isGuestPaid(guest) ? 'text-red-600' : ''}`}
+                            >
+                              {truncateName(guest.name)}
                             </button>
                           </div>
                           <div className="text-xs text-gray-600 mt-1">
-                            In: {formatShortDateTime(guest.checkinTime.toString())}
+                            In: {formatShortDate(guest.checkinTime.toString())}
                             {guest.expectedCheckoutDate && (
                               <span className="ml-2">Out: {formatShortDate(guest.expectedCheckoutDate)}</span>
                             )}
@@ -865,16 +864,13 @@ export default function SortableGuestTable() {
                   <Card key={`pending-${pendingData.id}`} className="p-3 bg-orange-50/60 hover-card-pop">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-sm font-semibold text-orange-600">
-                          P
-                        </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">{pendingData.capsuleNumber}</Badge>
-                            <span className="font-medium">{pendingData.name}</span>
+                            <span className="font-medium">{truncateName(pendingData.name)}</span>
                           </div>
                           <div className="text-xs text-orange-700 mt-1">
-                            In: {formatShortDateTime(pendingData.createdAt)}
+                            In: {formatShortDate(pendingData.createdAt)}
                             <span className="ml-2">Expires: {formatShortDate(pendingData.expiresAt)}</span>
                           </div>
                           {!isCondensedView && (
@@ -902,7 +898,7 @@ export default function SortableGuestTable() {
                           <Copy className="h-4 w-4" />
                         </Button>
                         {isAuthenticated ? (
-                          <Button 
+                          <Button
                             variant="outline"
                             className="h-11 px-4 rounded-full"
                             onClick={() => cancelTokenMutation.mutate(pendingData.id)}
