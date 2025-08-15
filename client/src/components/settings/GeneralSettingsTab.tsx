@@ -266,22 +266,44 @@ export default function GeneralSettingsTab({ settings, isLoading, form, onSubmit
                       <div className="text-sm text-gray-500 mt-2 space-y-1">
                         <div className="font-medium">Affected areas:</div>
                         <ol className="list-decimal list-inside space-y-1 ml-2 text-xs">
-                          <li>Dashboard page &gt; Occupancy Cards &amp; Table</li>
-                          <li>Guest Check-in page &gt; Assignment field</li>
-                          <li>Guest Check-out page &gt; Entity selector</li>
-                          <li>Cleaning page &gt; Status indicators</li>
-                          <li>Maintenance pages &gt; Problem tables</li>
-                          <li>Guest Details modal &gt; Summary fields</li>
-                          <li>Dashboard/Guests table &gt; Column headers</li>
-                          <li>Notifications &gt; Entity references</li>
-                          <li>Token generation &gt; Field labels</li>
-                          <li>Settings &gt; General configuration</li>
+                          <li>Dashboard page &gt; Occupancy Cards &amp; Guest Table headers</li>
+                          <li>Check-in page &gt; Assignment section &amp; Smart Features</li>
+                          <li>Check-out page &gt; Table headers &amp; View modes (Card/List/Table)</li>
+                          <li>Cleaning page &gt; Status cards &amp; notifications</li>
+                          <li>Settings tabs &gt; Maintenance problems &amp; Capsules management</li>
+                          <li>Guest Details modal &gt; Assignment display &amp; summary</li>
+                          <li>Daily Notifications &gt; Checkout reminders</li>
+                          <li>Guest Token Generator &gt; Assignment options &amp; labels</li>
+                          <li>Guest Check-in Success screen &gt; Assignment confirmation</li>
+                          <li>Admin Notifications &gt; Self check-in alerts</li>
+                          <li>Sortable Guest Table &gt; Column headers &amp; filters</li>
+                          <li>Extend Stay Dialog &gt; Assignment references</li>
+                          <li>Settings navigation &gt; Tab labels</li>
                         </ol>
                       </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={updateSettingsMutation.isPending}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {updateSettingsMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetToDefault}
+                    disabled={updateSettingsMutation.isPending}
+                    className="flex items-center gap-2"
+                  >
+                    Reset
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
