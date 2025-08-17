@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 declare global {
   interface Window {
@@ -14,12 +15,19 @@ declare global {
 }
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin");
+  const [password, setPassword] = useState("admin123");
   const [isLoading, setIsLoading] = useState(false);
   const [location, setLocation] = useLocation();
   const { login, loginWithGoogle, isAuthenticated } = useAuth();
   const { toast } = useToast();
+
+  // Get storage info to determine if we should auto-fill credentials
+  const { data: storageInfo, isLoading: isStorageLoading, error: storageError } = useQuery<{type: string; isDatabase: boolean; label: string}>({
+    queryKey: ["/api/storage/info"],
+    staleTime: 60000, // Cache for 1 minute
+    retry: false // Don't retry if it fails
+  });
 
   useEffect(() => {
     // If already authenticated, bounce to redirect target immediately
@@ -74,6 +82,33 @@ export function LoginForm() {
       }
     };
   }, []);
+
+  // Auto-fill credentials when using memory storage (development mode)
+  useEffect(() => {
+    console.log("Storage info debug:", {
+      storageInfo,
+      isStorageLoading,
+      storageError,
+      isDatabase: storageInfo?.isDatabase,
+      type: storageInfo?.type
+    });
+    
+    if (storageInfo && !storageInfo.isDatabase) {
+      console.log("Auto-filling credentials for memory storage");
+      // Using memory storage - auto-fill credentials for development convenience
+      setEmail("admin");
+      setPassword("admin123");
+    } else if (storageError) {
+      console.error("Failed to get storage info:", storageError);
+      // Fallback: auto-fill on localhost for development
+      if (typeof window !== 'undefined' && 
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        console.log("Fallback: Auto-filling credentials on localhost");
+        setEmail("admin");
+        setPassword("admin123");
+      }
+    }
+  }, [storageInfo, isStorageLoading, storageError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,8 +211,14 @@ export function LoginForm() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-orange-700">Pelangi Capsule Hostel</CardTitle>
           <CardDescription>Management System Login</CardDescription>
+          {storageInfo && !storageInfo.isDatabase && (
+            <div className="mt-2 p-2 bg-green-50 rounded text-xs text-green-700 border border-green-200">
+              <strong>Development Mode:</strong> Credentials auto-filled (Memory Storage)
+            </div>
+          )}
           {typeof window !== 'undefined' &&
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+            (!storageInfo || storageInfo.isDatabase) && (
               <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-600">
                 <strong>Demo Login:</strong> admin / admin123
               </div>
@@ -193,6 +234,7 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin"
+                autoComplete="username"
                 required
               />
             </div>
@@ -204,6 +246,7 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="admin123"
+                autoComplete="current-password"
                 required
               />
             </div>

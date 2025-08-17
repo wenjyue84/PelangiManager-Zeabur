@@ -58,8 +58,8 @@ export default function CheckIn() {
   const [checkedInGuest, setCheckedInGuest] = useState<any>(null);
   const [assignedCapsuleNumber, setAssignedCapsuleNumber] = useState<string | null>(null);
   
-  const { data: availableCapsules = [], isLoading: capsulesLoading } = useVisibilityQuery<Capsule[]>({
-    queryKey: ["/api/capsules/available"],
+  const { data: availableCapsules = [], isLoading: capsulesLoading } = useVisibilityQuery<(Capsule & { canAssign: boolean })[]>({
+    queryKey: ["/api/capsules/available-with-status"],
     // Uses smart config: nearRealtime (30s stale, 60s refetch)
   });
 
@@ -149,7 +149,9 @@ export default function CheckIn() {
     
     // Auto-assign capsule if we have a gender (default "male") but no capsule selected
     if (currentGender && availableCapsules.length > 0 && !currentCapsule) {
-      const recommendedCapsule = getRecommendedCapsule(currentGender, availableCapsules);
+      // Only recommend capsules that can be assigned (cleaned)
+      const assignableCapsules = availableCapsules.filter(capsule => capsule.canAssign);
+      const recommendedCapsule = getRecommendedCapsule(currentGender, assignableCapsules);
       if (recommendedCapsule) {
         form.setValue("capsuleNumber", recommendedCapsule);
       }
@@ -161,7 +163,9 @@ export default function CheckIn() {
     const subscription = form.watch((value, { name }) => {
       if (name === "gender" && value.gender && availableCapsules.length > 0) {
         // Always suggest a new capsule when gender changes
-        const recommendedCapsule = getRecommendedCapsule(value.gender, availableCapsules);
+        // Only recommend capsules that can be assigned (cleaned)
+        const assignableCapsules = availableCapsules.filter(capsule => capsule.canAssign);
+        const recommendedCapsule = getRecommendedCapsule(value.gender, assignableCapsules);
         
         if (recommendedCapsule && recommendedCapsule !== form.getValues("capsuleNumber")) {
           form.setValue("capsuleNumber", recommendedCapsule);
@@ -662,7 +666,7 @@ Welcome to Pelangi Capsule Hostel! 🌈`;
                 <TooltipTrigger asChild>
                   <Button 
                     type="submit"
-                    disabled={checkinMutation.isPending || availableCapsules.length === 0}
+                    disabled={checkinMutation.isPending || availableCapsules.filter(capsule => capsule.canAssign).length === 0}
                     isLoading={checkinMutation.isPending}
                     className="flex-1 bg-hostel-secondary hover:bg-green-600 text-white font-medium"
                   >

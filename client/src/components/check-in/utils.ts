@@ -51,8 +51,15 @@ export function getDefaultCollector(user: any): string {
 export function getRecommendedCapsule(gender: string, availableCapsules: Capsule[]): string {
   if (!availableCapsules || availableCapsules.length === 0) return "";
   
+  // Filter out uncleaned capsules (should already be filtered by the API, but double-check)
+  const cleanedCapsules = availableCapsules.filter(capsule => 
+    capsule.cleaningStatus === "cleaned"
+  );
+  
+  if (cleanedCapsules.length === 0) return "";
+  
   // Parse capsule numbers for sorting
-  const capsulesWithNumbers = availableCapsules.map(capsule => {
+  const capsulesWithNumbers = cleanedCapsules.map(capsule => {
     const match = capsule.number.match(/C(\d+)/);
     const numericValue = match ? parseInt(match[1]) : 0;
     return { ...capsule, numericValue, originalNumber: capsule.number };

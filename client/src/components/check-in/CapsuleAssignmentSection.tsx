@@ -8,7 +8,7 @@ import type { InsertGuest, Capsule } from "@shared/schema";
 
 interface CapsuleAssignmentSectionProps {
   form: UseFormReturn<InsertGuest>;
-  availableCapsules: Capsule[];
+  availableCapsules: (Capsule & { canAssign: boolean })[];
   capsulesLoading: boolean;
 }
 
@@ -25,9 +25,14 @@ export default function CapsuleAssignmentSection({
         <Bed className="mr-2 h-4 w-4" />
         {labels.singular} Assignment *
       </Label>
-      <p className="text-xs text-gray-600 mb-2">
-        💡 Smart Assignment: Select gender first for automatic {labels.lowerSingular} recommendation!
-      </p>
+      <div className="space-y-1 mb-2">
+        <p className="text-xs text-gray-600">
+          💡 Smart Assignment: Select gender first for automatic {labels.lowerSingular} recommendation!
+        </p>
+        <p className="text-xs text-orange-600">
+          ⚠️ Grey {labels.lowerPlural} cannot be selected (may need cleaning, maintenance, or be temporarily unavailable).
+        </p>
+      </div>
       {capsulesLoading ? (
         <Skeleton className="w-full h-10" />
       ) : (
@@ -133,14 +138,41 @@ export default function CapsuleAssignmentSection({
                         suitability = " 🎯 Recommended";
                       }
                       
-                      const labelText = `${capsule.number} - ${position} ${preference}${suitability}`.trim();
+                      // Show cleaning status and determine if capsule can be assigned
+                      let statusIcon = "";
+                      let statusText = "";
+                      
+                      if (!capsule.isAvailable) {
+                        statusIcon = " ⚠️";
+                        statusText = " Unavailable";
+                      } else if (capsule.cleaningStatus === "cleaned") {
+                        statusIcon = " ✨";
+                        statusText = " Clean";
+                      } else if (capsule.cleaningStatus === "to_be_cleaned") {
+                        statusIcon = " 🔄";
+                        statusText = " Needs Cleaning";
+                      } else {
+                        statusIcon = " ❓";
+                        statusText = ` Status: ${capsule.cleaningStatus || 'Unknown'}`;
+                      }
+                      
+                      const cleaningStatus = statusIcon + statusText;
+                      const isDisabled = !capsule.canAssign;
+                      
+                      const labelText = `${capsule.number} - ${position} ${preference}${suitability}${cleaningStatus}`.trim();
                       return (
-                        <SelectItem key={capsule.number} value={capsule.number} textValue={labelText}>
+                        <SelectItem 
+                          key={capsule.number} 
+                          value={capsule.number} 
+                          textValue={labelText}
+                          disabled={isDisabled}
+                          className={isDisabled ? "opacity-50 cursor-not-allowed text-gray-400" : ""}
+                        >
                           <div className="flex items-center justify-between w-full">
-                            <span>
-                              {capsule.number} - {position} {preference}{suitability}
+                            <span className={isDisabled ? "text-gray-400" : ""}>
+                              {capsule.number} - {position} {preference}{suitability}{cleaningStatus}
                             </span>
-                            <span className="text-xs text-gray-500 capitalize">
+                            <span className={`text-xs capitalize ${isDisabled ? "text-gray-400" : "text-gray-500"}`}>
                               {capsule.section || 'unknown'}
                             </span>
                           </div>

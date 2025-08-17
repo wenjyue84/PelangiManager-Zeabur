@@ -32,6 +32,7 @@ export interface IStorage {
   getGuestsWithCheckoutToday(): Promise<Guest[]>;
   getCapsuleOccupancy(): Promise<{ total: number; occupied: number; available: number; occupancyRate: number }>;
   getAvailableCapsules(): Promise<Capsule[]>;
+  getUncleanedAvailableCapsules(): Promise<Capsule[]>;
   getGuestByCapsuleAndName(capsuleNumber: string, name: string): Promise<Guest | undefined>;
   getGuestByToken(token: string): Promise<Guest | undefined>;
   
@@ -43,6 +44,7 @@ export interface IStorage {
   createCapsule(capsule: InsertCapsule): Promise<Capsule>;
   deleteCapsule(number: string): Promise<boolean>;
   markCapsuleCleaned(capsuleNumber: string, cleanedBy: string): Promise<Capsule | undefined>;
+  markCapsuleNeedsCleaning(capsuleNumber: string): Promise<Capsule | undefined>;
   getCapsulesByCleaningStatus(status: "cleaned" | "to_be_cleaned"): Promise<Capsule[]>;
   getGuestsByCapsule(capsuleNumber: string): Promise<Guest[]>;
   
@@ -487,7 +489,21 @@ export class MemStorage implements IStorage {
     const occupiedCapsules = new Set(checkedInGuests.data.map(guest => guest.capsuleNumber));
     
     return Array.from(this.capsules.values()).filter(
-      capsule => capsule.isAvailable && !occupiedCapsules.has(capsule.number)
+      capsule => capsule.isAvailable && 
+                  !occupiedCapsules.has(capsule.number) && 
+                  capsule.cleaningStatus === "cleaned"
+    );
+  }
+
+  // Get capsules that are available but not cleaned yet (for admin warnings)
+  async getUncleanedAvailableCapsules(): Promise<Capsule[]> {
+    const checkedInGuests = await this.getCheckedInGuests();
+    const occupiedCapsules = new Set(checkedInGuests.data.map(guest => guest.capsuleNumber));
+    
+    return Array.from(this.capsules.values()).filter(
+      capsule => capsule.isAvailable && 
+                  !occupiedCapsules.has(capsule.number) && 
+                  capsule.cleaningStatus === "to_be_cleaned"
     );
   }
 
@@ -604,6 +620,22 @@ export class MemStorage implements IStorage {
     return undefined;
   }
 
+  async markCapsuleNeedsCleaning(capsuleNumber: string): Promise<Capsule | undefined> {
+    const capsule = this.capsules.get(capsuleNumber);
+    
+    if (capsule) {
+      const updatedCapsule: Capsule = {
+        ...capsule,
+        cleaningStatus: 'to_be_cleaned',
+        lastCleanedAt: null,
+        lastCleanedBy: null,
+      };
+      this.capsules.set(capsuleNumber, updatedCapsule);
+      return updatedCapsule;
+    }
+    return undefined;
+  }
+
   async getCapsulesByCleaningStatus(status: "cleaned" | "to_be_cleaned"): Promise<Capsule[]> {
     return Array.from(this.capsules.values()).filter(
       capsule => capsule.cleaningStatus === status
@@ -626,12 +658,8 @@ export class MemStorage implements IStorage {
     };
     this.capsuleProblems.set(id, capsuleProblem);
     
-    // Mark capsule as unavailable
-    const capsule = this.capsules.get(problem.capsuleNumber);
-    if (capsule) {
-      capsule.isAvailable = false;
-      this.capsules.set(problem.capsuleNumber, capsule);
-    }
+    // Note: We no longer automatically mark capsules as unavailable when problems are created.
+    // Users can manually mark capsules as unavailable in Settings if needed.
     
     return capsuleProblem;
   }
@@ -668,14 +696,8 @@ export class MemStorage implements IStorage {
       const activeProblems = Array.from(this.capsuleProblems.values())
         .filter(p => p.capsuleNumber === problem.capsuleNumber && !p.isResolved);
       
-      // If no other active problems, mark capsule as available
-      if (activeProblems.length === 0) {
-        const capsule = this.capsules.get(problem.capsuleNumber);
-        if (capsule) {
-          capsule.isAvailable = true;
-          this.capsules.set(problem.capsuleNumber, capsule);
-        }
-      }
+      // Note: We no longer automatically manage capsule availability based on problems.
+      // Users can manually control availability in Settings.
       
       return problem;
     }
@@ -692,14 +714,8 @@ export class MemStorage implements IStorage {
       const activeProblems = Array.from(this.capsuleProblems.values())
         .filter(p => p.capsuleNumber === problem.capsuleNumber && !p.isResolved);
       
-      // If no other active problems, mark capsule as available
-      if (activeProblems.length === 0) {
-        const capsule = this.capsules.get(problem.capsuleNumber);
-        if (capsule) {
-          capsule.isAvailable = true;
-          this.capsules.set(problem.capsuleNumber, capsule);
-        }
-      }
+      // Note: We no longer automatically manage capsule availability based on problems.
+      // Users can manually control availability in Settings.
       
       return true;
     }
@@ -1193,9 +1209,28 @@ class DatabaseStorage implements IStorage {
     const availableCapsules = await this.db
       .select()
       .from(capsules)
-      .where(eq(capsules.isAvailable, true));
+      .where(and(
+        eq(capsules.isAvailable, true),
+        eq(capsules.cleaningStatus, "cleaned")
+      ));
     
     return availableCapsules.filter(capsule => !occupiedCapsules.has(capsule.number));
+  }
+
+  // Get capsules that are available but not cleaned yet (for admin warnings)
+  async getUncleanedAvailableCapsules(): Promise<Capsule[]> {
+    const checkedInGuests = await this.getCheckedInGuests();
+    const occupiedCapsules = new Set(checkedInGuests.data.map(guest => guest.capsuleNumber));
+    
+    const uncleanedCapsules = await this.db
+      .select()
+      .from(capsules)
+      .where(and(
+        eq(capsules.isAvailable, true),
+        eq(capsules.cleaningStatus, "to_be_cleaned")
+      ));
+    
+    return uncleanedCapsules.filter(capsule => !occupiedCapsules.has(capsule.number));
   }
 
   async getAllCapsules(): Promise<Capsule[]> {
@@ -1230,6 +1265,20 @@ class DatabaseStorage implements IStorage {
         cleaningStatus: 'cleaned',
         lastCleanedAt: new Date(),
         lastCleanedBy: cleanedBy
+      })
+      .where(eq(capsules.number, capsuleNumber))
+      .returning();
+    
+    return result[0];
+  }
+
+  async markCapsuleNeedsCleaning(capsuleNumber: string): Promise<Capsule | undefined> {
+    const result = await this.db
+      .update(capsules)
+      .set({
+        cleaningStatus: 'to_be_cleaned',
+        lastCleanedAt: null,
+        lastCleanedBy: null
       })
       .where(eq(capsules.number, capsuleNumber))
       .returning();

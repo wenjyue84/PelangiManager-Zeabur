@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Clock, CheckCircle, User, CheckCheck } from "lucide-react";
+import { Sparkles, Clock, CheckCircle, User, CheckCheck, Undo2 } from "lucide-react";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -106,6 +106,86 @@ function MarkCleanedDialog({ capsule, onSuccess }: MarkCleanedDialogProps) {
   );
 }
 
+interface UndoCleanedDialogProps {
+  capsule: Capsule;
+  onSuccess: () => void;
+}
+
+function UndoCleanedDialog({ capsule, onSuccess }: UndoCleanedDialogProps) {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const labels = useAccommodationLabels();
+
+  const mutation = useMutation({
+    mutationFn: async (data: { capsuleNumber: string }) => {
+      await apiRequest("POST", `/api/capsules/${data.capsuleNumber}/undo-cleaned`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: `${labels.singular} ${capsule.number} cleaning undone successfully`,
+      });
+      setOpen(false);
+      onSuccess();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to undo capsule cleaning",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUndoCleaned = () => {
+    mutation.mutate({
+      capsuleNumber: capsule.number,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="text-orange-600 border-orange-300 hover:bg-orange-50">
+          <Undo2 className="h-4 w-4 mr-1" />
+          Undo
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Undo Cleaning for {labels.singular} {capsule.number}</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to undo the cleaning status for this {labels.lowerSingular}?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground">
+            This will mark the {labels.lowerSingular} as "needs cleaning" and it will no longer be available for new guest assignments until cleaned again.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={mutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUndoCleaned}
+            disabled={mutation.isPending}
+            variant="outline"
+            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+          >
+            {mutation.isPending ? "Undoing..." : "Undo Cleaning"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface CapsuleCleaningCardProps {
   capsule: Capsule;
   onRefresh: () => void;
@@ -113,18 +193,43 @@ interface CapsuleCleaningCardProps {
 
 function CapsuleCleaningCard({ capsule, onRefresh }: CapsuleCleaningCardProps) {
   const isClean = capsule.cleaningStatus === "cleaned";
+  const needsCleaning = capsule.cleaningStatus === "to_be_cleaned";
+  const isUnavailable = !capsule.isAvailable;
+  
+  // Determine card styling based on status
+  let cardClass = "";
+  let badgeText = "";
+  let badgeClass = "";
+  
+  if (isUnavailable) {
+    cardClass = "border-red-200 bg-red-50";
+    badgeText = "Unavailable";
+    badgeClass = "bg-red-500 text-white";
+  } else if (needsCleaning) {
+    cardClass = "border-orange-200 bg-orange-50";
+    badgeText = "Needs Cleaning";
+    badgeClass = "bg-orange-500 text-white";
+  } else if (isClean) {
+    cardClass = "border-green-200 bg-green-50";
+    badgeText = "Clean";
+    badgeClass = "bg-green-600 text-white";
+  } else {
+    cardClass = "border-gray-200 bg-gray-50";
+    badgeText = capsule.cleaningStatus || "Unknown";
+    badgeClass = "bg-gray-500 text-white";
+  }
   
   return (
-    <Card className={`${isClean ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
+    <Card className={cardClass}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-lg">{capsule.number}</h3>
             <Badge 
-              variant={isClean ? "default" : "secondary"}
-              className={isClean ? "bg-green-600 text-white" : "bg-orange-500 text-white"}
+              variant="secondary"
+              className={badgeClass}
             >
-              {isClean ? "Clean" : "Needs Cleaning"}
+              {badgeText}
             </Badge>
           </div>
           <div className="text-sm text-muted-foreground capitalize">
@@ -147,21 +252,32 @@ function CapsuleCleaningCard({ capsule, onRefresh }: CapsuleCleaningCardProps) {
             </div>
           )}
           
-          {!isClean && (
+          {needsCleaning && (
             <div className="flex items-center gap-2 text-sm text-orange-600">
               <Clock className="h-4 w-4" />
               <span>Requires cleaning after guest checkout</span>
+            </div>
+          )}
+          
+          {isUnavailable && (
+            <div className="flex items-center gap-2 text-sm text-red-600">
+              <Clock className="h-4 w-4" />
+              <span>Unavailable (may have maintenance issues)</span>
             </div>
           )}
         </div>
         
         <div className="flex justify-between items-center">
           <div className="text-xs text-muted-foreground">
-            Status: {capsule.isAvailable ? "Available" : "Occupied"}
+            Physical Status: {capsule.isAvailable ? "Available" : "Unavailable"}
           </div>
           
-          {!isClean && (
+          {needsCleaning && (
             <MarkCleanedDialog capsule={capsule} onSuccess={onRefresh} />
+          )}
+          
+          {isClean && (
+            <UndoCleanedDialog capsule={capsule} onSuccess={onRefresh} />
           )}
         </div>
       </CardContent>
@@ -182,7 +298,7 @@ export default function CapsuleCleaningStatus() {
   }, [isMobile]);
   
   const { data: capsulesToClean = [], isLoading: loadingToClean, refetch: refetchToClean } = useQuery<Capsule[]>({
-    queryKey: ["/api/capsules/cleaning-status/to_be_cleaned"],
+    queryKey: ["/api/capsules/needs-attention"],
     staleTime: 30000, // 30 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: true,
@@ -202,7 +318,7 @@ export default function CapsuleCleaningStatus() {
     await Promise.all([
       refetchToClean(),
       refetchCleaned(),
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/cleaning-status/to_be_cleaned"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/capsules/needs-attention"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/capsules/cleaning-status/cleaned"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/capsules"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] }),
@@ -254,34 +370,82 @@ export default function CapsuleCleaningStatus() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {capsulesToClean.map((capsule) => (
-                <TableRow key={capsule.id}>
-                  <TableCell>{capsule.number}</TableCell>
-                  <TableCell>{capsule.section}</TableCell>
-                  <TableCell>
-                    <Badge className="bg-orange-500 text-white">Needs Cleaning</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <MarkCleanedDialog capsule={capsule} onSuccess={handleRefresh} />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {capsulesToClean.map((capsule) => {
+                const needsCleaning = capsule.cleaningStatus === "to_be_cleaned";
+                const isUnavailable = !capsule.isAvailable;
+                
+                let badgeText = "";
+                let badgeClass = "";
+                
+                if (isUnavailable) {
+                  badgeText = "Unavailable";
+                  badgeClass = "bg-red-500 text-white";
+                } else if (needsCleaning) {
+                  badgeText = "Needs Cleaning";
+                  badgeClass = "bg-orange-500 text-white";
+                } else {
+                  badgeText = capsule.cleaningStatus || "Unknown";
+                  badgeClass = "bg-gray-500 text-white";
+                }
+                
+                return (
+                  <TableRow key={capsule.id}>
+                    <TableCell>{capsule.number}</TableCell>
+                    <TableCell>{capsule.section}</TableCell>
+                    <TableCell>
+                      <Badge className={badgeClass}>{badgeText}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {needsCleaning && <MarkCleanedDialog capsule={capsule} onSuccess={handleRefresh} />}
+                      {isUnavailable && <span className="text-sm text-red-600">Needs maintenance</span>}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         );
       case 'list':
         return (
           <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {capsulesToClean.map((capsule) => (
-              <div key={capsule.id} className="flex items-center justify-between rounded-md border border-orange-200 bg-orange-50 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{capsule.number}</span>
-                  <Badge className="bg-orange-500 text-white">Needs Cleaning</Badge>
-                  <span className="text-xs text-muted-foreground capitalize">{capsule.section}</span>
+            {capsulesToClean.map((capsule) => {
+              const needsCleaning = capsule.cleaningStatus === "to_be_cleaned";
+              const isUnavailable = !capsule.isAvailable;
+              
+              let badgeText = "";
+              let badgeClass = "";
+              let borderClass = "";
+              let bgClass = "";
+              
+              if (isUnavailable) {
+                badgeText = "Unavailable";
+                badgeClass = "bg-red-500 text-white";
+                borderClass = "border-red-200";
+                bgClass = "bg-red-50";
+              } else if (needsCleaning) {
+                badgeText = "Needs Cleaning";
+                badgeClass = "bg-orange-500 text-white";
+                borderClass = "border-orange-200";
+                bgClass = "bg-orange-50";
+              } else {
+                badgeText = capsule.cleaningStatus || "Unknown";
+                badgeClass = "bg-gray-500 text-white";
+                borderClass = "border-gray-200";
+                bgClass = "bg-gray-50";
+              }
+              
+              return (
+                <div key={capsule.id} className={`flex items-center justify-between rounded-md border ${borderClass} ${bgClass} px-3 py-2`}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{capsule.number}</span>
+                    <Badge className={badgeClass}>{badgeText}</Badge>
+                    <span className="text-xs text-muted-foreground capitalize">{capsule.section}</span>
+                  </div>
+                  {needsCleaning && <MarkCleanedDialog capsule={capsule} onSuccess={handleRefresh} />}
+                  {isUnavailable && <span className="text-xs text-red-600">Maintenance</span>}
                 </div>
-                <MarkCleanedDialog capsule={capsule} onSuccess={handleRefresh} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       case 'card':
@@ -313,6 +477,7 @@ export default function CapsuleCleaningStatus() {
                 <TableHead>Status</TableHead>
                 <TableHead>Cleaned At</TableHead>
                 <TableHead>Cleaned By</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -325,6 +490,9 @@ export default function CapsuleCleaningStatus() {
                   </TableCell>
                   <TableCell>{capsule.lastCleanedAt ? new Date(capsule.lastCleanedAt).toLocaleString() : 'Never'}</TableCell>
                   <TableCell>{capsule.lastCleanedBy}</TableCell>
+                  <TableCell>
+                    <UndoCleanedDialog capsule={capsule} onSuccess={handleRefresh} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -346,6 +514,7 @@ export default function CapsuleCleaningStatus() {
                     <Badge className="bg-green-600 text-white">Clean</Badge>
                     <span className="text-xs text-muted-foreground capitalize">{capsule.section}</span>
                   </div>
+                  <UndoCleanedDialog capsule={capsule} onSuccess={handleRefresh} />
                 </div>
               ))}
           </div>
@@ -410,7 +579,7 @@ export default function CapsuleCleaningStatus() {
         <div>
           <div className="flex items-center gap-2 mb-4 justify-between flex-wrap">
             <Clock className="h-5 w-5 text-orange-500" />
-            <h3 className="font-semibold text-lg">Needs Cleaning ({capsulesToClean.length})</h3>
+            <h3 className="font-semibold text-lg">Needs Attention ({capsulesToClean.length})</h3>
             <Button
               variant="destructive"
               size="sm"

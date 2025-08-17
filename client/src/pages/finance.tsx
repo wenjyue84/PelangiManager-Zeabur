@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Plus, Trash2, Edit, TrendingUp, TrendingDown, Calendar, FileText, Tag, Tags, MessageSquare, Camera, Image } from "lucide-react";
+import { DollarSign, Plus, Trash2, Edit, TrendingUp, TrendingDown, Calendar, FileText, Tag, Tags, MessageSquare, Camera, Image, ArrowUpDown, Filter, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
@@ -96,6 +96,12 @@ export default function Finance() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [amountMin, setAmountMin] = useState<string>("");
+  const [amountMax, setAmountMax] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "">("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string>("");
   const [itemPhotoUrl, setItemPhotoUrl] = useState<string>("");
   const [selectedFormCategory, setSelectedFormCategory] = useState<string>("");
@@ -168,6 +174,34 @@ export default function Finance() {
     },
   });
 
+  // Edit expense mutation
+  const editExpenseMutation = useMutation({
+    mutationFn: async (data: { id: string } & ExpenseFormData) => {
+      const { id, ...updateData } = data;
+      const response = await apiRequest("PUT", `/api/expenses/${id}`, {
+        ...updateData,
+        amount: parseFloat(updateData.amount),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      setEditingExpense(null);
+      resetForm();
+      toast({
+        title: "Expense Updated",
+        description: "Expense has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update expense",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Photo upload handlers
   const handleGetUploadParameters = async () => {
     try {
@@ -223,7 +257,30 @@ export default function Finance() {
       receiptPhotoUrl: receiptPhotoUrl || data.receiptPhotoUrl || undefined,
       itemPhotoUrl: itemPhotoUrl || data.itemPhotoUrl || undefined,
     };
-    addExpenseMutation.mutate(payload);
+    
+    if (editingExpense) {
+      editExpenseMutation.mutate({ id: editingExpense.id, ...payload });
+    } else {
+      addExpenseMutation.mutate(payload);
+    }
+  };
+
+  const startEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    form.reset({
+      description: expense.description,
+      amount: expense.amount?.toString() || "",
+      category: expense.category as any,
+      subcategory: expense.subcategory || "",
+      date: expense.date,
+      notes: expense.notes || "",
+      receiptPhotoUrl: expense.receiptPhotoUrl || "",
+      itemPhotoUrl: expense.itemPhotoUrl || "",
+    });
+    setReceiptPhotoUrl(expense.receiptPhotoUrl || "");
+    setItemPhotoUrl(expense.itemPhotoUrl || "");
+    setSelectedFormCategory(expense.category);
+    setShowAddExpense(true);
   };
 
   const resetForm = () => {
@@ -231,18 +288,73 @@ export default function Finance() {
     setReceiptPhotoUrl("");
     setItemPhotoUrl("");
     setSelectedFormCategory("");
+    setEditingExpense(null);
+  };
+
+  // Date range shortcuts
+  const setDateRange = (range: string) => {
+    const now = new Date();
+    let from = "";
+    let to = "";
+    
+    switch (range) {
+      case "today":
+        from = to = now.toISOString().split('T')[0];
+        break;
+      case "yesterday":
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        from = to = yesterday.toISOString().split('T')[0];
+        break;
+      case "this-week":
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        from = startOfWeek.toISOString().split('T')[0];
+        to = now.toISOString().split('T')[0];
+        break;
+      case "this-month":
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        to = now.toISOString().split('T')[0];
+        break;
+      case "last-month":
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        from = lastMonth.toISOString().split('T')[0];
+        to = lastMonthEnd.toISOString().split('T')[0];
+        break;
+      case "last-7-days":
+        const last7Days = new Date(now);
+        last7Days.setDate(now.getDate() - 7);
+        from = last7Days.toISOString().split('T')[0];
+        to = now.toISOString().split('T')[0];
+        break;
+      case "last-30-days":
+        const last30Days = new Date(now);
+        last30Days.setDate(now.getDate() - 30);
+        from = last30Days.toISOString().split('T')[0];
+        to = now.toISOString().split('T')[0];
+        break;
+      default:
+        from = to = "";
+    }
+    
+    setDateFrom(from);
+    setDateTo(to);
+    setDateFilter(range);
   };
 
   // Calculate totals and analytics
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
   const monthlyExpenses = expenses
     .filter(exp => {
+      if (!exp.date) return false;
       const expDate = new Date(exp.date);
+      if (isNaN(expDate.getTime())) return false;
       return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
     })
-    .reduce((sum, exp) => sum + exp.amount, 0);
+    .reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
   // Calculate monthly breakdowns for the last 6 months
   const monthlyBreakdowns = [];
@@ -253,13 +365,15 @@ export default function Finance() {
     const year = date.getFullYear();
     
     const monthExpenses = expenses.filter(exp => {
+      if (!exp.date) return false;
       const expDate = new Date(exp.date);
+      if (isNaN(expDate.getTime())) return false;
       return expDate.getMonth() === month && expDate.getFullYear() === year;
     });
     
-    const total = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const total = monthExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
     const categoryTotals = monthExpenses.reduce((acc, exp) => {
-      acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+      acc[exp.category] = (acc[exp.category] || 0) + (exp.amount || 0);
       return acc;
     }, {} as Record<string, number>);
     
@@ -275,25 +389,64 @@ export default function Finance() {
   // Calculate category totals for current month
   const currentMonthCategories = expenses
     .filter(exp => {
+      if (!exp.date) return false;
       const expDate = new Date(exp.date);
+      if (isNaN(expDate.getTime())) return false;
       return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
     })
     .reduce((acc, exp) => {
-      acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+      acc[exp.category] = (acc[exp.category] || 0) + (exp.amount || 0);
       return acc;
     }, {} as Record<string, number>);
 
-  // Filter expenses
-  const filteredExpenses = expenses.filter(expense => {
+  // Filter and sort expenses
+  let filteredExpenses = expenses.filter(expense => {
+    // Category filter
     if (selectedCategory && selectedCategory !== "all" && expense.category !== selectedCategory) return false;
     
-    if (dateFilter === "month") {
+    // Date range filter
+    if (dateFrom || dateTo) {
+      if (!expense.date) return false;
       const expDate = new Date(expense.date);
+      if (isNaN(expDate.getTime())) return false;
+      
+      const expDateStr = expDate.toISOString().split('T')[0];
+      if (dateFrom && expDateStr < dateFrom) return false;
+      if (dateTo && expDateStr > dateTo) return false;
+    } else if (dateFilter === "month") {
+      // Legacy month filter for backward compatibility
+      if (!expense.date) return false;
+      const expDate = new Date(expense.date);
+      if (isNaN(expDate.getTime())) return false;
       return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
     }
     
+    // Amount range filter
+    const amount = expense.amount || 0;
+    if (amountMin && amount < parseFloat(amountMin)) return false;
+    if (amountMax && amount > parseFloat(amountMax)) return false;
+    
     return true;
   });
+
+  // Apply sorting
+  if (sortBy) {
+    filteredExpenses = [...filteredExpenses].sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortBy === "date") {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        comparison = dateA - dateB;
+      } else if (sortBy === "amount") {
+        const amountA = a.amount || 0;
+        const amountB = b.amount || 0;
+        comparison = amountA - amountB;
+      }
+      
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -359,7 +512,7 @@ export default function Finance() {
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Add New Expense</DialogTitle>
+                      <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                       <div>
@@ -421,12 +574,12 @@ export default function Finance() {
                           Subcategory
                         </Label>
                         {selectedFormCategory && expenseCategories[selectedFormCategory as keyof typeof expenseCategories] ? (
-                          <Select onValueChange={(value) => form.setValue("subcategory", value)}>
+                          <Select onValueChange={(value) => form.setValue("subcategory", value === "none" ? "" : value)}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select subcategory (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">No subcategory</SelectItem>
+                              <SelectItem value="none">No subcategory</SelectItem>
                               {expenseCategories[selectedFormCategory as keyof typeof expenseCategories].subcategories.map((subcat) => (
                                 <SelectItem key={subcat} value={subcat}>{subcat}</SelectItem>
                               ))}
@@ -572,11 +725,17 @@ export default function Finance() {
                       </div>
                       
                       <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setShowAddExpense(false)}>
+                        <Button type="button" variant="outline" onClick={() => {
+                          setShowAddExpense(false);
+                          resetForm();
+                        }}>
                           Cancel
                         </Button>
-                        <Button type="submit" disabled={addExpenseMutation.isPending}>
-                          {addExpenseMutation.isPending ? "Adding..." : "Add Expense"}
+                        <Button type="submit" disabled={addExpenseMutation.isPending || editExpenseMutation.isPending}>
+                          {editingExpense ? 
+                            (editExpenseMutation.isPending ? "Updating..." : "Update Expense") : 
+                            (addExpenseMutation.isPending ? "Adding..." : "Add Expense")
+                          }
                         </Button>
                       </div>
                     </form>
@@ -585,29 +744,191 @@ export default function Finance() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Filters */}
-              <div className="flex gap-4 mb-4">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {Object.entries(expenseCategories).map(([key, cat]) => (
-                      <SelectItem key={key} value={key}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Enhanced Filters */}
+              <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Filter className="h-4 w-4" />
+                  <span className="font-medium">Filters & Sorting</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setDateFilter("all");
+                      setDateFrom("");
+                      setDateTo("");
+                      setAmountMin("");
+                      setAmountMax("");
+                      setSortBy("");
+                    }}
+                    className="ml-auto text-xs"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear All
+                  </Button>
+                </div>
                 
-                <Select value={dateFilter} onValueChange={setDateFilter}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Time</SelectItem>
-                    <SelectItem value="month">This Month</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* First Row: Category and Date Range Shortcuts */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Category</Label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {Object.entries(expenseCategories).map(([key, cat]) => (
+                          <SelectItem key={key} value={key}>{cat.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Quick Date Range</Label>
+                    <Select value={dateFilter} onValueChange={(value) => {
+                      if (value === "all") {
+                        setDateFrom("");
+                        setDateTo("");
+                        setDateFilter("all");
+                      } else {
+                        setDateRange(value);
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="yesterday">Yesterday</SelectItem>
+                        <SelectItem value="this-week">This Week</SelectItem>
+                        <SelectItem value="last-7-days">Last 7 Days</SelectItem>
+                        <SelectItem value="this-month">This Month</SelectItem>
+                        <SelectItem value="last-month">Last Month</SelectItem>
+                        <SelectItem value="last-30-days">Last 30 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Sort By</Label>
+                    <div className="flex gap-2">
+                      <Select value={sortBy || "none"} onValueChange={(value: "date" | "amount" | "none") => setSortBy(value === "none" ? "" : value)}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="No Sorting" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Sorting</SelectItem>
+                          <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="amount">Amount</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {sortBy && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                          className="px-3"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                          {sortOrder === "asc" ? "↑" : "↓"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Second Row: Custom Date Range and Amount Range */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label className="text-sm font-medium">Custom Date Range</Label>
+                    <div className="flex gap-2 mt-1">
+                      <div className="flex-1">
+                        <Input
+                          type="date"
+                          value={dateFrom}
+                          onChange={(e) => {
+                            setDateFrom(e.target.value);
+                            setDateFilter("custom");
+                          }}
+                          placeholder="From date"
+                        />
+                      </div>
+                      <span className="self-center text-gray-500">to</span>
+                      <div className="flex-1">
+                        <Input
+                          type="date"
+                          value={dateTo}
+                          onChange={(e) => {
+                            setDateTo(e.target.value);
+                            setDateFilter("custom");
+                          }}
+                          placeholder="To date"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Amount Range (RM)</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="number"
+                        value={amountMin}
+                        onChange={(e) => setAmountMin(e.target.value)}
+                        placeholder="Min amount"
+                        step="0.01"
+                      />
+                      <span className="self-center text-gray-500">to</span>
+                      <Input
+                        type="number"
+                        value={amountMax}
+                        onChange={(e) => setAmountMax(e.target.value)}
+                        placeholder="Max amount"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Active Filters Display */}
+                {(selectedCategory !== "all" || dateFrom || dateTo || amountMin || amountMax || sortBy) && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <span className="text-xs text-gray-600">Active filters:</span>
+                    {selectedCategory !== "all" && (
+                      <Badge variant="secondary" className="text-xs">
+                        Category: {expenseCategories[selectedCategory as keyof typeof expenseCategories]?.label}
+                      </Badge>
+                    )}
+                    {dateFrom && (
+                      <Badge variant="secondary" className="text-xs">
+                        From: {dateFrom}
+                      </Badge>
+                    )}
+                    {dateTo && (
+                      <Badge variant="secondary" className="text-xs">
+                        To: {dateTo}
+                      </Badge>
+                    )}
+                    {amountMin && (
+                      <Badge variant="secondary" className="text-xs">
+                        Min: RM{amountMin}
+                      </Badge>
+                    )}
+                    {amountMax && (
+                      <Badge variant="secondary" className="text-xs">
+                        Max: RM{amountMax}
+                      </Badge>
+                    )}
+                    {sortBy && (
+                      <Badge variant="secondary" className="text-xs">
+                        Sort: {sortBy} ({sortOrder === "asc" ? "↑" : "↓"})
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Expenses Table */}
@@ -634,7 +955,7 @@ export default function Finance() {
                       filteredExpenses.map((expense) => (
                         <TableRow key={expense.id}>
                           <TableCell>
-                            {new Date(expense.date).toLocaleDateString()}
+                            {expense.date && !isNaN(new Date(expense.date).getTime()) ? new Date(expense.date).toLocaleDateString() : "No Date"}
                           </TableCell>
                           <TableCell className="font-medium">
                             {expense.description}
@@ -686,17 +1007,27 @@ export default function Finance() {
                             </div>
                           </TableCell>
                           <TableCell className="font-semibold">
-                            RM {expense.amount.toFixed(2)}
+                            RM {(expense.amount || 0).toFixed(2)}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteExpenseMutation.mutate(expense.id)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startEdit(expense)}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteExpenseMutation.mutate(expense.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
