@@ -2517,10 +2517,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Expense Management API endpoints
+  // Normalize expense amounts to numbers before sending to clients
+  const formatExpense = (exp: any) => ({ ...exp, amount: parseFloat(exp.amount) });
+
   app.get("/api/expenses", authenticateToken, async (req: any, res) => {
     try {
       const result = await storage.getExpenses();
-      res.json(result);
+      res.json(result.map(formatExpense));
     } catch (error) {
       console.error("Failed to fetch expenses:", error);
       res.status(500).json({ error: "Failed to fetch expenses" });
@@ -2530,11 +2533,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/expenses", authenticateToken, async (req: any, res) => {
     try {
       const validatedData = await validateData(insertExpenseSchema, req.body);
-      const result = await storage.addExpense({ 
-        ...validatedData, 
+      const result = await storage.addExpense({
+        ...validatedData,
         createdBy: req.user?.id || 'unknown'
       });
-      res.json(result);
+      res.json(formatExpense(result));
     } catch (error) {
       console.error("Failed to add expense:", error);
       if (error instanceof z.ZodError) {
@@ -2558,7 +2561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result) {
         return res.status(404).json({ error: "Expense not found" });
       }
-      res.json(result);
+      res.json(formatExpense(result));
     } catch (error) {
       console.error("Failed to update expense:", error);
       if (error instanceof z.ZodError) {
