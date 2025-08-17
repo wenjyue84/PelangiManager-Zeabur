@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, Edit, Trash2, Filter } from "lucide-react";
+import { Building, Plus, Edit, Trash2, Filter, Download } from "lucide-react";
 
 import { apiRequest } from "@/lib/queryClient";
 import { type CapsuleProblem, type PaginatedResponse } from "@shared/schema";
@@ -36,6 +36,7 @@ const capsuleFormSchema = z.object({
 type CapsuleFormData = z.infer<typeof capsuleFormSchema>;
 
 export default function CapsulesTab({ capsules, queryClient, toast, labels }: any) {
+  console.log('CapsulesTab rendered with:', { capsules: capsules?.length, labels });
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -218,6 +219,62 @@ export default function CapsulesTab({ capsules, queryClient, toast, labels }: an
     return problems.filter(p => !p.isResolved).length;
   };
 
+  const exportCapsulesToCSV = () => {
+    console.log('Export button clicked, items:', items.length);
+    if (items.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no capsules to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prepare CSV data
+    const csvHeaders = [
+      "Capsule Number",
+      "Section", 
+      "Position",
+      "To Rent",
+      "Color",
+      "Purchase Date",
+      "Remark",
+      "Active Problems"
+    ];
+
+    const csvData = items.map(capsule => [
+      capsule.number,
+      capsule.section,
+      capsule.position || "",
+      capsule.toRent !== false ? "Yes" : "No",
+      capsule.color || "",
+      capsule.purchaseDate ? new Date(capsule.purchaseDate).toLocaleDateString() : "",
+      capsule.remark || "",
+      getActiveProblemsCount(capsule.number)
+    ]);
+
+    // Combine headers and data
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `capsules_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${items.length} capsules to CSV file.`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -227,7 +284,9 @@ export default function CapsulesTab({ capsules, queryClient, toast, labels }: an
               <Building className="h-5 w-5 text-blue-600" />
               {labels.plural} ({items.length})
             </CardTitle>
-            <div className="flex items-center gap-3">
+            {/* Debug info */}
+            <div className="text-xs text-gray-500">Debug: {items.length} items</div>
+            <div className="flex items-center gap-4">
               {/* To Rent Filter */}
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-gray-600" />
@@ -292,6 +351,20 @@ export default function CapsulesTab({ capsules, queryClient, toast, labels }: an
                   </div>
                 </Button>
               </div>
+              
+              {/* Export Button */}
+              <div className="text-red-500 font-bold text-lg">EXPORT BUTTON HERE</div>
+              <Button 
+                variant="outline" 
+                onClick={exportCapsulesToCSV} 
+                className="flex items-center gap-2 bg-red-500 text-white hover:bg-red-600 font-bold px-6 py-3 text-lg"
+                disabled={items.length === 0}
+                style={{ minWidth: '150px', border: '3px solid red' }}
+              >
+                <Download className="h-6 w-6" />
+                EXPORT CSV
+              </Button>
+              
               <Button onClick={() => setCreateDialogOpen(true)} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Add {labels.singular}
