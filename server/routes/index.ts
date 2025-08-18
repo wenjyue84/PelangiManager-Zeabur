@@ -9,7 +9,10 @@ import settingsRoutes from "./settings";
 import expenseRoutes from "./expenses";
 import objectRoutes from "./objects";
 import dashboardRoutes from "./dashboard";
+<<<<<<< HEAD
 import testRoutes from "./tests";
+=======
+>>>>>>> 69ba485cefd6e0d7fab3d7a2d39f873e678bb69d
 
 export function registerRoutes(app: Express) {
   // Register auth routes
@@ -23,13 +26,10 @@ export function registerRoutes(app: Express) {
   
   // Register capsule routes
   app.use("/api/capsules", capsuleRoutes);
-  
   // Register admin routes
   app.use("/api/admin", adminRoutes);
-  
   // Register problem tracking routes
   app.use("/api/problems", problemRoutes);
-  
   // Register settings routes
   app.use("/api/settings", settingsRoutes);
   

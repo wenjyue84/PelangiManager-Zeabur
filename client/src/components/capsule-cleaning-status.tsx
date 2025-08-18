@@ -269,7 +269,7 @@ function CapsuleCleaningCard({ capsule, onRefresh }: CapsuleCleaningCardProps) {
         
         <div className="flex justify-between items-center">
           <div className="text-xs text-muted-foreground">
-            Physical Status: {capsule.isAvailable ? "Available" : "Unavailable"}
+            To Rent: {capsule.toRent !== false ? "Yes" : "No"}
           </div>
           
           {needsCleaning && (
@@ -365,7 +365,7 @@ export default function CapsuleCleaningStatus() {
               <TableRow>
                 <TableHead>Capsule</TableHead>
                 <TableHead>Section</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>To Rent</TableHead>
                 <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -377,15 +377,12 @@ export default function CapsuleCleaningStatus() {
                 let badgeText = "";
                 let badgeClass = "";
                 
-                if (isUnavailable) {
-                  badgeText = "Unavailable";
-                  badgeClass = "bg-red-500 text-white";
-                } else if (needsCleaning) {
-                  badgeText = "Needs Cleaning";
-                  badgeClass = "bg-orange-500 text-white";
+                if (capsule.toRent !== false) {
+                  badgeText = "Yes";
+                  badgeClass = "bg-green-600 text-white";
                 } else {
-                  badgeText = capsule.cleaningStatus || "Unknown";
-                  badgeClass = "bg-gray-500 text-white";
+                  badgeText = "No";
+                  badgeClass = "bg-red-500 text-white";
                 }
                 
                 return (
@@ -417,21 +414,16 @@ export default function CapsuleCleaningStatus() {
               let borderClass = "";
               let bgClass = "";
               
-              if (isUnavailable) {
-                badgeText = "Unavailable";
+              if (capsule.toRent !== false) {
+                badgeText = "Yes";
+                badgeClass = "bg-green-600 text-white";
+                borderClass = "border-green-200";
+                bgClass = "bg-green-50";
+              } else {
+                badgeText = "No";
                 badgeClass = "bg-red-500 text-white";
                 borderClass = "border-red-200";
                 bgClass = "bg-red-50";
-              } else if (needsCleaning) {
-                badgeText = "Needs Cleaning";
-                badgeClass = "bg-orange-500 text-white";
-                borderClass = "border-orange-200";
-                bgClass = "bg-orange-50";
-              } else {
-                badgeText = capsule.cleaningStatus || "Unknown";
-                badgeClass = "bg-gray-500 text-white";
-                borderClass = "border-gray-200";
-                bgClass = "bg-gray-50";
               }
               
               return (
@@ -474,7 +466,7 @@ export default function CapsuleCleaningStatus() {
               <TableRow>
                 <TableHead>Capsule</TableHead>
                 <TableHead>Section</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>To Rent</TableHead>
                 <TableHead>Cleaned At</TableHead>
                 <TableHead>Cleaned By</TableHead>
                 <TableHead>Action</TableHead>
@@ -486,7 +478,9 @@ export default function CapsuleCleaningStatus() {
                   <TableCell>{capsule.number}</TableCell>
                   <TableCell>{capsule.section}</TableCell>
                   <TableCell>
-                    <Badge className="bg-green-600 text-white">Clean</Badge>
+                    <Badge className={capsule.toRent !== false ? "bg-green-600 text-white" : "bg-red-500 text-white"}>
+                      {capsule.toRent !== false ? "Yes" : "No"}
+                    </Badge>
                   </TableCell>
                   <TableCell>{capsule.lastCleanedAt ? new Date(capsule.lastCleanedAt).toLocaleString() : 'Never'}</TableCell>
                   <TableCell>{capsule.lastCleanedBy}</TableCell>
@@ -511,7 +505,9 @@ export default function CapsuleCleaningStatus() {
                 <div key={capsule.id} className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{capsule.number}</span>
-                    <Badge className="bg-green-600 text-white">Clean</Badge>
+                    <Badge className={capsule.toRent !== false ? "bg-green-600 text-white" : "bg-red-500 text-white"}>
+                      {capsule.toRent !== false ? "Yes" : "No"}
+                    </Badge>
                     <span className="text-xs text-muted-foreground capitalize">{capsule.section}</span>
                   </div>
                   <UndoCleanedDialog capsule={capsule} onSuccess={handleRefresh} />
