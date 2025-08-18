@@ -2,6 +2,7 @@ import { User, Phone, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NationalitySelect } from "@/components/ui/nationality-select";
 import { UseFormReturn } from "react-hook-form";
 import { GuestSelfCheckin } from "@shared/schema";
 import { ValidationHelpers } from "./shared/ValidationHelpers";
@@ -149,50 +150,25 @@ export function GuestInfoStep({
           Nationality Information
         </h3>
         <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>
+          <Label htmlFor="nationality" className="text-sm font-medium text-hostel-text">
             Nationality
-          </label>
-          <select
-            defaultValue="Malaysian"
-            onChange={(e) => {
+          </Label>
+          <NationalitySelect
+            value={form.watch("nationality") || ""}
+            onValueChange={(value) => {
               // Direct form update with error handling
               try {
                 if (form && form.setValue) {
-                  form.setValue("nationality", e.target.value);
+                  form.setValue("nationality", value);
                 }
               } catch (error) {
                 console.log('Nationality update error:', error);
               }
             }}
-            style={{
-              width: '100%',
-              height: '40px',
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              backgroundColor: 'white',
-              fontSize: '14px'
-            }}
-          >
-            <option value="Malaysian">Malaysian</option>
-            <option value="Singaporean">Singaporean</option>
-            <option value="American">American</option>
-            <option value="Australian">Australian</option>
-            <option value="British">British</option>
-            <option value="Canadian">Canadian</option>
-            <option value="Chinese">Chinese</option>
-            <option value="Filipino">Filipino</option>
-            <option value="French">French</option>
-            <option value="German">German</option>
-            <option value="Indonesian">Indonesian</option>
-            <option value="Indian">Indian</option>
-            <option value="Japanese">Japanese</option>
-            <option value="Korean">Korean</option>
-            <option value="Thai">Thai</option>
-            <option value="Vietnamese">Vietnamese</option>
-            <option value="Other">Other</option>
-          </select>
-          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+            defaultValue="Malaysian"
+            className="w-full mt-1"
+          />
+          <p className="text-xs text-gray-500 mt-1">
             Select your nationality from the dropdown
           </p>
         </div>

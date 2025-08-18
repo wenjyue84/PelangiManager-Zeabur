@@ -169,9 +169,20 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+  console.log("🔥 NODE_ENV:", process.env.NODE_ENV);
+  console.log("🔥 app.get('env'):", app.get("env"));
+  
+  // Add a test route to verify the browser is using our server
+  app.get("/BROWSER_TEST", (req, res) => {
+    console.log("🚨 BROWSER IS USING OUR CURRENT SERVER! 🚨");
+    res.json({ message: "SUCCESS: You are connected to the current server!" });
+  });
+  
   if (app.get("env") === "development") {
+    console.log("🔥 USING VITE MIDDLEWARE");
     await setupVite(app, server);
   } else {
+    console.log("🔥 USING STATIC FILES");
     serveStatic(app);
   }
 

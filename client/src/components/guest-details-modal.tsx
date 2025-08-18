@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { NationalitySelect } from "@/components/ui/nationality-select";
 import { User, Calendar, MapPin, Phone, Mail, CreditCard, Edit, Save, X, Flag } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { getGuestBalance, isGuestPaid } from "@/lib/guest";
@@ -282,12 +283,36 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
               <div>
                 <Label>Nationality</Label>
                 {isEditing ? (
-                  <Input
+                  <Select
                     value={editData.nationality || ""}
-                    onChange={(e) => setEditData({ ...editData, nationality: e.target.value })}
-                    className="mt-1"
-                    placeholder="Nationality"
-                  />
+                    onValueChange={(value) => {
+                      console.log('Nationality changed to:', value);
+                      setEditData({ ...editData, nationality: value });
+                    }}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select nationality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Malaysian">Malaysian</SelectItem>
+                      <SelectItem value="Singaporean">Singaporean</SelectItem>
+                      <SelectItem value="American">American</SelectItem>
+                      <SelectItem value="Australian">Australian</SelectItem>
+                      <SelectItem value="British">British</SelectItem>
+                      <SelectItem value="Canadian">Canadian</SelectItem>
+                      <SelectItem value="Chinese">Chinese</SelectItem>
+                      <SelectItem value="Filipino">Filipino</SelectItem>
+                      <SelectItem value="French">French</SelectItem>
+                      <SelectItem value="German">German</SelectItem>
+                      <SelectItem value="Indonesian">Indonesian</SelectItem>
+                      <SelectItem value="Indian">Indian</SelectItem>
+                      <SelectItem value="Japanese">Japanese</SelectItem>
+                      <SelectItem value="Korean">Korean</SelectItem>
+                      <SelectItem value="Thai">Thai</SelectItem>
+                      <SelectItem value="Vietnamese">Vietnamese</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <div className="mt-1 text-sm">{guest.nationality || "Not specified"}</div>
                 )}

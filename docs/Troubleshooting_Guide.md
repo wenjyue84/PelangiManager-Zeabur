@@ -484,6 +484,75 @@
 
 ---
 
+### 007 - Frontend Changes Not Reflecting Due to Build Artifacts (SOLVED)
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Frontend changes appear to be made but aren't reflected in the UI
+- Components deleted from source code still appear in the application
+- Changes work in incognito mode but not in regular browser (ruling out browser caching)
+- Similar to nationality editing issue where changes weren't reflected
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Source vs Compiled Mismatch**: Even after deleting source files, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Steps:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   ```
+
+4. **Verify Clean Build:**
+   ```powershell
+   # Check that old components are removed from compiled code
+   Get-ChildItem dist -Recurse | Select-String "OLD_COMPONENT_NAME"
+   ```
+
+5. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   ```
+
+**Technical Fix Applied:**
+- Completely removed `dist/` directory containing outdated compiled code
+- Ran `npm run build` to regenerate fresh compiled JavaScript without deleted components
+- Verified that removed components no longer exist in compiled output
+
+**Files Modified:**
+- `dist/` directory - Completely removed and regenerated
+- Build artifacts - Fresh compilation without deleted components
+
+**Verification:**
+- Deleted components no longer appear in the application
+- Frontend changes are immediately visible
+- No more "ghost" components from old builds
+
+**Prevention:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow build process**: Source changes → Rebuild → Test
+- **Check build output**: Verify compiled code matches source code
+
+**Related Issues:**
+- This is the same root cause as the nationality editing issue
+- Build artifacts can cause any frontend changes to appear "stuck"
+- Always suspect build artifacts when changes aren't reflected
+
+---
+
 ## Common Issues Reference
 
 ### Network/Connection Errors
