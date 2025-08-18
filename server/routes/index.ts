@@ -9,11 +9,7 @@ import settingsRoutes from "./settings";
 import expenseRoutes from "./expenses";
 import objectRoutes from "./objects";
 import dashboardRoutes from "./dashboard";
-<<<<<<< HEAD
 import testRoutes from "./tests";
-=======
-import userRoutes from "./users";
->>>>>>> 69ba485cefd6e0d7fab3d7a2d39f873e678bb69d
 
 export function registerRoutes(app: Express) {
   // Register auth routes
@@ -37,8 +33,6 @@ export function registerRoutes(app: Express) {
   // Register settings routes
   app.use("/api/settings", settingsRoutes);
 
-  // Register user management routes
-  app.use("/api/users", userRoutes);
   
   // Register expense routes
   app.use("/api/expenses", expenseRoutes);
