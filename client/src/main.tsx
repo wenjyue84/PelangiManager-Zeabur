@@ -3,11 +3,12 @@ import App from "./App";
 import "./index.css";
 import { registerServiceWorker } from "./lib/serviceWorker";
 
-// Register service worker for PWA functionality (only in production or localhost, not in Replit)
+// Register service worker for PWA functionality (including push notifications)
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const isProduction = process.env.NODE_ENV === 'production';
 const isReplit = window.location.hostname.includes('.replit.dev') || window.location.hostname.includes('.replit.app') || !!import.meta.env.VITE_REPL_ID;
-const shouldRegisterSW = (isLocalhost || isProduction) && !isReplit;
+// Enable PWA for testing push notifications in all environments
+const shouldRegisterSW = isLocalhost || isProduction || isReplit;
 
 if (shouldRegisterSW) {
   registerServiceWorker()
@@ -28,7 +29,7 @@ if (shouldRegisterSW) {
       console.error('Service Worker registration failed:', error);
     });
 } else {
-  console.log('Service Worker registration skipped for Replit deployment environment');
+  console.log('Service Worker registration skipped - environment not supported');
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

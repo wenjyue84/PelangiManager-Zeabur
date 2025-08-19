@@ -18,10 +18,7 @@ export type ServiceWorkerEventType =
   | 'waiting' 
   | 'controlling' 
   | 'activated'
-  | 'redundant'
-  | 'externalinstalled'
-  | 'externalwaiting'
-  | 'externalactivated';
+  | 'redundant';
 
 export interface ServiceWorkerManager {
   register: () => Promise<void>;
@@ -117,23 +114,13 @@ class ServiceWorkerManagerImpl implements ServiceWorkerManager {
       this.dispatchEvent('redundant', event);
     });
 
-    // Listen for external SW events (from other tabs)
-    this.wb.addEventListener('externalinstalled', (event) => {
-      console.log('External Service Worker installed:', event);
-      this.dispatchEvent('externalinstalled', event);
-    });
-
-    this.wb.addEventListener('externalwaiting', (event) => {
-      console.log('External Service Worker waiting:', event);
-      this.state.updateAvailable = true;
-      this.dispatchEvent('externalwaiting', event);
-      this.notifyStateChange();
-    });
-
-    this.wb.addEventListener('externalactivated', (event) => {
-      console.log('External Service Worker activated:', event);
-      this.dispatchEvent('externalactivated', event);
-    });
+    // Additional SW events handled via navigator.serviceWorker if needed
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        console.log('Service Worker message:', event.data);
+        // Handle custom messages from service worker
+      });
+    }
   }
 
   async update(): Promise<void> {
@@ -272,7 +259,8 @@ export const swDebug = {
    */
   async getRegistrations(): Promise<ServiceWorkerRegistration[]> {
     if (!('serviceWorker' in navigator)) return [];
-    return await navigator.serviceWorker.getRegistrations();
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    return Array.from(registrations);
   },
 
   /**
