@@ -220,6 +220,75 @@ Error: listen EADDRINUSE: address already in use 0.0.0.0:5000
 
 ---
 
+## Replit Deployment Cache Issue (August 19, 2025)
+
+### Problem Description
+After syncing file changes to Replit, the deployed application still shows old component versions (e.g., removed sections still visible), despite localhost showing correct updates.
+
+### Root Cause Analysis
+1. **Replit Build Cache**: Replit caches built assets and doesn't automatically rebuild on file sync
+2. **Production vs Development**: Localhost development server rebuilds automatically, Replit production doesn't
+3. **Vite Cache Persistence**: Cached builds in `node_modules/.vite` and `dist` directories persist across syncs
+
+### Error Symptoms
+- Localhost shows updated components correctly
+- Replit hosted version shows old component structure
+- Files appear synced correctly in Replit file explorer
+- Standard Replit restart doesn't show changes
+
+### Solution Steps (In Order)
+
+#### Method 1: Force Rebuild in Replit Terminal
+```bash
+# In Replit Shell tab:
+rm -rf node_modules/.vite
+rm -rf dist
+npm run build
+# Then restart the Replit application
+```
+
+#### Method 2: Combined Cache Clear
+```bash
+# Single command in Replit Shell:
+rm -rf node_modules/.vite && rm -rf dist && npm run build
+```
+
+#### Method 3: Full Replit Restart
+1. Stop the Replit application completely
+2. Wait 30 seconds
+3. Restart the entire Replit project
+4. Allow automatic rebuild process to complete
+
+### Prevention Measures
+1. **Always rebuild after major component changes** when deploying to Replit
+2. **Use Replit Shell** to manually clear cache before restart
+3. **Monitor for cache persistence** when file changes don't appear in production
+4. **Document Replit-specific build steps** for team members
+
+### Related Files/Directories
+- `node_modules/.vite/` - Vite development cache
+- `dist/` - Built production assets
+- `client/src/components/` - React components being modified
+
+### Testing Verification
+✅ Replit shows updated component structure after cache clear
+✅ Removed sections no longer visible in production
+✅ Build process completes successfully in Replit Shell
+✅ Application restarts with fresh build
+
+### When to Use This Solution
+- Local changes work but Replit deployment shows old version
+- Component modifications not appearing in hosted environment
+- File sync completed but UI unchanged
+- Production environment serving cached components
+
+### Environment-Specific Notes
+- **Localhost**: Auto-rebuilds on file changes
+- **Replit Production**: Requires manual cache clearing and rebuild
+- **Other Hosting**: Similar cache clearing may be needed
+
+---
+
 ## Additional Troubleshooting Patterns
 
 ### Database Connection Issues

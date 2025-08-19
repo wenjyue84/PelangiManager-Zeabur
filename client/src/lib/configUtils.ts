@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useConfig, useConfigValue, AppConfig } from '@/hooks/useConfig';
+import { useConfig, useConfigValue, AppConfig, DEFAULT_CONFIG } from '@/hooks/useConfig';
 
 /**
  * Configuration constants and defaults for common UI patterns
@@ -44,18 +44,20 @@ export const CONFIG_DEFAULTS = {
  * Provides consistent form field configurations based on app settings
  */
 export const useFormFieldConfig = () => {
-  const { config } = useConfig();
+  // Use DEFAULT_CONFIG directly to avoid API dependency issues
+  const config = DEFAULT_CONFIG;
   
   return {
     /**
      * Gets payment method options from configuration
      */
     getPaymentMethods: () => {
-      return CONFIG_DEFAULTS.DEFAULT_PAYMENT_METHODS.map(method => ({
-        value: method,
-        label: method.charAt(0).toUpperCase() + method.slice(1),
-        isDefault: method === config.defaultPaymentMethod,
-      }));
+      return [
+        { value: 'cash', label: 'Cash', isDefault: true },
+        { value: 'tng', label: 'Touch n Go', isDefault: false },
+        { value: 'bank', label: 'Bank Transfer', isDefault: false },
+        { value: 'platform', label: 'Online Platform', isDefault: false },
+      ];
     },
 
     /**
@@ -251,7 +253,8 @@ export const useFileUploadConfig = () => {
  * Centralizes business logic that depends on configuration
  */
 export const useBusinessRules = () => {
-  const { config } = useConfig();
+  // Use DEFAULT_CONFIG directly to avoid API dependency issues
+  const config = DEFAULT_CONFIG;
   
   return {
     /**
