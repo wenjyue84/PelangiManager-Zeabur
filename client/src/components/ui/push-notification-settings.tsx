@@ -346,6 +346,26 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
         {/* Permission Request Section */}
         {!subscribed && permission !== 'denied' && (
           <div className="space-y-3">
+            {/* Information about notification permissions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-blue-800">Why do we need notification permission?</div>
+                  <div className="text-xs text-blue-700 space-y-1">
+                    <p>Push notifications help you stay informed about important hostel activities:</p>
+                    <ul className="ml-4 space-y-1 list-disc">
+                      <li><strong>Guest Check-ins:</strong> Get notified when new guests arrive</li>
+                      <li><strong>Checkout Reminders:</strong> Stay on top of guest departures</li>
+                      <li><strong>Maintenance Alerts:</strong> Know about urgent repair requests</li>
+                      <li><strong>Daily Updates:</strong> Receive morning summaries at 12 PM</li>
+                    </ul>
+                    <p className="mt-2"><strong>Note:</strong> We only send notifications for hostel-related activities. You can customize which types you receive.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
@@ -366,17 +386,166 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
         {permission === 'denied' && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="space-y-2">
-              <div>Notification permission was denied. You need to enable it in your browser settings.</div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={openBrowserSettings}
-                className="mt-2"
-              >
-                <HelpCircle className="h-4 w-4 mr-2" />
-                How to Enable Notifications
-              </Button>
+            <AlertDescription className="space-y-3">
+              <div className="space-y-2">
+                <div className="font-medium">Notification permission was denied. Here's why this happens and how to fix it:</div>
+                
+                {/* Common Reasons */}
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 space-y-2">
+                  <div className="text-sm font-medium text-red-800">Common Reasons for Permission Denial:</div>
+                  <ul className="text-xs text-red-700 space-y-1 ml-4 list-disc">
+                    <li><strong>Previous Denial:</strong> You previously clicked "Block" when the browser asked for permission</li>
+                    <li><strong>Browser Settings:</strong> Your browser has notifications globally disabled</li>
+                    <li><strong>Site Settings:</strong> This specific site is blocked in your browser's site settings</li>
+                    <li><strong>Privacy Mode:</strong> You're browsing in incognito/private mode</li>
+                    <li><strong>Browser Extensions:</strong> An ad blocker or privacy extension is blocking notifications</li>
+                    <li><strong>System Settings:</strong> Your operating system has notifications disabled</li>
+                  </ul>
+                </div>
+
+                {/* Browser-Specific Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
+                  <div className="text-sm font-medium text-blue-800">How to Re-enable Notifications:</div>
+                  
+                  {/* Chrome Instructions */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-blue-700">🌐 Chrome / Edge:</div>
+                    <ol className="text-xs text-blue-600 ml-4 space-y-1 list-decimal">
+                      <li>Click the lock/info icon 🔒 in the address bar</li>
+                      <li>Click "Site settings" or "Permissions"</li>
+                      <li>Find "Notifications" and change from "Block" to "Allow"</li>
+                      <li>Refresh the page</li>
+                    </ol>
+                  </div>
+
+                  {/* Firefox Instructions */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-blue-700">🦊 Firefox:</div>
+                    <ol className="text-xs text-blue-600 ml-4 space-y-1 list-decimal">
+                      <li>Click the shield icon 🛡️ in the address bar</li>
+                      <li>Click "Site Permissions" → "Notifications"</li>
+                      <li>Change from "Block" to "Allow"</li>
+                      <li>Refresh the page</li>
+                    </ol>
+                  </div>
+
+                  {/* Safari Instructions */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-blue-700">🍎 Safari:</div>
+                    <ol className="text-xs text-blue-600 ml-4 space-y-1 list-decimal">
+                      <li>Safari → Preferences → Websites → Notifications</li>
+                      <li>Find this site and change from "Deny" to "Allow"</li>
+                      <li>Refresh the page</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* Alternative Solutions */}
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 space-y-2">
+                  <div className="text-sm font-medium text-green-800">Alternative Solutions:</div>
+                  <ul className="text-xs text-green-700 space-y-1 ml-4 list-disc">
+                    <li><strong>Try Different Browser:</strong> Test in Chrome, Firefox, or Edge</li>
+                    <li><strong>Check Extensions:</strong> Temporarily disable ad blockers or privacy extensions</li>
+                    <li><strong>System Settings:</strong> Check Windows/Mac notification settings</li>
+                    <li><strong>Clear Site Data:</strong> Clear cookies and site data for this domain</li>
+                    <li><strong>Contact Support:</strong> If nothing works, we can help troubleshoot</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={openBrowserSettings}
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  Show Browser Instructions
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    // Show system notification settings help
+                    const isWindows = navigator.platform.indexOf('Win') !== -1;
+                    const isMac = navigator.platform.indexOf('Mac') !== -1;
+                    
+                    let systemInstructions = '';
+                    if (isWindows) {
+                      systemInstructions = 'Windows: Settings → System → Notifications & actions → Turn on notifications';
+                    } else if (isMac) {
+                      systemInstructions = 'Mac: System Preferences → Notifications → Safari → Allow notifications';
+                    } else {
+                      systemInstructions = 'Check your operating system notification settings';
+                    }
+                    
+                    toast({
+                      title: 'System Notification Settings',
+                      description: systemInstructions,
+                    });
+                  }}
+                  className="text-green-600 border-green-200 hover:bg-green-50"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  System Settings Help
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    // Show extension troubleshooting
+                    toast({
+                      title: 'Extension Troubleshooting',
+                      description: 'Try disabling ad blockers, privacy extensions, or VPNs that might block notifications',
+                    });
+                  }}
+                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  Extension Help
+                </Button>
+              </div>
+
+              {/* Quick Test */}
+              <div className="pt-2 border-t border-gray-200">
+                <div className="text-xs text-gray-600 mb-2">
+                  <strong>Quick Test:</strong> After changing settings, click this button to check if permissions are working:
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    // Check current permission status
+                    const currentPermission = Notification.permission;
+                    let statusMessage = '';
+                    
+                    switch (currentPermission) {
+                      case 'granted':
+                        statusMessage = '✅ Great! Notifications are now enabled. You can subscribe to push notifications.';
+                        break;
+                      case 'denied':
+                        statusMessage = '❌ Still denied. Please follow the steps above to enable notifications.';
+                        break;
+                      default:
+                        statusMessage = '🤔 Permission not set. Please grant permission when prompted.';
+                    }
+                    
+                    toast({
+                      title: 'Permission Status Check',
+                      description: statusMessage,
+                      variant: currentPermission === 'granted' ? 'default' : 'destructive',
+                    });
+                  }}
+                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Check Permission Status
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -626,6 +795,34 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
                       <li>• Add app to home screen</li>
                       <li>• Check phone notification settings</li>
                       <li>• Ensure app has notification access</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* New Permission Troubleshooting Section */}
+                <div className="flex items-start gap-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <strong>Still can't enable notifications?</strong>
+                    <ul className="ml-4 mt-1 space-y-1 text-gray-600">
+                      <li>• Try a different browser (Chrome, Firefox, Edge)</li>
+                      <li>• Disable ad blockers and privacy extensions</li>
+                      <li>• Check system notification settings</li>
+                      <li>• Clear browser cache and cookies</li>
+                      <li>• Avoid private/incognito browsing mode</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <strong>Browser-specific issues?</strong>
+                    <ul className="ml-4 mt-1 space-y-1 text-gray-600">
+                      <li>• <strong>Chrome:</strong> Check chrome://settings/content/notifications</li>
+                      <li>• <strong>Firefox:</strong> Check about:preferences#privacy</li>
+                      <li>• <strong>Edge:</strong> Check edge://settings/content/notifications</li>
+                      <li>• <strong>Safari:</strong> Check Safari → Preferences → Websites</li>
                     </ul>
                   </div>
                 </div>
