@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { User, LogOut } from "lucide-react";
 import { AuthContext } from "../lib/auth";
+import { NetworkStatusBadge, PWAInstallButton } from "@/components/ui/offline-indicator";
 
 export default function Header() {
   const authContext = useContext(AuthContext);
@@ -20,6 +21,12 @@ export default function Header() {
         
         {isAuthenticated && user && (
           <div className="flex items-center gap-4">
+            {/* Network Status and PWA Install */}
+            <div className="flex items-center gap-2">
+              <NetworkStatusBadge />
+              <PWAInstallButton />
+            </div>
+            
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4" />
               <span className="font-medium">{user.firstName || user.email}</span>

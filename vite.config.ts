@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from 'url';
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { VitePWA } from 'vite-plugin-pwa';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -10,6 +11,133 @@ export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,jpg,jpeg}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        runtimeCaching: [
+          // Cache API responses with network-first strategy
+          {
+            urlPattern: /^https?:\/\/localhost:5000\/api\/(occupancy|storage\/info|capsules\/available)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache-short',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 5, // 5 minutes
+              },
+              networkTimeoutSeconds: 3,
+            },
+          },
+          // Cache settings and configuration with longer TTL
+          {
+            urlPattern: /^https?:\/\/localhost:5000\/api\/(admin\/config|settings)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache-long',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 30, // 30 minutes
+              },
+              networkTimeoutSeconds: 3,
+            },
+          },
+          // Cache guest data with shorter TTL
+          {
+            urlPattern: /^https?:\/\/localhost:5000\/api\/guests\/(checked-in|history)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache-guests',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 2, // 2 minutes
+              },
+              networkTimeoutSeconds: 2,
+            },
+          },
+          // Cache uploaded images with cache-first strategy
+          {
+            urlPattern: /^https?:\/\/localhost:5000\/objects\/uploads\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'uploaded-images',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
+              },
+            },
+          },
+          // Cache static assets with cache-first strategy
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-images',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
+        ],
+      },
+      manifest: {
+        name: 'Pelangi Capsule Manager',
+        short_name: 'PelangiManager',
+        description: 'Hostel management system for Pelangi Capsule Hostel',
+        theme_color: '#3b82f6',
+        background_color: '#ffffff',
+        display: 'standalone',
+        orientation: 'portrait',
+        scope: '/',
+        start_url: '/',
+        icons: [
+          {
+            src: '/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            src: '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ],
+        categories: ['business', 'productivity'],
+        shortcuts: [
+          {
+            name: 'Check In Guest',
+            short_name: 'Check In',
+            description: 'Quick guest check-in',
+            url: '/check-in',
+            icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Check Out Guest',
+            short_name: 'Check Out',
+            description: 'Quick guest check-out',
+            url: '/check-out',
+            icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Dashboard',
+            short_name: 'Dashboard',
+            description: 'View occupancy dashboard',
+            url: '/dashboard',
+            icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      }
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

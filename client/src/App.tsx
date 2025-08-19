@@ -26,6 +26,7 @@ import MobileBottomNav from "./components/mobile-bottom-nav";
 import { VisibilityIndicator } from "./components/visibility-indicator";
 import { toast } from "@/hooks/use-toast";
 import GlobalTopProgress from "./components/global-top-progress";
+import { OfflineIndicator } from "./components/ui/offline-indicator";
 
 /**
  * Main router component handling all application routes
@@ -112,6 +113,7 @@ function App() {
               <Router />
               <Toaster />
               <VisibilityIndicator />
+              <OfflineIndicator />
             </TooltipProvider>
           </AuthProvider>
         </I18nProvider>
