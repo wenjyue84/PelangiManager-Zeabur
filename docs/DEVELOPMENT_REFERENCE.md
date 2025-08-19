@@ -19,6 +19,7 @@ The client-side is built with React 18 using TypeScript and follows a component-
 - **Form Handling**: React Hook Form with Zod validation for type-safe form management
 - **Data Validation**: Comprehensive client-side validation with real-time feedback, input formatters, and security checks
 - **Build Tool**: Vite for fast development and optimized production builds
+- **PWA Support**: Progressive Web App with service worker, offline functionality, and native app installation
 
 ### **Backend Architecture**
 - **Runtime**: Node.js with Express.js framework
@@ -77,6 +78,31 @@ DATABASE_URL=postgresql://user:password@localhost:5432/pelangi
   "test:e2e": "playwright test"
 }
 ```
+
+### **PWA Configuration**
+The application includes Progressive Web App capabilities with the following features:
+
+- **Service Worker**: Automatic caching strategies using Workbox
+- **Offline Support**: App works offline after initial load with intelligent cache management
+- **Background Sync**: Forms submitted offline are queued and synced when connection returns
+- **Installation**: Users can install app as native application with shortcuts
+- **Manifest**: Configurable app metadata, icons, and shortcuts
+
+**PWA Dependencies:**
+```json
+{
+  "vite-plugin-pwa": "^0.21.1",
+  "workbox-window": "^7.1.0",
+  "workbox-strategies": "^7.1.0",
+  "workbox-core": "^7.1.0"
+}
+```
+
+**Cache Strategies:**
+- **API Endpoints**: NetworkFirst with different TTL (5min-30min)
+- **Static Assets**: CacheFirst with long-term storage
+- **Images**: CacheFirst with 7-day expiration
+- **App Shell**: Precached for instant loading
 
 ---
 

@@ -31,6 +31,14 @@ This documentation has been reorganized from **20+ separate files** into just **
 - Performance optimization
 - Maintenance and monitoring
 
+### **📱 PWA_IMPLEMENTATION_GUIDE.md**
+**Use this for Progressive Web App features!**
+- PWA setup and configuration
+- Service worker implementation
+- Offline functionality testing
+- Cache strategies and performance
+- Installation and troubleshooting
+
 ---
 
 ## 🔍 **HOW TO USE THESE GUIDES**
@@ -81,10 +89,11 @@ This documentation has been reorganized from **20+ separate files** into just **
 - `nationality_solutions.md`
 - `Email_Setup_Guide.md`
 
-### **New Structure (3 files)**
+### **New Structure (4 files)**
 - **`MASTER_TROUBLESHOOTING_GUIDE.md`** - All troubleshooting content
 - **`DEVELOPMENT_REFERENCE.md`** - All development and architecture content  
 - **`DEPLOYMENT_OPERATIONS.md`** - All deployment and operations content
+- **`PWA_IMPLEMENTATION_GUIDE.md`** - Progressive Web App features and testing
 
 ---
 

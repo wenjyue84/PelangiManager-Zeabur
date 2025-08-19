@@ -21,7 +21,7 @@ export default defineConfig({
         runtimeCaching: [
           // Cache API responses with network-first strategy
           {
-            urlPattern: /^https?:\/\/localhost:5000\/api\/(occupancy|storage\/info|capsules\/available)$/,
+            urlPattern: /\/api\/(occupancy|storage\/info|capsules\/available)$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache-short',
@@ -34,7 +34,7 @@ export default defineConfig({
           },
           // Cache settings and configuration with longer TTL
           {
-            urlPattern: /^https?:\/\/localhost:5000\/api\/(admin\/config|settings)$/,
+            urlPattern: /\/api\/(admin\/config|settings)$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache-long',
@@ -47,7 +47,7 @@ export default defineConfig({
           },
           // Cache guest data with shorter TTL
           {
-            urlPattern: /^https?:\/\/localhost:5000\/api\/guests\/(checked-in|history)$/,
+            urlPattern: /\/api\/guests\/(checked-in|history)$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache-guests',
@@ -60,7 +60,7 @@ export default defineConfig({
           },
           // Cache uploaded images with cache-first strategy
           {
-            urlPattern: /^https?:\/\/localhost:5000\/objects\/uploads\//,
+            urlPattern: /\/objects\/uploads\//,
             handler: 'CacheFirst',
             options: {
               cacheName: 'uploaded-images',
@@ -134,9 +134,11 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: true,
+        enabled: process.env.NODE_ENV === 'development',
         type: 'module'
-      }
+      },
+      // Only enable PWA in production or when explicitly requested
+      disable: process.env.DISABLE_PWA === 'true'
     }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
