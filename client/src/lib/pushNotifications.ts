@@ -379,7 +379,19 @@ export function usePushNotifications() {
     pushNotificationManager.subscribe('stateChange', handleStateChange);
     
     // Check subscription status on mount
-    pushNotificationManager.checkSubscriptionStatus();
+    pushNotificationManager.checkSubscriptionStatus().then(isSubscribed => {
+      // Auto-request permission and subscribe if supported but not subscribed
+      if (pushNotificationManager.getState().supported && !isSubscribed && Notification.permission === 'default') {
+        // Only auto-request on PWA (when installed as app)
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+          pushNotificationManager.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              pushNotificationManager.subscribeToPush().catch(console.error);
+            }
+          }).catch(console.error);
+        }
+      }
+    });
 
     return () => {
       pushNotificationManager.unsubscribe('stateChange', handleStateChange);

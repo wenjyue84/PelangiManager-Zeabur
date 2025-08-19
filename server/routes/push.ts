@@ -113,6 +113,16 @@ router.post('/unsubscribe', [
  */
 router.post('/test', async (req, res) => {
   try {
+    // Check if there are any subscriptions first
+    const subscriptions = pushNotificationService.getAllSubscriptions();
+    
+    if (subscriptions.length === 0) {
+      return res.json({ 
+        success: true,
+        message: 'No active subscriptions found. Subscribe to push notifications first.'
+      });
+    }
+
     const testPayload = createNotificationPayload.dailyReminder(2, 1);
     const sentCount = await pushNotificationService.sendToAll(testPayload);
     
