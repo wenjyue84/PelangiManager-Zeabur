@@ -1025,6 +1025,58 @@ $env:PORT=5001; npm run dev
 
 ---
 
+## 🚀 **SERVER STARTUP AND GIT SYNC ISSUES**
+
+### **012 - Server Won't Start After Git Sync (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Server fails to start with syntax errors after syncing with GitHub
+- Error: `SyntaxError: The requested module './routes' does not provide an export named 'registerObjectRoutes'`
+- `localhost:5000` shows "ERR_CONNECTION_REFUSED"
+- Terminal shows corrupted import statements or syntax errors
+
+**Root Cause:**
+- **Git Sync Corruption**: Files may get corrupted during Git sync operations
+- **Import/Export Mismatch**: Module exports not properly synchronized
+- **TypeScript Compilation Issues**: Build artifacts may be corrupted
+- **File Encoding Problems**: Special characters or encoding issues from Git
+
+**Solution Implemented:**
+1. **Clean Environment Reset**:
+   ```powershell
+   # Kill any existing processes
+   npx kill-port 5000
+   
+   # Restart development server
+   npm run dev
+   ```
+
+2. **Verify File Integrity**:
+   - Check that `server/routes/index.ts` exports `registerObjectRoutes`
+   - Ensure `server/index.ts` imports correctly
+   - Verify no corrupted characters in import statements
+
+3. **Server Restart Process**:
+   - Always restart server after Git sync operations
+   - Wait for "serving on port 5000" confirmation
+   - Check terminal for any syntax errors before proceeding
+
+**Prevention Steps:**
+- Restart development server after every Git sync
+- Check terminal output for syntax errors
+- Verify server starts successfully before testing features
+- Keep backup of working server files
+
+**Troubleshooting Flow:**
+1. **Immediate Action**: Restart development server with `npm run dev`
+2. **Check Terminal**: Look for syntax errors or import issues
+3. **Verify Port**: Ensure port 5000 is available and server starts
+4. **Test Connection**: Visit `localhost:5000` to confirm server is running
+5. **Check Features**: Verify push notifications and other features work
+
+---
+
 **Document Control:**
 - **Maintained By:** Development Team
 - **Last Updated:** January 2025
