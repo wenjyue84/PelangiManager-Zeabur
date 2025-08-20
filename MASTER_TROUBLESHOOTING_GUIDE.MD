@@ -150,6 +150,66 @@ User reported that push notifications are not appearing when guests check in, de
 - `server/routes/guest-tokens.ts:254-267` - Self check-in notification logic
 - `client/src/lib/pushNotifications.ts` - Client subscription management
 - `client/src/components/ui/push-notification-settings.tsx` - Settings UI
+
+---
+
+## Individual Test Notification Buttons 404 Error (August 20, 2025)
+
+### Problem Description
+Individual test notification buttons (Play icons) in Settings > General show "Test failed, failed to send...Unexpected error" with 404 endpoint not found errors.
+
+### Root Cause Analysis
+The individual test buttons were calling `/api/push/send` endpoint which did not exist on the server.
+
+1. **Missing API Endpoint**: `/api/push/send` was not implemented in server routes
+2. **Available Endpoints**: Only `/api/push/send-all` and `/api/push/send-admin` existed
+3. **Client Expectation**: UI was built expecting a generic `/send` endpoint for individual tests
+4. **Fallback Failure**: Even fallback to `/api/push/test` failed due to no active subscriptions
+
+### Error Symptoms
+- Individual test buttons show "Unexpected error" messages
+- Server logs show repeated `POST /api/push/send 404` errors
+- General "Send Test Notification" button works correctly
+- Browser console shows endpoint not found errors
+
+### Solution Steps
+
+#### Step 1: Added Missing API Endpoint
+Created new `/api/push/send` endpoint in `server/routes/push.ts`:
+- Accepts custom notification payloads from individual test buttons
+- Validates required fields (title, body)
+- Checks for active subscriptions before sending
+- Returns proper error responses with codes
+- Sends to all subscribers (appropriate for testing)
+
+#### Step 2: Enhanced Client Error Handling
+Updated error categorization in `client/src/components/ui/push-notification-settings.tsx`:
+- Added specific handling for 404 endpoint errors
+- Improved subscription requirement messaging
+- Enhanced troubleshooting steps based on error type
+- Better actionRequired instructions
+
+#### Step 3: Error Response Improvements
+- **404 Errors**: "API Endpoint Not Found - please refresh the page"
+- **No Subscriptions**: "You need to subscribe to push notifications first"
+- **Auth Errors**: "Your session has expired - refresh the page"
+
+### System Behavior (After Fix)
+- **With Subscriptions**: Individual test buttons send specific notification types successfully
+- **Without Subscriptions**: Clear error message explaining subscription requirement
+- **Endpoint Errors**: Helpful instructions to refresh page for updated endpoints
+- **Fallback Logic**: Graceful degradation with informative error messages
+
+### Prevention Measures
+1. **API Documentation**: Document all required endpoints during UI development
+2. **Error Testing**: Test all error scenarios including missing endpoints
+3. **Graceful Degradation**: Implement proper fallback mechanisms
+4. **User Guidance**: Provide clear troubleshooting steps for common issues
+
+### Related Files Modified
+- `server/routes/push.ts:230-328` - Added new `/send` endpoint
+- `client/src/components/ui/push-notification-settings.tsx:603-665` - Enhanced error handling
+- `MASTER_TROUBLESHOOTING_GUIDE.MD` - This documentation
 4. **Documentation**: Keep PWA configuration clearly documented for future changes
 
 ### Related Files Modified

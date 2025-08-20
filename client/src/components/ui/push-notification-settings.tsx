@@ -603,6 +603,9 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
       if (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('Failed to fetch')) {
         errorMessage = 'Network Connection Issue';
         errorDetails = 'Unable to connect to the notification service. Please check your internet connection.';
+      } else if (errorMessage.includes('No active subscriptions')) {
+        errorMessage = 'No Active Subscriptions';
+        errorDetails = 'You need to subscribe to push notifications first before testing individual notification types.';
       } else if (errorMessage.includes('401')) {
         errorMessage = 'Authentication Required';
         errorDetails = 'Your session has expired. Please refresh the page and try again.';
@@ -610,25 +613,55 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
         errorMessage = 'Access Denied';
         errorDetails = 'You do not have permission to send test notifications.';
       } else if (errorMessage.includes('404')) {
-        errorMessage = 'Service Not Found';
-        errorDetails = 'The push notification service endpoint was not found. Please check if the server is running.';
+        errorMessage = 'API Endpoint Not Found';
+        errorDetails = 'The individual test notification endpoint was not found. This has been fixed - please refresh the page.';
       } else if (errorMessage.includes('500')) {
         errorMessage = 'Server Error';
         errorDetails = 'The notification service encountered an internal error. Please try again later.';
       }
       
+      // Provide specific troubleshooting based on error type
+      let troubleshootingSteps = [
+        'Check your internet connection',
+        'Ensure the server is running',
+        'Try refreshing the page',
+        'Check browser console for detailed error logs',
+        'Contact support if the problem persists'
+      ];
+      let actionRequired = 'Check browser console (F12) for detailed error information';
+
+      if (errorMessage.includes('No Active Subscriptions')) {
+        troubleshootingSteps = [
+          'Click "Enable Push Notifications" button above first',
+          'Grant browser permission when prompted',
+          'Wait for "Active" status to appear',
+          'Then try the individual test buttons'
+        ];
+        actionRequired = 'Subscribe to push notifications first';
+      } else if (errorMessage.includes('404')) {
+        troubleshootingSteps = [
+          'Refresh the page to load the updated server endpoints',
+          'Check if the server is running and up to date',
+          'Clear browser cache if issues persist',
+          'Contact support if the problem continues'
+        ];
+        actionRequired = 'Refresh the page and try again';
+      } else if (errorMessage.includes('401')) {
+        troubleshootingSteps = [
+          'Refresh the page to renew your session',
+          'Log out and log back in',
+          'Check if your session expired',
+          'Clear browser cookies if needed'
+        ];
+        actionRequired = 'Refresh the page or log in again';
+      }
+
       const categorizedError = {
         type: 'unknown' as const,
         message: errorMessage,
         details: errorDetails,
-        troubleshooting: [
-          'Check your internet connection',
-          'Ensure the server is running',
-          'Try refreshing the page',
-          'Check browser console for detailed error logs',
-          'Contact support if the problem persists'
-        ],
-        actionRequired: 'Check browser console (F12) for detailed error information'
+        troubleshooting: troubleshootingSteps,
+        actionRequired: actionRequired
       };
       
       setTestError(categorizedError);

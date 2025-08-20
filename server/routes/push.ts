@@ -228,6 +228,106 @@ router.post('/test', async (req, res) => {
 });
 
 /**
+ * Send push notification with custom payload
+ * Used by individual test notification buttons
+ */
+router.post('/send', [
+  body('title').notEmpty().withMessage('Title is required'),
+  body('body').notEmpty().withMessage('Body is required'),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ 
+      success: false,
+      error: 'Invalid notification data',
+      details: errors.array()
+    });
+  }
+
+  try {
+    // Check if there are any subscriptions first
+    const subscriptions = pushNotificationService.getAllSubscriptions();
+    
+    if (subscriptions.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'No active subscriptions found',
+        details: 'Subscribe to push notifications first before testing',
+        code: 'NO_SUBSCRIPTIONS'
+      });
+    }
+
+    const { title, body, icon, badge, tag, data, actions, requireInteraction, vibrate } = req.body;
+    
+    const payload = {
+      title,
+      body,
+      icon: icon || '/icon-192.png',
+      badge: badge || '/icon-192.png',
+      tag,
+      data,
+      actions,
+      requireInteraction: requireInteraction || false,
+      vibrate,
+    };
+    
+    // Send to all subscribers (for individual test notifications)
+    const sentCount = await pushNotificationService.sendToAll(payload);
+    
+    if (sentCount === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'No notifications delivered',
+        details: 'Notification was sent but not delivered to any devices',
+        code: 'DELIVERY_FAILED'
+      });
+    }
+    
+    res.json({ 
+      success: true,
+      message: `Test notification sent to ${sentCount} device(s)`,
+      sentCount,
+      payload: {
+        title: payload.title,
+        body: payload.body
+      }
+    });
+  } catch (error) {
+    console.error('Error sending individual test push notification:', error);
+    
+    // Provide specific error messages based on error type
+    let errorMessage = 'Failed to send notification';
+    let errorCode = 'UNKNOWN_ERROR';
+    let errorDetails = 'An unexpected error occurred';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      if (error.message.includes('VAPID')) {
+        errorCode = 'VAPID_ERROR';
+        errorDetails = 'Push notification service configuration issue';
+      } else if (error.message.includes('subscription')) {
+        errorCode = 'SUBSCRIPTION_ERROR';
+        errorDetails = 'Error processing push notification subscriptions';
+      } else if (error.message.includes('webpush')) {
+        errorCode = 'WEBPUSH_ERROR';
+        errorDetails = 'Error sending notification via web push protocol';
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorCode = 'NETWORK_ERROR';
+        errorDetails = 'Network error while sending notification';
+      }
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: errorMessage,
+      details: errorDetails,
+      code: errorCode
+    });
+  }
+});
+
+/**
  * Send push notification to all subscribers
  */
 router.post('/send-all', [
