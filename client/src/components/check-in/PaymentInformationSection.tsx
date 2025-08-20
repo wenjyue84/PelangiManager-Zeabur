@@ -24,7 +24,7 @@ export default function PaymentInformationSection({ form, defaultCollector }: Pa
 
   const currentAmount = form.watch("paymentAmount") || "";
   const presetValues = paymentPresets.map(p => p.value);
-  const isCustomAmount = currentAmount && !presetValues.includes(currentAmount);
+  const isCustomAmount = currentAmount !== "" && !presetValues.includes(currentAmount);
 
   return (
     <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
@@ -35,7 +35,7 @@ export default function PaymentInformationSection({ form, defaultCollector }: Pa
             Amount (RM)
           </Label>
           <Select
-            value={!isCustomAmount ? currentAmount || paymentPresets[0]?.value : "custom"}
+            value={presetValues.includes(currentAmount) ? currentAmount : "custom"}
             onValueChange={(value) => {
               if (value === "custom") {
                 // Clear the field and let user type custom amount

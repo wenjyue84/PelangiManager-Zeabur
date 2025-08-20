@@ -1246,6 +1246,117 @@ $env:PORT=5001; npm run dev
 
 ---
 
+### **015 - Calendar Not Displaying All Dates (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Occupancy calendar only shows partial dates (e.g., 27/7, 28/7, 29/7, 30/7, 31/7, 1/8)
+- Missing most August dates (2/8, 3/8, 4/8... 31/8)
+- Calendar appears to only show end of previous month and beginning of current month
+- Changes to calendar component code don't reflect in UI
+
+**Root Cause:**
+- **Wrong react-day-picker API Usage**: Using invalid `components={{ DayContent: ... }}` prop
+- **Null Return Values**: `getDayContent` function returned `null` for dates without data
+- **Component Integration Issue**: react-day-picker v8 doesn't support `DayContent` component override
+- **Build Artifacts Problem**: Old compiled calendar code served despite source changes
+
+**Solution Implemented:**
+
+1. **Fixed react-day-picker Integration:**
+   ```typescript
+   // BEFORE: Invalid component override (caused dates to not render)
+   <Calendar
+     components={{
+       DayContent: ({ date }) => getDayContent(date), // ❌ Wrong API
+     }}
+   />
+   
+   // AFTER: Proper modifiers approach
+   <Calendar
+     modifiers={{
+       hasCheckins: (date) => {
+         const dateString = date.toISOString().split('T')[0];
+         const dayData = calendarData[dateString];
+         return dayData && dayData.checkins.length > 0;
+       },
+       hasCheckouts: (date) => { /* similar logic */ },
+       highOccupancy: (date) => { /* occupancy > 80% */ },
+       // ... other modifiers
+     }}
+     modifiersClassNames={{
+       hasCheckins: "relative after:absolute after:top-0 after:right-0 after:w-1.5 after:h-1.5 after:bg-green-500 after:rounded-full",
+       hasCheckouts: "relative before:absolute before:top-0 before:left-0 before:w-1.5 before:h-1.5 before:bg-red-500 before:rounded-full",
+       // ... other styling
+     }}
+   />
+   ```
+
+2. **Removed Problematic getDayContent Function:**
+   ```typescript
+   // BEFORE: Function that returned null for dates without data
+   const getDayContent = (date: Date) => {
+     const dayData = calendarData[dateString];
+     if (!dayData) return null; // ❌ This prevented dates from rendering
+     // ... rest of function
+   };
+   
+   // AFTER: Removed entirely, using modifiers instead
+   ```
+
+3. **Applied Build Artifacts Fix:**
+   ```powershell
+   # Kill port conflicts
+   netstat -ano | findstr :5000
+   taskkill /PID <PID> /F
+   
+   # Clean build artifacts
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   
+   # Rebuild with calendar changes
+   npm run build
+   
+   # Start on different port
+   $env:PORT=5001; npm run dev
+   ```
+
+**Technical Details:**
+- **react-day-picker v8.10.1**: Uses `modifiers` and `modifiersClassNames` for customization
+- **Component Override**: `DayContent` component is not a valid prop in v8
+- **Date Rendering**: Calendar must always render valid JSX for each date
+- **CSS Approach**: Used Tailwind classes with pseudo-elements for visual indicators
+
+**Visual Indicators Implemented:**
+- ✅ **Green dots (top-right)**: Check-ins
+- ✅ **Red dots (top-left)**: Check-outs  
+- ✅ **Orange bars (bottom)**: 80%+ occupancy
+- ✅ **Red bars (bottom)**: 100% occupancy
+- ✅ **Blue dots (top-center)**: Festivals
+- ✅ **Green dots (top-center)**: Public holidays
+
+**Verification Steps:**
+1. **Check All Dates Visible**: August calendar shows 1, 2, 3... 31
+2. **Test Visual Indicators**: Dates with data show appropriate colored indicators
+3. **Verify Month Navigation**: Can navigate between months properly
+4. **Confirm Date Selection**: Clicking dates shows detailed information
+
+**Files Modified:**
+- `client/src/components/occupancy-calendar.tsx` - Fixed calendar integration
+- Build artifacts cleaned and regenerated
+
+**Prevention:**
+- **Use correct react-day-picker API**: Always check documentation for component props
+- **Test calendar components**: Ensure all dates render regardless of data availability
+- **Follow build process**: Clean artifacts → Rebuild → Test after major component changes
+- **Avoid null returns**: Calendar components should always return valid JSX
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #014**: "Show All Capsules" Checkbox Not Visible After Code Changes
+- **Port EADDRINUSE**: Address already in use errors
+
+---
+
 **Document Control:**
 - **Maintained By:** Development Team
 - **Last Updated:** January 2025
