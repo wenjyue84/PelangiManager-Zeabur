@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,20 +8,31 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, CheckCircle2, Clock, User, Calendar, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, User, Calendar, AlertCircle, ChevronDown, ChevronUp, RefreshCw, Plus, Wrench } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/lib/auth";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { ViewToggle } from "@/components/ui/view-toggle";
+import { MaintenanceFilters, type MaintenanceFilters as MaintenanceFiltersType } from "@/components/ui/maintenance-filters";
+import { MaintenanceProblemCard } from "@/components/ui/maintenance-problem-card";
 import type { Capsule, CapsuleProblem, PaginatedResponse } from "@shared/schema";
 
 export default function MaintenanceManage() {
   const [selectedCapsule, setSelectedCapsule] = useState<string>("");
   const [problemDescription, setProblemDescription] = useState("");
-  const [resolutionNotes, setResolutionNotes] = useState("");
   const [expandedProblems, setExpandedProblems] = useState<Set<string>>(new Set());
   const [problemToResolve, setProblemToResolve] = useState<CapsuleProblem | null>(null);
   const [showResolveConfirmation, setShowResolveConfirmation] = useState(false);
+  const [isCondensedView, setIsCondensedView] = useState(false);
+  const [filters, setFilters] = useState<MaintenanceFiltersType>({
+    dateFrom: '',
+    dateTo: '',
+    capsuleNumber: '',
+    reportedBy: '',
+    showResolved: false,
+  });
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const authContext = useContext(AuthContext);
@@ -42,6 +53,39 @@ export default function MaintenanceManage() {
   });
   
   const activeProblems = activeProblemsResponse?.data || [];
+
+  // Filter problems based on current filters
+  const filteredProblems = useMemo(() => {
+    let problems = filters.showResolved ? allProblems : activeProblems;
+    
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      problems = problems.filter(p => new Date(p.reportedAt) >= fromDate);
+    }
+    
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      problems = problems.filter(p => new Date(p.reportedAt) <= toDate);
+    }
+    
+    if (filters.capsuleNumber) {
+      problems = problems.filter(p => p.capsuleNumber === filters.capsuleNumber);
+    }
+    
+    if (filters.reportedBy) {
+      problems = problems.filter(p => p.reportedBy === filters.reportedBy);
+    }
+    
+    return problems;
+  }, [allProblems, activeProblems, filters]);
+
+  // Get unique reporters for filter dropdown
+  const uniqueReporters = useMemo(() => {
+    const reporters = new Set<string>();
+    allProblems.forEach(p => reporters.add(p.reportedBy));
+    return Array.from(reporters).sort();
+  }, [allProblems]);
 
   const reportProblemMutation = useMutation({
     mutationFn: async ({ capsuleNumber, description }: { capsuleNumber: string; description: string }) => {
@@ -83,7 +127,6 @@ export default function MaintenanceManage() {
       queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
       queryClient.invalidateQueries({ queryKey: ["/api/problems/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
-      setResolutionNotes("");
       setProblemToResolve(null);
       setShowResolveConfirmation(false);
       toast({
@@ -104,7 +147,7 @@ export default function MaintenanceManage() {
     if (problemToResolve) {
       resolveProblemMutation.mutate({
         problemId: problemToResolve.id,
-        notes: resolutionNotes,
+        notes: "", // Will be handled by the card component
       });
     }
   };
@@ -129,6 +172,13 @@ export default function MaintenanceManage() {
     reportProblemMutation.mutate({
       capsuleNumber: selectedCapsule,
       description: problemDescription,
+    });
+  };
+
+  const handleResolveProblem = (problemId: string, notes?: string) => {
+    resolveProblemMutation.mutate({
+      problemId,
+      notes,
     });
   };
 
@@ -158,6 +208,89 @@ export default function MaintenanceManage() {
   });
 
   const resolvedProblems = allProblems.filter(p => p.isResolved);
+  const activeProblemsCount = activeProblems.length;
+  const resolvedProblemsCount = resolvedProblems.length;
+
+  // Render problems based on view mode
+  const renderProblems = (problems: CapsuleProblem[]) => {
+    if (isCondensedView) {
+      return (
+        <div className="space-y-3">
+          {problems.map((problem) => (
+            <div key={problem.id} className="border rounded-lg p-4 bg-white">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant={problem.isResolved ? "outline" : "destructive"}>
+                      {problem.capsuleNumber}
+                    </Badge>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {problem.reportedBy}
+                    </span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(problem.reportedAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">{problem.description}</p>
+                  
+                  {expandedProblems.has(problem.id) && !problem.isResolved && (
+                    <div className="mt-3 pt-3 border-t">
+                      <Label htmlFor={`notes-${problem.id}`} className="text-xs">Resolution Notes (Optional)</Label>
+                      <Textarea
+                        id={`notes-${problem.id}`}
+                        placeholder="Add any notes about the resolution..."
+                        className="mt-1 min-h-[60px] text-sm"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setProblemToResolve(problem);
+                          setShowResolveConfirmation(true);
+                        }}
+                        disabled={resolveProblemMutation.isPending}
+                        className="mt-2"
+                      >
+                        {resolveProblemMutation.isPending ? "Resolving..." : "Mark as Resolved"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {!problem.isResolved && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleProblemExpansion(problem.id)}
+                  >
+                    {expandedProblems.has(problem.id) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Detailed card view
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {problems.map((problem) => (
+          <MaintenanceProblemCard
+            key={problem.id}
+            problem={problem}
+            onResolve={handleResolveProblem}
+            isResolving={resolveProblemMutation.isPending && resolveProblemMutation.variables?.problemId === problem.id}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="p-3 sm:p-6 max-w-7xl mx-auto">
@@ -171,7 +304,7 @@ export default function MaintenanceManage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
+              <Plus className="h-5 w-5 text-blue-600" />
               Report New Problem
             </CardTitle>
           </CardHeader>
@@ -220,145 +353,74 @@ export default function MaintenanceManage() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Maintenance Issues</CardTitle>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <CardTitle className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  Maintenance Issues
+                </CardTitle>
+                
+                <div className="flex items-center gap-2">
+                  <ViewToggle
+                    isCondensedView={isCondensedView}
+                    onToggle={setIsCondensedView}
+                  />
+                  
+                  <MaintenanceFilters
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    capsules={capsules.map(c => ({ number: c.number, section: c.section }))}
+                    reporters={uniqueReporters}
+                  />
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/problems/active"] });
+                    }}
+                    className="h-8 px-3"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="active" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="active">
-                    Active Problems ({activeProblems.length})
+                    Active Problems ({activeProblemsCount})
                   </TabsTrigger>
                   <TabsTrigger value="resolved">
-                    Resolved ({resolvedProblems.length})
+                    Resolved ({resolvedProblemsCount})
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="active" className="space-y-4">
-                  {activeProblems.length === 0 ? (
+                  {filteredProblems.filter(p => !p.isResolved).length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                      <p>No active maintenance issues</p>
+                      <p>No active maintenance issues found</p>
+                      {filters.dateFrom || filters.dateTo || filters.capsuleNumber || filters.reportedBy ? (
+                        <p className="text-sm text-gray-400 mt-2">Try adjusting your filters</p>
+                      ) : null}
                     </div>
                   ) : (
-                    activeProblems.map((problem) => (
-                      <div key={problem.id} className="border rounded-lg">
-                        <div className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="destructive">
-                                  {problem.capsuleNumber}
-                                </Badge>
-                                <span className="text-xs text-gray-500 flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {problem.reportedBy}
-                                </span>
-                                <span className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDate(problem.reportedAt)}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-700">{problem.description}</p>
-                              
-                              {expandedProblems.has(problem.id) && (
-                                <div className="mt-3 pt-3 border-t">
-                                  <Label htmlFor={`notes-${problem.id}`} className="text-xs">Resolution Notes (Optional)</Label>
-                                  <Textarea
-                                    id={`notes-${problem.id}`}
-                                    value={resolutionNotes}
-                                    onChange={(e) => setResolutionNotes(e.target.value)}
-                                    placeholder="Add any notes about the resolution..."
-                                    className="mt-1 min-h-[60px] text-sm"
-                                  />
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setProblemToResolve(problem);
-                                      setShowResolveConfirmation(true);
-                                    }}
-                                    disabled={resolveProblemMutation.isPending}
-                                    className="mt-2"
-                                  >
-                                    {resolveProblemMutation.isPending ? "Resolving..." : "Mark as Resolved"}
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleProblemExpansion(problem.id)}
-                            >
-                              {expandedProblems.has(problem.id) ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                    renderProblems(filteredProblems.filter(p => !p.isResolved))
                   )}
                 </TabsContent>
 
                 <TabsContent value="resolved" className="space-y-4">
-                  {resolvedProblems.length === 0 ? (
+                  {filteredProblems.filter(p => p.isResolved).length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      <p>No resolved issues in history</p>
+                      <p>No resolved issues found</p>
+                      {filters.dateFrom || filters.dateTo || filters.capsuleNumber || filters.reportedBy ? (
+                        <p className="text-sm text-gray-400 mt-2">Try adjusting your filters</p>
+                      ) : null}
                     </div>
                   ) : (
-                    resolvedProblems.map((problem) => (
-                      <div key={problem.id} className="border rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="bg-green-50 text-green-700">
-                                {problem.capsuleNumber}
-                              </Badge>
-                              <Badge variant="outline" className="bg-green-50 text-green-700">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Resolved
-                              </Badge>
-                            </div>
-                            
-                            <p className="text-sm text-gray-700 mb-2">{problem.description}</p>
-                            
-                            <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                              <div>
-                                <span className="font-medium">Reported:</span>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <User className="h-3 w-3" />
-                                  {problem.reportedBy}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {formatDate(problem.reportedAt)}
-                                </div>
-                              </div>
-                              <div>
-                                <span className="font-medium">Resolved:</span>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <User className="h-3 w-3" />
-                                  {problem.resolvedBy || "Unknown"}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {problem.resolvedAt ? formatDate(problem.resolvedAt) : "N/A"}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {problem.notes && (
-                              <div className="mt-2 pt-2 border-t">
-                                <p className="text-xs font-medium text-gray-600">Resolution Notes:</p>
-                                <p className="text-xs text-gray-500 mt-1">{problem.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                    renderProblems(filteredProblems.filter(p => p.isResolved))
                   )}
                 </TabsContent>
               </Tabs>
@@ -374,7 +436,7 @@ export default function MaintenanceManage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active Issues</p>
-                <p className="text-2xl font-bold text-orange-600">{activeProblems.length}</p>
+                <p className="text-2xl font-bold text-orange-600">{activeProblemsCount}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-orange-200" />
             </div>
@@ -405,7 +467,7 @@ export default function MaintenanceManage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Resolved</p>
-                <p className="text-2xl font-bold text-blue-600">{resolvedProblems.length}</p>
+                <p className="text-2xl font-bold text-blue-600">{resolvedProblemsCount}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-blue-200" />
             </div>
@@ -433,7 +495,7 @@ export default function MaintenanceManage() {
           open={showResolveConfirmation}
           onOpenChange={setShowResolveConfirmation}
           title="Resolve Maintenance Issue"
-          description={`Are you sure you want to mark the maintenance issue for capsule ${problemToResolve.capsuleNumber} as resolved? ${resolutionNotes ? 'Your resolution notes will be saved.' : ''}`}
+          description={`Are you sure you want to mark the maintenance issue for capsule ${problemToResolve.capsuleNumber} as resolved?`}
           confirmText="Resolve Issue"
           cancelText="Cancel"
           onConfirm={confirmResolveProblem}

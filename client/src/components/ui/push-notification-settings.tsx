@@ -517,38 +517,125 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
           throw new Error('Unknown notification type');
       }
       
-      // Send test notification via API
-      const response = await fetch('/api/push/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testPayload),
-      });
+      console.log('📤 Sending test payload:', testPayload);
+      
+      // First, try to send via the specific endpoint
+      try {
+        const response = await fetch('/api/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(testPayload),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server responded with ${response.status}`);
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+        if (!response.ok) {
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+            console.log('❌ Error response data:', errorData);
+          } catch (parseError) {
+            console.log('❌ Could not parse error response:', parseError);
+            const errorText = await response.text();
+            console.log('❌ Error response text:', errorText);
+          }
+          
+          throw new Error(
+            errorData.error || 
+            errorData.message || 
+            `Server responded with ${response.status}: ${response.statusText}`
+          );
+        }
+
+        const result = await response.json();
+        console.log('✅ Response result:', result);
+        
+        console.log('✅ Specific test notification sent successfully via /api/push/send');
+        toast({
+          title: `Test ${type} Sent! 🎉`,
+          description: `Test notification for ${type} has been sent. Check your device!`,
+        });
+        
+        setTestError(null);
+        return;
+      } catch (endpointError: any) {
+        console.log('⚠️ Specific endpoint failed, trying fallback method:', endpointError.message);
+        
+        // Fallback: Use the existing test notification function
+        try {
+          console.log('🔄 Using fallback test notification method...');
+          await testNotification();
+          
+          console.log('✅ Fallback test notification sent successfully');
+          toast({
+            title: `Test ${type} Sent! 🎉`,
+            description: `Test notification sent via fallback method. Check your device!`,
+          });
+          
+          setTestError(null);
+          return;
+        } catch (fallbackError: any) {
+          console.log('❌ Both methods failed:', {
+            endpointError: endpointError.message,
+            fallbackError: fallbackError.message
+          });
+          
+          // Throw the original endpoint error for better debugging
+          throw endpointError;
+        }
       }
-
-      const result = await response.json();
-      
-      console.log('✅ Specific test notification sent successfully:', type);
-      toast({
-        title: `Test ${type} Sent! 🎉`,
-        description: `Test notification for ${type} has been sent. Check your device!`,
+    } catch (error: any) {
+      console.error(`❌ Test notification error for ${type}:`, error);
+      console.error('❌ Error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        cause: error?.cause
       });
       
-      setTestError(null);
-    } catch (error) {
-      console.error(`❌ Test notification error for ${type}:`, error);
+      // Create a more specific error message
+      let errorMessage = error?.message || 'Unknown error occurred';
+      let errorDetails = 'An unexpected error occurred while testing notifications';
       
-      const categorizedError = categorizeError(error);
+      if (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('Failed to fetch')) {
+        errorMessage = 'Network Connection Issue';
+        errorDetails = 'Unable to connect to the notification service. Please check your internet connection.';
+      } else if (errorMessage.includes('401')) {
+        errorMessage = 'Authentication Required';
+        errorDetails = 'Your session has expired. Please refresh the page and try again.';
+      } else if (errorMessage.includes('403')) {
+        errorMessage = 'Access Denied';
+        errorDetails = 'You do not have permission to send test notifications.';
+      } else if (errorMessage.includes('404')) {
+        errorMessage = 'Service Not Found';
+        errorDetails = 'The push notification service endpoint was not found. Please check if the server is running.';
+      } else if (errorMessage.includes('500')) {
+        errorMessage = 'Server Error';
+        errorDetails = 'The notification service encountered an internal error. Please try again later.';
+      }
+      
+      const categorizedError = {
+        type: 'unknown' as const,
+        message: errorMessage,
+        details: errorDetails,
+        troubleshooting: [
+          'Check your internet connection',
+          'Ensure the server is running',
+          'Try refreshing the page',
+          'Check browser console for detailed error logs',
+          'Contact support if the problem persists'
+        ],
+        actionRequired: 'Check browser console (F12) for detailed error information'
+      };
+      
       setTestError(categorizedError);
       
       toast({
         title: 'Test Failed',
-        description: `Failed to send test ${type} notification: ${categorizedError.message}`,
+        description: `Failed to send test ${type} notification: ${errorMessage}`,
         variant: 'destructive',
       });
     } finally {
@@ -897,6 +984,20 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
                     <div className="text-xs text-blue-700">
                       Click the <Play className="h-3 w-3 inline text-blue-600" /> button beside each toggle to test that specific notification type. 
                       These are safe test notifications that won't affect your production data.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Debugging Help */}
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <HelpCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium text-amber-800">Having Issues?</div>
+                    <div className="text-xs text-amber-700">
+                      If test buttons don't work, check the browser console (F12 → Console) for detailed error logs. 
+                      The system will automatically try fallback methods if the primary endpoint fails.
                     </div>
                   </div>
                 </div>
