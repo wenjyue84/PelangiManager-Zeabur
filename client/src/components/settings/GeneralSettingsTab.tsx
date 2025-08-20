@@ -92,11 +92,11 @@ export default function GeneralSettingsTab({ settings, isLoading, form, onSubmit
             </Card>
 
 
-            {/* Push Notifications Card */}
-            <PushNotificationSettings />
-
           </form>
         </Form>
+        
+        {/* Push Notifications Card - Outside Form */}
+        <PushNotificationSettings />
       )}
     </div>
   );

@@ -1,0 +1,29 @@
+[33mfb79006[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Improve fetch interception and error handling for auth
+[33ma2bc50c[m Improve push notification settings error handling and debugging
+[33m1f3daf3[m Add validation for settings keys and values
+[33mfe86ec9[m Improve push notification permission troubleshooting UI
+[33mf9752f2[m Improve push notification test error handling and UX
+[33m42c7dc9[m Remove import/export configuration from settings tab
+[33m0f6fa1f[m Improve troubleshooting guide for push notification issues
+[33m5159f43[m Fix app startup issue caused by missing push notification dependencies
+[33me612787[m Improve push notification subscription handling
+[33m7ac96c6[m Add web push notification support across app
+[33m801ba0f[m Document PWA troubleshooting and enable push notifications for testing
+[33m8499aaa[m Add offline support and PWA features
+[33mc87606b[m Add guest, problem, notification, and settings APIs
+[33mdaa2690[m Improve website speed by caching data and combining requests
+[33me3fe40b[m Improve notification date handling and add view modes to checkout
+[33mb0e09db[m Refactor notification and route visibility checks
+[33m30c3760[m feat: Implement smart photo upload system with environment detection
+[33mea18513[m Enable data persistence by migrating to a production-ready database
+[33m206b9fd[m Refactor daily notifications with accordion and improved guest details view (#4)
+[33m45f51cc[m Improve how notifications are displayed for administrators
+[33m86bd4b4[m Organize dashboard to show guest table first
+[33mc8551d1[m Allow direct checkout from daily notifications without scrolling
+[33mea59103[m Hide notification badges for logged-out users
+[33mc61fa14[m Add multilingual support and integrate email notifications for check-ins
+[33mcf9fade[m Implement pagination for improved data management and performance
+[33m4adef65[m Improve login feedback with celebratory messages and enhanced styling
+[33m92a12b9[m Add visual alert for successful user login
+[33m94e70ef[m Add notifications for self-check-ins to the admin dashboard
+[33m5a6ff58[m Improve system for managing guest payments and notifications

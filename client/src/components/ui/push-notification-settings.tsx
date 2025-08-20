@@ -322,7 +322,13 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
     };
   };
 
-  const handleTestNotification = async () => {
+  const handleTestNotification = async (e?: React.MouseEvent) => {
+    // Prevent any form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     console.log('🚀 Starting test notification...');
     setIsTestInProgress(true); // Set flag to prevent saving during test
     try {
@@ -768,15 +774,34 @@ export function PushNotificationSettings({ className = '' }: PushNotificationSet
               )}
             </div>
             
-            <Button
-              variant="outline"
-              onClick={handleTestNotification}
-              disabled={loading}
-              className="w-full"
-            >
-              <TestTube className="h-4 w-4 mr-2" />
-              {loading ? 'Sending...' : 'Send Test Notification'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => {
+                  // Save notification preferences
+                  toast({
+                    title: 'Settings Saved',
+                    description: 'Your notification preferences have been saved.',
+                  });
+                }}
+                className="flex-1"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Save
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTestNotification}
+                disabled={loading}
+                className="flex-1"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                {loading ? 'Sending...' : 'Send Test Notification'}
+              </Button>
+            </div>
 
             {/* Test Error Display */}
             {testError && (

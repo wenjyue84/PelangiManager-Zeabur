@@ -18,9 +18,6 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        additionalManifestEntries: [
-          { url: '/sw-push-handlers.js', revision: null }
-        ],
         // Import push handlers into the service worker
         importScripts: ['/sw-push-handlers.js'],
         runtimeCaching: [
@@ -103,13 +100,13 @@ export default defineConfig({
           {
             src: '/icon-192.png',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
             src: '/icon-512.png',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ],
@@ -142,8 +139,8 @@ export default defineConfig({
         enabled: process.env.NODE_ENV === 'development',
         type: 'module'
       },
-      // Only enable PWA in production or when explicitly requested
-      disable: process.env.DISABLE_PWA === 'true'
+             // Only enable PWA in production or when explicitly requested
+       disable: true // Temporarily disabled to fix service worker conflicts
     }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined

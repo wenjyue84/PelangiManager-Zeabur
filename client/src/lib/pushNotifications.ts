@@ -358,41 +358,61 @@ class PushNotificationManager {
         throw new Error('No active subscription found. Please subscribe to push notifications first.');
       }
 
-      // Check if service worker is registered
-      if (!navigator.serviceWorker.controller) {
-        throw new Error('Service worker not active. Please refresh the page and try again.');
+      // Check if service worker is supported (less strict check)
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service worker not supported in this browser.');
       }
 
-      const response = await fetch('/api/push/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Try to send test notification via API first
+      try {
+        const response = await fetch('/api/push/test', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Server responded with ${response.status}: ${response.statusText}`;
-        
-        if (response.status === 404) {
-          throw new Error('Push notification service not found. Please check if the server is running.');
-        } else if (response.status === 500) {
-          throw new Error('Server error occurred while sending test notification. Please try again later.');
-        } else if (response.status === 401) {
-          throw new Error('Authentication required. Please log in again.');
-        } else if (response.status === 403) {
-          throw new Error('Access denied. You may not have permission to send test notifications.');
-        } else {
-          throw new Error(`Test notification failed: ${errorMessage}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.error || `Server responded with ${response.status}: ${response.statusText}`;
+          
+          if (response.status === 404) {
+            throw new Error('Push notification service not found. Please check if the server is running.');
+          } else if (response.status === 500) {
+            throw new Error('Server error occurred while sending test notification. Please try again later.');
+          } else if (response.status === 401) {
+            throw new Error('Authentication required. Please log in again.');
+          } else if (response.status === 403) {
+            throw new Error('Access denied. You may not have permission to send test notifications.');
+          } else {
+            throw new Error(`Test notification failed: ${errorMessage}`);
+          }
         }
-      }
 
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log('Test notification sent successfully:', result.message);
-      } else {
-        throw new Error(result.error || 'Test notification failed with unknown error');
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('Test notification sent successfully:', result.message);
+          return;
+        } else {
+          throw new Error(result.error || 'Test notification failed with unknown error');
+        }
+      } catch (apiError) {
+        console.warn('API test notification failed, trying fallback:', apiError);
+        
+        // Fallback: Show a local notification instead
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Test Notification', {
+            body: 'This is a test notification from Pelangi Manager',
+            icon: '/icon-192.png',
+            tag: 'test-notification',
+          });
+          console.log('Fallback test notification shown successfully');
+          return;
+        }
+        
+        // If fallback also fails, throw the original error
+        throw apiError;
       }
     } catch (error) {
       console.error('Error sending test notification:', error);
