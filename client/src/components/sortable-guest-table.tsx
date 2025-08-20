@@ -528,10 +528,13 @@ export default function SortableGuestTable() {
       <CardHeader className="pb-4">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-bold text-hostel-text flex items-center">
-            Current Guest
+            {showAllCapsules ? "All Capsules" : "Current Guest"}
             {occupancy && (
               <span className="ml-2 text-sm font-normal text-gray-600">
-                ({occupancy.occupied}/{occupancy.total})
+                {showAllCapsules 
+                  ? `(${occupancy.occupied}/${allCapsules.length || occupancy.total})`
+                  : `(${occupancy.occupied}/${occupancy.total})`
+                }
               </span>
             )}
           </CardTitle>
@@ -685,7 +688,12 @@ export default function SortableGuestTable() {
       <CardContent>
         {sortedData.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>No guests currently checked in or pending check-ins</p>
+            <p>
+              {showAllCapsules 
+                ? "No guests currently checked in, pending check-ins, or empty capsules found"
+                : "No guests currently checked in or pending check-ins"
+              }
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto hidden md:block">
@@ -733,7 +741,7 @@ export default function SortableGuestTable() {
                 </tr>
               </thead>
 
-              <tbody className="bg-white divide-y divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {sortedData.map((item) => {
                   if (item.type === 'guest') {
                     const guest = item.data;
@@ -879,7 +887,7 @@ export default function SortableGuestTable() {
                         </td>
                       </SwipeableGuestRow>
                     );
-                  } else {
+                  } else if (item.type === 'pending') {
                     // Pending check-in row
                     const pendingData = item.data;
                     return (
@@ -961,6 +969,63 @@ export default function SortableGuestTable() {
                           ) : (
                             <span className="text-xs text-orange-600">Pending</span>
                           )}
+                        </td>
+                      </tr>
+                    );
+                  } else if (item.type === 'empty') {
+                    // Empty capsule row
+                    const emptyData = item.data;
+                    return (
+                      <tr key={`empty-${emptyData.id}`} className="bg-red-50">
+                        {/* Accommodation column - sticky first column */}
+                        <td className="px-2 py-3 whitespace-nowrap sticky left-0 bg-red-50 z-10">
+                          <Badge variant="outline" className="bg-red-600 text-white border-red-600">
+                            {emptyData.capsuleNumber}
+                          </Badge>
+                        </td>
+                        {/* Guest column */}
+                        <td className="px-2 py-3 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center mr-2">
+                              <span className="text-red-600 font-bold text-sm">E</span>
+                            </div>
+                            {!isCondensedView && (
+                              <span className="text-sm font-medium text-red-700">
+                                Empty
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        {/* Nationality column - only in detailed view */}
+                        {!isCondensedView && (
+                          <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
+                            -
+                          </td>
+                        )}
+                        {/* Check-in column */}
+                        <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
+                          -
+                        </td>
+                        {/* Checkout column */}
+                        <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
+                          -
+                        </td>
+                        {/* Payment and Status columns - only in detailed view */}
+                        {!isCondensedView && (
+                          <>
+                            <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
+                              -
+                            </td>
+                            <td className="px-2 py-3 whitespace-nowrap">
+                              <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                                <span className="text-red-600 font-bold text-xs">E</span>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                        {/* Actions column */}
+                        <td className="px-2 py-3 whitespace-nowrap">
+                          <span className="text-xs text-red-600">Empty</span>
                         </td>
                       </tr>
                     );
@@ -1066,7 +1131,7 @@ export default function SortableGuestTable() {
                     </SwipeableGuestCard>
                   </Card>
                 );
-              } else {
+              } else if (item.type === 'pending') {
                 const pendingData = item.data;
                 return (
                   <Card key={`pending-${pendingData.id}`} className="p-3 bg-orange-50/60 hover-card-pop">
@@ -1108,6 +1173,41 @@ export default function SortableGuestTable() {
                         ) : (
                           <span className="text-xs text-orange-600">Pending</span>
                         )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              } else if (item.type === 'empty') {
+                const emptyData = item.data;
+                return (
+                  <Card key={`empty-${emptyData.id}`} className="p-3 bg-red-50/60 hover-card-pop">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-red-600 text-white border-red-600">{emptyData.capsuleNumber}</Badge>
+                          <span className="font-medium text-red-700">Empty</span>
+                        </div>
+                        <div className="text-xs text-red-700 mt-1">
+                          Status: Available
+                        </div>
+                        {!isCondensedView && (
+                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-red-700">
+                            <div className="col-span-2">
+                              <span className="font-medium">Section:</span> {emptyData.section}
+                            </div>
+                            <div className="col-span-2">
+                              <span className="font-medium">Cleaning:</span> {emptyData.cleaningStatus}
+                            </div>
+                            {emptyData.remark && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Note:</span> {emptyData.remark}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-600">Empty</span>
                       </div>
                     </div>
                   </Card>
