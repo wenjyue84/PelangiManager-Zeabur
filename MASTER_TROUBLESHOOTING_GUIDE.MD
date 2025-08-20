@@ -48,6 +48,108 @@ export DISABLE_PWA=true
 1. **Dependency Management**: Always verify PWA dependencies are installed before deployment
 2. **Environment-Specific Configuration**: Use conditional PWA registration based on deployment environment
 3. **Testing Strategy**: Test PWA features in localhost first, then verify Replit compatibility
+
+---
+
+## Push Notification "Send Test Notification" 500 Error (August 20, 2025)
+
+### Problem Description
+The "Send Test Notification" feature in Settings > General was returning 500 errors with database constraint violations and "violates not-null constraint" messages.
+
+### Root Cause Analysis
+1. **Over-Engineering**: Multiple enhancement attempts by Claude Code created complex state management conflicts
+2. **Settings API Interference**: Push notification testing was interfering with settings system API calls
+3. **Database Constraint Issues**: Complex error handling logic was causing null value insertions
+4. **Feature Creep**: Simple test functionality became overly complex with troubleshooting enhancements
+
+### Error Symptoms
+- HTTP 500 errors when clicking "Send Test Notification"
+- Console errors showing "violates not-null constraint"
+- Test notifications not being delivered despite successful subscription
+- Complex error categorization causing system conflicts
+
+### Solution Steps (Implemented by Cursor AI Agent)
+
+#### Root Cause: Simplification Required
+The solution involved **removing complexity** rather than adding more features:
+
+1. **Simplified Test Logic**: Removed over-engineered error handling and state management
+2. **Clear Validation Chain**: 
+   - Check for active subscriptions first
+   - Validate VAPID configuration
+   - Send simple test payload without complex state tracking
+3. **Direct Response Pattern**: Return clear success/error responses without interference
+
+#### Key Implementation Points
+- Avoided complex state management during test notifications
+- Removed troubleshooting enhancements that caused interference
+- Used simple, direct API response patterns
+- Separated test notification logic from settings system
+
+### Lessons Learned
+1. **KISS Principle**: Keep It Simple, Stupid - complex solutions often create more problems
+2. **Feature Isolation**: Test functionality should not interfere with core system operations
+3. **Progressive Enhancement**: Add complexity only when simple solutions fail
+4. **AI Agent Collaboration**: Sometimes different AI perspectives provide better solutions
+
+### Prevention Measures
+1. **Start Simple**: Implement basic functionality before adding enhancements
+2. **Isolate Features**: Keep test/debug features separate from production systems
+3. **Monitor Complexity**: Regular code review to prevent over-engineering
+4. **Cross-Agent Review**: Use multiple AI tools for different perspectives on complex issues
+
+---
+
+## Push Notifications Not Showing on Guest Check-In (August 20, 2025)
+
+### Problem Description
+User reported that push notifications are not appearing when guests check in, despite the "Send Test Notification" feature working correctly.
+
+### Root Cause Analysis
+**This is NOT a bug** - it's expected behavior. Push notifications require active subscribers.
+
+1. **No Active Subscriptions**: The push notification system shows 0 total subscriptions
+2. **User Must Subscribe First**: Users need to manually subscribe to push notifications in Settings > General
+3. **Permission Required**: Browser notification permission must be granted
+4. **Service Worker Registration**: PWA service worker must be active for push subscriptions
+
+### Solution Steps
+
+#### For Users (How to Enable Notifications)
+1. **Navigate to Settings > General**
+2. **Scroll to Push Notifications section**
+3. **Click "Enable Notifications"** and grant browser permission
+4. **Click "Subscribe to Push Notifications"**
+5. **Verify subscription** with "Send Test Notification"
+
+#### For Verification (Admin)
+1. Check subscription stats: `GET /api/push/stats`
+2. Expected result with active subscriptions:
+   ```json
+   {
+     "totalSubscriptions": 1,
+     "activeToday": 1,
+     "byCreationDate": {"Mon Aug 20 2025": 1}
+   }
+   ```
+
+### System Behavior (Working as Designed)
+- **Guest Check-In Notifications**: Only sent to active subscribers
+- **Zero Subscribers**: No notifications sent (expected behavior)
+- **Active Subscribers**: Notifications sent successfully
+- **Console Logging**: Shows "Push notification sent for guest check-in: [name]" when subscriptions exist
+
+### Prevention Measures
+1. **User Training**: Educate users on notification subscription requirement
+2. **UI Indicators**: Show subscription status clearly in Settings
+3. **Auto-Subscribe**: Consider auto-subscribing PWA users (when installed)
+4. **Documentation**: Clear instructions on enabling notifications
+
+### Related Files
+- `server/routes/guests.ts:204-219` - Guest check-in notification logic
+- `server/routes/guest-tokens.ts:254-267` - Self check-in notification logic
+- `client/src/lib/pushNotifications.ts` - Client subscription management
+- `client/src/components/ui/push-notification-settings.tsx` - Settings UI
 4. **Documentation**: Keep PWA configuration clearly documented for future changes
 
 ### Related Files Modified

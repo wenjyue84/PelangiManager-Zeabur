@@ -1023,6 +1023,9 @@ $env:PORT=5001; npm run dev
 - **Changes not reflecting** → Suspect build artifacts, clear dist/ directory
 - **Memory issues** → Restart server, check for memory leaks
 
+### **Replit-Specific Issues**
+- **ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'** → Missing build artifacts, need to run build command
+
 ---
 
 ## 🚀 **SERVER STARTUP AND GIT SYNC ISSUES**
@@ -1074,6 +1077,95 @@ $env:PORT=5001; npm run dev
 3. **Verify Port**: Ensure port 5000 is available and server starts
 4. **Test Connection**: Visit `localhost:5000` to confirm server is running
 5. **Check Features**: Verify push notifications and other features work
+
+---
+
+## 🚀 **REPLIT AND DEPLOYMENT ISSUES**
+
+### **013 - Replit ENOENT: Missing Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `{"message":"ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'"}`
+- Server starts but fails to serve the frontend application
+- Browser shows server error instead of React app
+- Occurs in Replit environment after code changes or deployment
+
+**Root Cause:**
+- **Missing Build Directory**: The `dist/` directory containing compiled frontend files doesn't exist
+- **Build Process Not Run**: Frontend code hasn't been compiled from TypeScript/JSX to static HTML/CSS/JS
+- **Replit Environment**: Replit may not automatically run build commands on startup
+- **File System Issues**: Build artifacts may have been cleared or corrupted
+
+**Solution Implemented:**
+1. **Run Build Command**:
+   ```bash
+   # In Replit terminal
+   npm run build
+   ```
+
+2. **Verify Build Output**:
+   ```bash
+   # Check if dist directory exists
+   ls -la dist/
+   
+   # Should show:
+   # dist/
+   # └── public/
+   #     ├── index.html
+   #     ├── assets/
+   #     └── ...
+   ```
+
+3. **Start Server After Build**:
+   ```bash
+   # After successful build
+   npm run dev
+   ```
+
+**Alternative Solutions:**
+1. **Force Clean Build**:
+   ```bash
+   # Remove existing build artifacts
+   rm -rf dist/
+   
+   # Rebuild from scratch
+   npm run build
+   ```
+
+2. **Check Package.json Scripts**:
+   ```json
+   {
+     "scripts": {
+       "build": "vite build",
+       "dev": "tsx watch --clear-screen=false server/index.ts"
+     }
+   }
+   ```
+
+3. **Replit Configuration**:
+   - Ensure `.replit` file has correct run command
+   - Check if build command is set to run on startup
+   - Verify file structure matches expected paths
+
+**Prevention Steps:**
+- **Always run `npm run build`** before starting server in Replit
+- **Check build output** for any compilation errors
+- **Verify dist/ directory** exists and contains expected files
+- **Run build after major code changes** or dependency updates
+
+**Troubleshooting Flow:**
+1. **Check Build Status**: Look for `dist/` directory in file explorer
+2. **Run Build Command**: Execute `npm run build` in terminal
+3. **Verify Output**: Ensure `dist/public/index.html` exists
+4. **Start Server**: Run `npm run dev` after successful build
+5. **Test Application**: Visit the app to confirm it loads correctly
+
+**Common Replit Issues:**
+- **Build fails**: Check TypeScript errors, missing dependencies
+- **Port conflicts**: Replit may use different ports than localhost
+- **File permissions**: Ensure build process can write to workspace
+- **Memory limits**: Large builds may exceed Replit memory constraints
 
 ---
 

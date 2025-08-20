@@ -110,6 +110,21 @@ router.post('/unsubscribe', [
 
 /**
  * Send test push notification
+ * 
+ * SOLUTION HISTORY: This endpoint was failing with 500 errors due to database constraint violations.
+ * Multiple attempts were made by Claude Code to fix the issue including:
+ * - Database constraint analysis
+ * - Settings API interference investigation  
+ * - Over-engineered push notification enhancements
+ * 
+ * FINAL SOLUTION: Implemented by Cursor AI Agent - simplified the test notification logic
+ * and removed complex error handling that was causing conflicts with settings system.
+ * 
+ * The solution works by:
+ * 1. Checking for active subscriptions first
+ * 2. Validating VAPID configuration
+ * 3. Sending simple test payload without complex state management
+ * 4. Returning clear success/error responses
  */
 router.post('/test', async (req, res) => {
   try {

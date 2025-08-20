@@ -202,6 +202,9 @@ router.post("/checkin",
       const guest = await storage.createGuest(validatedData);
       
       // Send push notification for new guest check-in
+      // NOTE: Notifications are only sent if there are active subscribers.
+      // Users must subscribe to push notifications in Settings > General first.
+      // If no subscriptions exist, no notifications will be sent (expected behavior).
       try {
         const notificationPayload = createNotificationPayload.guestCheckIn(
           guest.name,

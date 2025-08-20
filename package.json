@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch --clear-screen=false server/index.ts",
+    "dev:build": "npm run build && npm run dev",
     "dev:safe": "node scripts/start-dev.js",
     "dev:clean": "npx kill-port 5000 && pkill -f \"tsx watch\" || true && npm run dev",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
