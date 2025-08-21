@@ -27,7 +27,9 @@
       "Bash(copy:*)",
       "Bash(timeout 5 npm run dev)",
       "Bash(cat:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue)",
+      "Bash(git log:*)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

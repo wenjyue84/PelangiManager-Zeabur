@@ -1,7 +1,7 @@
 import { type User, type InsertUser, type Guest, type InsertGuest, type Capsule, type InsertCapsule, type Session, type GuestToken, type InsertGuestToken, type CapsuleProblem, type InsertCapsuleProblem, type AdminNotification, type InsertAdminNotification, type AppSetting, type InsertAppSetting, type PaginationParams, type PaginatedResponse, type Expense, type InsertExpense, type UpdateExpense, users, guests, capsules, sessions, guestTokens, capsuleProblems, adminNotifications, appSettings, expenses } from "../../shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, ne, and, lte, isNotNull, isNull } from "drizzle-orm";
+import { eq, ne, and, lte, isNotNull, isNull, count } from "drizzle-orm";
 import { IStorage } from "./IStorage";
 
 // Database Storage Implementation
@@ -483,8 +483,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Expense management methods for DatabaseStorage
-  async getExpenses(): Promise<Expense[]> {
-    return await this.db.select().from(expenses).orderBy(expenses.createdAt);
+  async getExpenses(pagination?: PaginationParams): Promise<PaginatedResponse<Expense>> {
+    if (!pagination) {
+      const data = await this.db.select().from(expenses).orderBy(expenses.createdAt);
+      return {
+        data,
+        pagination: {
+          page: 1,
+          limit: data.length,
+          total: data.length,
+          totalPages: 1,
+          hasMore: false,
+        },
+      };
+    }
+
+    const { page = 1, limit = 20 } = pagination;
+    const offset = (page - 1) * limit;
+
+    // Get total count and paginated data
+    const [totalResult, data] = await Promise.all([
+      this.db.select({ count: count() }).from(expenses),
+      this.db.select().from(expenses)
+        .orderBy(expenses.createdAt)
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = totalResult[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore,
+      },
+    };
   }
 
   async addExpense(expense: InsertExpense & { createdBy: string }): Promise<Expense> {

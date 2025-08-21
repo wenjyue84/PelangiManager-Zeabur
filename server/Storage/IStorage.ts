@@ -80,7 +80,7 @@ export interface IStorage {
   getGuestTokenExpirationHours(): Promise<number>;
   
   // Expense management methods
-  getExpenses(): Promise<Expense[]>;
+  getExpenses(pagination?: PaginationParams): Promise<PaginatedResponse<Expense>>;
   addExpense(expense: InsertExpense & { createdBy: string }): Promise<Expense>;
   updateExpense(expense: UpdateExpense): Promise<Expense | undefined>;
   deleteExpense(id: string): Promise<boolean>;
