@@ -913,10 +913,41 @@ export class MemStorage implements IStorage {
   }
 
   // Expense management methods
-  async getExpenses(): Promise<Expense[]> {
-    return Array.from(this.expenses.values()).sort((a, b) => 
+  async getExpenses(pagination?: PaginationParams): Promise<PaginatedResponse<Expense>> {
+    const allExpenses = Array.from(this.expenses.values()).sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+
+    if (!pagination) {
+      return {
+        data: allExpenses,
+        pagination: {
+          page: 1,
+          limit: allExpenses.length,
+          total: allExpenses.length,
+          totalPages: 1,
+          hasMore: false,
+        },
+      };
+    }
+
+    const { page = 1, limit = 20 } = pagination;
+    const offset = (page - 1) * limit;
+    const paginatedExpenses = allExpenses.slice(offset, offset + limit);
+    const total = allExpenses.length;
+    const totalPages = Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+
+    return {
+      data: paginatedExpenses,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore,
+      },
+    };
   }
 
   async addExpense(expense: InsertExpense & { createdBy: string }): Promise<Expense> {

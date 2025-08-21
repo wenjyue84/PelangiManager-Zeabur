@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import type { Expense, PaginatedResponse } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,9 +129,11 @@ export default function Finance() {
   });
 
   // Fetch expenses
-  const { data: expenses = [], isLoading } = useQuery<Expense[]>({
+  const { data: expenseResponse, isLoading } = useQuery<PaginatedResponse<Expense>>({
     queryKey: ["/api/expenses"],
   });
+  
+  const expenses = expenseResponse?.data || [];
 
   // Add expense mutation
   const addExpenseMutation = useMutation({
