@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, TestTube, Trash2, Copy, Check } from "lucide-react";
+import { Clock, TestTube, Trash2, Copy, Check, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TestsTab() {
@@ -12,6 +12,179 @@ export default function TestsTab() {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [visibleUpdates, setVisibleUpdates] = useState(6);
+
+  // System updates data - Real development history from GitHub
+  const systemUpdates = [
+    {
+      id: 1,
+      title: "System Updates Feature Added",
+      description: "Added this new \"System Updates\" section to Settings > Tests page to track recent development progress and new features with pagination support.",
+      date: "August 21, 2025",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-200",
+      dotColor: "bg-green-500",
+      titleColor: "text-green-900",
+      descColor: "text-green-700",
+      dateColor: "text-green-600"
+    },
+    {
+      id: 2,
+      title: "Calendar Month Indexing Fix",
+      description: "Fixed calendar month indexing issue (#66) that was causing incorrect date calculations and display problems in the occupancy calendar component.",
+      date: "August 20, 2025",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-200",
+      dotColor: "bg-blue-500",
+      titleColor: "text-blue-900",
+      descColor: "text-blue-700",
+      dateColor: "text-blue-600"
+    },
+    {
+      id: 3,
+      title: "Maintenance Management Enhancement",
+      description: "Enhanced maintenance management and notification testing UX with improved push notification test logic, better error handling, fallback methods, advanced filtering, and condensed/detailed views.",
+      date: "August 20, 2025",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-200",
+      dotColor: "bg-purple-500",
+      titleColor: "text-purple-900",
+      descColor: "text-purple-700",
+      dateColor: "text-purple-600"
+    },
+    {
+      id: 4,
+      title: "Maintenance UI Components",
+      description: "Added maintenance UI components and notification test buttons with user-facing debugging help for easier problem tracking and resolution.",
+      date: "August 20, 2025",
+      bgColor: "bg-orange-50",
+      borderColor: "border-orange-200",
+      dotColor: "bg-orange-500",
+      titleColor: "text-orange-900",
+      descColor: "text-orange-700",
+      dateColor: "text-orange-600"
+    },
+    {
+      id: 5,
+      title: "Show All Capsules Feature",
+      description: "Added option to display all capsules including empty ones with a 'Show all capsules' checkbox in the guest table filter panel. Empty capsules are visually distinguished to help users see both occupied and available capsules.",
+      date: "August 20, 2025",
+      bgColor: "bg-indigo-50",
+      borderColor: "border-indigo-200",
+      dotColor: "bg-indigo-500",
+      titleColor: "text-indigo-900",
+      descColor: "text-indigo-700",
+      dateColor: "text-indigo-600"
+    },
+    {
+      id: 6,
+      title: "Push Notification Logic Simplification",
+      description: "Updated troubleshooting docs and simplified push notification logic with better error categorization, debugging capabilities, and user guidance for browser permission issues.",
+      date: "August 20, 2025",
+      bgColor: "bg-gray-50",
+      borderColor: "border-gray-200",
+      dotColor: "bg-gray-500",
+      titleColor: "text-gray-900",
+      descColor: "text-gray-700",
+      dateColor: "text-gray-600"
+    },
+    {
+      id: 7,
+      title: "Server Startup Troubleshooting Guide",
+      description: "Added comprehensive troubleshooting guide for server startup issues after Git sync operations, including import/export error resolution and file integrity verification.",
+      date: "August 20, 2025",
+      bgColor: "bg-cyan-50",
+      borderColor: "border-cyan-200",
+      dotColor: "bg-cyan-500",
+      titleColor: "text-cyan-900",
+      descColor: "text-cyan-700",
+      dateColor: "text-cyan-600"
+    },
+    {
+      id: 8,
+      title: "Route Registration Refactoring",
+      description: "Refactored route registration system and updated settings configuration for better organization and maintainability of API endpoints.",
+      date: "August 20, 2025",
+      bgColor: "bg-rose-50",
+      borderColor: "border-rose-200",
+      dotColor: "bg-rose-500",
+      titleColor: "text-rose-900",
+      descColor: "text-rose-700",
+      dateColor: "text-rose-600"
+    },
+    {
+      id: 9,
+      title: "Application Stability Improvements",
+      description: "Improved application stability and error handling for smoother development experience with better crash recovery and error reporting mechanisms.",
+      date: "August 20, 2025",
+      bgColor: "bg-emerald-50",
+      borderColor: "border-emerald-200",
+      dotColor: "bg-emerald-500",
+      titleColor: "text-emerald-900",
+      descColor: "text-emerald-700",
+      dateColor: "text-emerald-600"
+    },
+    {
+      id: 10,
+      title: "Push Notification UX Enhancement",
+      description: "Improved push notification UX and updated app icons with better visual feedback, clearer status indicators, and enhanced user interaction flow.",
+      date: "August 20, 2025",
+      bgColor: "bg-amber-50",
+      borderColor: "border-amber-200",
+      dotColor: "bg-amber-500",
+      titleColor: "text-amber-900",
+      descColor: "text-amber-700",
+      dateColor: "text-amber-600"
+    },
+    {
+      id: 11,
+      title: "Authentication Error Handling",
+      description: "Improved fetch interception and error handling for authentication with better session management and token validation mechanisms.",
+      date: "August 20, 2025",
+      bgColor: "bg-violet-50",
+      borderColor: "border-violet-200",
+      dotColor: "bg-violet-500",
+      titleColor: "text-violet-900",
+      descColor: "text-violet-700",
+      dateColor: "text-violet-600"
+    },
+    {
+      id: 12,
+      title: "Settings Validation System",
+      description: "Added comprehensive validation for settings keys and values with proper error handling and type safety to prevent database constraint violations.",
+      date: "August 20, 2025",
+      bgColor: "bg-teal-50",
+      borderColor: "border-teal-200",
+      dotColor: "bg-teal-500",
+      titleColor: "text-teal-900",
+      descColor: "text-teal-700",
+      dateColor: "text-teal-600"
+    },
+    {
+      id: 13,
+      title: "Capsule Assignment UX Improvements",
+      description: "Enhanced capsule assignment UI with clearer warnings, manual override dialogs for unavailable capsules, and improved color coding for capsule statuses. Updated object upload API for both local and Replit environments.",
+      date: "August 19, 2025",
+      bgColor: "bg-lime-50",
+      borderColor: "border-lime-200",
+      dotColor: "bg-lime-500",
+      titleColor: "text-lime-900",
+      descColor: "text-lime-700",
+      dateColor: "text-lime-600"
+    },
+    {
+      id: 14,
+      title: "Web Push Notification Support",
+      description: "Added comprehensive web push notification support across the entire application with service worker integration, VAPID key configuration, and cross-browser compatibility.",
+      date: "August 19, 2025",
+      bgColor: "bg-sky-50",
+      borderColor: "border-sky-200",
+      dotColor: "bg-sky-500",
+      titleColor: "text-sky-900",
+      descColor: "text-sky-700",
+      dateColor: "text-sky-600"
+    }
+  ];
 
   // Update elapsed time every second when running
   useEffect(() => {
@@ -361,6 +534,43 @@ export default function TestsTab() {
           <p>• Tests will run with a 15-second timeout to prevent hanging</p>
           <p>• Progress and detailed output will be shown above in real-time</p>
           <p>• Use "Clear Output" to reset the display before running new tests</p>
+        </div>
+
+        {/* System Updates Section */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="flex items-center justify-center h-5 w-5 rounded-full bg-blue-100">
+              <Clock className="h-3 w-3 text-blue-600" />
+            </div>
+            System Updates
+          </h3>
+          <div className="space-y-3">
+            {systemUpdates.slice(0, visibleUpdates).map((update) => (
+              <div key={update.id} className={`${update.bgColor} border ${update.borderColor} rounded-lg p-4`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-2 h-2 ${update.dotColor} rounded-full mt-2 flex-shrink-0`}></div>
+                  <div>
+                    <h4 className={`font-medium ${update.titleColor}`}>{update.title}</h4>
+                    <p className={`text-sm ${update.descColor} mt-1`}>{update.description}</p>
+                    <p className={`text-xs ${update.dateColor} mt-2`}>{update.date}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {visibleUpdates < systemUpdates.length && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleUpdates(prev => Math.min(prev + 6, systemUpdates.length))}
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Load More ({systemUpdates.length - visibleUpdates} remaining)
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

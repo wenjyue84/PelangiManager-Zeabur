@@ -87,6 +87,30 @@ export default function CheckOut() {
   
   const guests = guestsResponse?.data || [];
 
+  // Function to mark capsule as cleaned
+  const handleMarkCleaned = async (capsuleNumber: string) => {
+    try {
+      await apiRequest("POST", `/api/capsules/${capsuleNumber}/mark-cleaned`, {
+        cleanedBy: "Staff"
+      });
+      
+      // Refresh relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
+      
+      toast({
+        title: "Success",
+        description: `${labels.singular} ${capsuleNumber} marked as cleaned successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark capsule as cleaned",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Helper functions for date shortcuts
   const getDateString = (date: Date): string => {
     return date.toISOString().split('T')[0];
@@ -155,7 +179,7 @@ export default function CheckOut() {
 
   // Get unique capsule numbers from current guests
   const uniqueCapsules = useMemo(() => {
-    const capsules = [...new Set(guests.map(g => g.capsuleNumber))].sort((a, b) => {
+    const capsules = Array.from(new Set(guests.map(g => g.capsuleNumber))).sort((a, b) => {
       // Sort capsules numerically if they're numbers, otherwise alphabetically
       const aNum = parseInt(a);
       const bNum = parseInt(b);
@@ -255,14 +279,40 @@ export default function CheckOut() {
       const response = await apiRequest("POST", "/api/guests/checkout", { id: guestId });
       return response.json();
     },
-    onSuccess: () => {
+        onSuccess: (data, guestId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/guests/checked-in"] });
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
       queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
+      
+      // Find the guest to get capsule number
+      const guest = guests.find(g => g.id === guestId);
+      
       toast({
         title: "Success",
-        description: "Guest checked out successfully",
+        description: (
+          <div className="space-y-2">
+            <div>Guest checked out successfully</div>
+            {guest && (
+              <div className="text-sm text-gray-600">
+                Next: go{' '}
+                <button
+                  onClick={() => window.location.href = '/cleaning'}
+                  className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                >
+                  Clean
+                </button>{' '}
+                section to{' '}
+                <button
+                  onClick={() => handleMarkCleaned(guest.capsuleNumber)}
+                  className="text-green-600 hover:text-green-800 underline cursor-pointer font-medium"
+                >
+                  mark cleaned
+                </button>
+              </div>
+            )}
+          </div>
+        ),
       });
     },
     onError: (error: any) => {
