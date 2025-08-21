@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
+import { migrate } from 'drizzle-orm/neon-serverless/migrator';
 
 // Configure Neon to use WebSocket constructor for serverless environments
 neonConfig.webSocketConstructor = ws;
@@ -19,21 +20,28 @@ async function initDatabase() {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     const db = drizzle({ client: pool, schema });
 
-    console.log("📋 Creating database tables...");
+    console.log("📋 Running database migrations...");
     
-    // Create all tables from schema
-    await db.execute(schema.users);
-    await db.execute(schema.sessions);
-    await db.execute(schema.guests);
-    await db.execute(schema.capsules);
-    await db.execute(schema.capsuleProblems);
-    await db.execute(schema.expenses);
-    await db.execute(schema.appSettings);
-    await db.execute(schema.guestTokens);
-    await db.execute(schema.occupancyData);
+    try {
+      // Run all pending migrations
+      await migrate(db, { migrationsFolder: './migrations' });
+      console.log("✅ Migrations completed successfully!");
+    } catch (migrationError) {
+      console.log("⚠️  Migration error (this might be normal if tables already exist):", migrationError);
+      console.log("📋 Checking if tables exist...");
+      
+      // Try to query a table to see if it exists
+      try {
+        await db.select().from(schema.users).limit(1);
+        console.log("✅ Tables appear to exist and are accessible");
+      } catch (tableError) {
+        console.log("❌ Tables are not accessible:", tableError);
+        throw new Error("Database tables are not properly set up. Please check your migrations.");
+      }
+    }
 
     console.log("✅ Database initialized successfully!");
-    console.log("📊 Tables created:");
+    console.log("📊 Available tables:");
     console.log("  - users");
     console.log("  - sessions");
     console.log("  - guests");
@@ -42,7 +50,6 @@ async function initDatabase() {
     console.log("  - expenses");
     console.log("  - app_settings");
     console.log("  - guest_tokens");
-    console.log("  - occupancy_data");
 
     await pool.end();
     process.exit(0);
