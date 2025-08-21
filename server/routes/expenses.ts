@@ -32,7 +32,7 @@ router.get("/", authenticateToken, async (req: any, res) => {
 router.post("/", authenticateToken, async (req: any, res) => {
   try {
     const validatedData = insertExpenseSchema.parse(req.body);
-    const createdBy = req.user.username || req.user.email || "Unknown";
+    const createdBy = req.user.id;
     
     const expense = await storage.addExpense({
       ...validatedData,
