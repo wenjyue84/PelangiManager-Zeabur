@@ -7,10 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-// CRITICAL: Import path for shared utilities - DO NOT MODIFY without user approval
-// Correct path: "../../../shared/utils" (from client/src/components/login-form.tsx to shared/utils.ts)  
-// Incorrect paths cause "Could not resolve" build errors
-// Last fixed: August 23, 2025 - Import path correction during system recovery
 import { shouldShowDemoFeatures } from "../../../shared/utils";
 
 declare global {

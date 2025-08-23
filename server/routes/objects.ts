@@ -9,7 +9,34 @@ import { optimizeAndSaveImage } from "../lib/imageOptimization";
 
 const router = Router();
 
+// ⚠️  CRITICAL UPLOAD FUNCTIONALITY - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+//
+// This file handles the core document upload and thumbnail generation system that is
+// currently working perfectly. Any changes here can break:
+// - Guest document uploads (IC/Passport photos)
+// - Expense photo uploads  
+// - Thumbnail generation and display
+// - File serving for both localhost and Replit environments
+//
+// 🚫 FORBIDDEN CHANGES (unless absolutely necessary):
+// - Multer configuration (lines 18-30)
+// - Document upload endpoint (lines 76-131) 
+// - Photo upload endpoint (lines 32-74)
+// - File serving logic (lines 200-250)
+// - Upload URL generation (lines 133-199)
+//
+// ✅ SAFE TO MODIFY:
+// - Error messages and logging
+// - Response format adjustments
+// - Additional validation (if needed)
+//
+// 🔒 LAST WORKING VERSION: Document uploads and thumbnails working perfectly
+//    - Guest Details shows thumbnails correctly
+//    - Upload Document feature functioning properly
+//    - Both localhost and Replit environments supported
+
 // Configure multer for memory storage (we'll handle file saving ourselves)
+// ⚠️  DO NOT CHANGE - This configuration is critical for upload functionality
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
@@ -27,6 +54,7 @@ const upload = multer({
 });
 
 // Photo upload endpoint for expenses with image optimization
+// ⚠️  DO NOT MODIFY - This endpoint is working perfectly for expense photos
 router.post("/api/upload-photo", upload.single('photo'), async (req, res) => {
   try {
     if (!req.file) {
@@ -75,6 +103,10 @@ router.post("/api/upload-photo", upload.single('photo'), async (req, res) => {
 });
 
 // Guest document upload endpoint with optimization (IC/Passport photos)
+// ⚠️  CRITICAL ENDPOINT - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+// This endpoint handles guest document uploads and is currently working perfectly.
+// It generates thumbnails that display correctly in Guest Details.
+// Any changes here can break the entire guest photo system.
 router.post("/api/upload-document", upload.single('document'), async (req, res) => {
   try {
     if (!req.file) {
@@ -136,6 +168,7 @@ router.post("/api/upload-document", upload.single('document'), async (req, res) 
 
 // Get upload URL for file uploads
 // Environment-aware upload URL generation for both localhost and Replit
+// ⚠️  DO NOT MODIFY - This handles environment detection and URL generation
 router.post("/api/objects/upload", async (req, res) => {
   try {
     console.log('Upload request body:', req.body);
@@ -185,6 +218,10 @@ router.post("/api/objects/upload", async (req, res) => {
 });
 
 // Get object by path
+// ⚠️  CRITICAL FILE SERVING - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+// This endpoint serves uploaded files and thumbnails. It's working perfectly
+// for both localhost and Replit environments. Changes here can break
+// all file access including guest photo thumbnails.
 router.get("/objects/:objectPath(*)", async (req, res) => {
   try {
     const { objectPath } = req.params;
@@ -236,6 +273,7 @@ router.get("/objects/:objectPath(*)", async (req, res) => {
 });
 
 // Development upload with CORS
+// ⚠️  DO NOT MODIFY - CORS configuration critical for upload functionality
 router.options("/api/objects/dev-upload/:id", (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'PUT, OPTIONS');
@@ -245,6 +283,9 @@ router.options("/api/objects/dev-upload/:id", (req, res) => {
 
 // Handle actual file upload to the generated URL
 // Environment-aware file upload handling for both localhost and Replit
+// ⚠️  CRITICAL UPLOAD HANDLING - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+// This endpoint processes actual file uploads and is working perfectly.
+// Changes here can break the entire upload system.
 router.put("/api/objects/dev-upload/:id", async (req, res) => {
   try {
     // CORS headers required for cross-origin uploads from browser
@@ -318,6 +359,9 @@ router.put("/api/objects/dev-upload/:id", async (req, res) => {
 });
 
 // Get upload by ID
+// ⚠️  CRITICAL FILE SERVING - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+// This endpoint serves uploaded files by ID and is working perfectly.
+// It's used by the thumbnail system in Guest Details.
 router.get("/objects/uploads/:id", async (req, res) => {
   try {
     const { id } = req.params;

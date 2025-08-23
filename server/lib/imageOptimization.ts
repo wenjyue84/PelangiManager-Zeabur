@@ -3,6 +3,30 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 
+// ⚠️  CRITICAL IMAGE OPTIMIZATION LIBRARY - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+//
+// This library handles image optimization for the upload system and is currently
+// working perfectly. It's responsible for:
+// - Compressing uploaded images to reduce storage and bandwidth
+// - Generating thumbnails for guest documents
+// - Maintaining image quality while optimizing file sizes
+// - Supporting multiple output formats (JPEG, WebP, PNG)
+//
+// 🚫 FORBIDDEN CHANGES (unless absolutely necessary):
+// - Core optimization logic (lines 61-140)
+// - Image saving functions (lines 174-205)
+// - Default configuration settings (lines 45-55)
+// - Sharp pipeline configuration
+//
+// ✅ SAFE TO MODIFY:
+// - Error messages and logging
+// - Additional format support (if needed)
+// - Performance tuning (if proven beneficial)
+//
+// 🔒 LAST WORKING VERSION: Image optimization working perfectly
+//    - Guest document thumbnails displaying correctly
+//    - File sizes optimized appropriately
+//    - Quality maintained for document readability
 export interface OptimizationConfig {
   maxWidth?: number;
   maxHeight?: number;

@@ -429,6 +429,76 @@ console.log('SW Controller:', navigator.serviceWorker.controller);
 
 ## 🗄️ **DATABASE CONSTRAINT VIOLATION ERRORS**
 
+### **019 - Guest Token Creation Foreign Key Constraint Violation (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"guest_tokens\" violates foreign key constraint \"guest_tokens_created_by_users_id_fk\""}`
+- Occurs when clicking "Instant Create" button in Guest Check-in page
+- Database constraint violation preventing guest token creation
+- Foreign key constraint failure on `created_by` field
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being hardcoded to `'system'` instead of using the authenticated user's ID
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string 'system'
+- **Authentication Context**: Route has `authenticateToken` middleware, so `req.user.id` is available but not being used
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Wrong - hardcoded string 'system'
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ Invalid foreign key reference
+     // ... other fields
+   });
+   
+   // AFTER: Correct - using authenticated user's ID
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ Valid UUID from authenticated user
+     // ... other fields
+   });
+   ```
+
+2. **Verified Authentication Middleware**: Route already had proper `authenticateToken` middleware ensuring `req.user.id` is available
+
+**Database Schema Context:**
+```typescript
+// shared/schema.ts - guest_tokens table definition
+export const guestTokens = pgTable("guest_tokens", {
+  // ... other fields
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Foreign key to users.id
+  // ... other fields
+});
+```
+
+**Files Modified:**
+- `server/routes/guest-tokens.ts` - Fixed `createdBy` assignment to use `req.user.id`
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Leverage authentication context**: Use `req.user.id` when routes have `authenticateToken` middleware
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Test foreign key relationships**: Verify that referenced IDs exist in parent tables
+
+**Testing & Verification:**
+1. **Click "Instant Create"** in Guest Check-in page
+2. **Should work without errors** and create guest token successfully
+3. **Check database**: `created_by` field should contain valid UUID from users table
+4. **Verify audit trail**: Each token properly tracks which user created it
+
+**Related Issues:**
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit (similar root cause)
+- **Problem #009**: Database Constraint Violation on Test Notification
+
+**Success Pattern:**
+- ✅ **Identify foreign key constraint**: Look for "violates foreign key constraint" in error messages
+- ✅ **Check code logic**: Ensure foreign key fields reference valid UUIDs, not strings
+- ✅ **Use authentication context**: Leverage `req.user.id` when available
+- ✅ **Verify database schema**: Confirm foreign key relationships are properly defined
+
+---
 ### **018 - Expenses Foreign Key Constraint Violation in Replit (SOLVED)**
 
 **Date Solved:** January 2025  

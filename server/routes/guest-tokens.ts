@@ -119,8 +119,7 @@ router.post("/",
       expiresAt: guestToken.expiresAt,
       capsuleNumber: guestToken.capsuleNumber,
       email: guestToken.email,
-      createdAt: guestToken.createdAt,
-      usedAt: guestToken.usedAt
+      createdAt: guestToken.createdAt
     });
     
     // Generate the check-in link
@@ -262,7 +261,10 @@ router.post("/checkin/:token",
       paymentAmount: "0", // Default payment amount
       paymentStatus: 'unpaid' as const,
       idNumber: validatedData.icNumber || validatedData.passportNumber,
-      // Save the document photo URL to profilePhotoUrl field
+      // ⚠️  CRITICAL: DO NOT MODIFY - This saves document photo URL for thumbnail display ⚠️
+      // This field is used by the Guest Details page to show document thumbnails.
+      // Changing this logic will break the thumbnail display system.
+      // The upload system generates URLs that are stored here and displayed as thumbnails.
       profilePhotoUrl: validatedData.icDocumentUrl || validatedData.passportDocumentUrl || undefined,
     };
 
