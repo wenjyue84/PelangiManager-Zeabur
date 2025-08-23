@@ -96,7 +96,6 @@ export interface EnvironmentInfo {
   isReplit: boolean;
   isProduction: boolean;
   isDevelopment: boolean;
-  isDocker: boolean;
   isMemoryStorage: boolean;
   hostname: string;
   environment: 'localhost' | 'replit' | 'production' | 'development';
@@ -114,7 +113,6 @@ export function getClientEnvironment(): EnvironmentInfo {
       isReplit: false,
       isProduction: false,
       isDevelopment: true,
-      isDocker: false,
       isMemoryStorage: false,
       hostname: '',
       environment: 'development'
@@ -126,7 +124,6 @@ export function getClientEnvironment(): EnvironmentInfo {
   const isReplit = hostname.includes('.replit.dev') || hostname.includes('.replit.app') || !!import.meta.env.VITE_REPL_ID;
   const isProduction = process.env.NODE_ENV === 'production';
   const isDevelopment = !isProduction;
-  const isDocker = isLocalhost && !isReplit; // Localhost but not Replit usually means Docker/local dev
 
   let environment: EnvironmentInfo['environment'] = 'development';
   if (isLocalhost) environment = 'localhost';
@@ -138,7 +135,6 @@ export function getClientEnvironment(): EnvironmentInfo {
     isReplit,
     isProduction,
     isDevelopment,
-    isDocker,
     isMemoryStorage: false, // Client can't determine this directly
     hostname,
     environment
@@ -146,7 +142,7 @@ export function getClientEnvironment(): EnvironmentInfo {
 }
 
 /**
- * Server-side environment detection
+ * Server-side environment detection - SIMPLIFIED!
  * Use this in server-side code and API routes
  */
 export function getServerEnvironment(): EnvironmentInfo {
@@ -155,15 +151,8 @@ export function getServerEnvironment(): EnvironmentInfo {
   const isReplit = !!process.env.REPL_ID || !!process.env.REPL_SLUG || !!process.env.PRIVATE_OBJECT_DIR;
   const isProduction = process.env.NODE_ENV === 'production';
   const isDevelopment = !isProduction;
-  const isDocker = (
-    process.env.DATABASE_URL?.includes('localhost') || 
-    process.env.DATABASE_URL?.includes('127.0.0.1') ||
-    process.env.DATABASE_URL?.includes('postgresql://') ||
-    process.env.DOCKER_ENV === 'true' ||
-    !!process.env.COMPOSE_PROJECT_NAME ||
-    !!process.env.DOCKER_CONTAINER ||
-    false
-  );
+  
+  // SIMPLE: Just check if DATABASE_URL exists
   const isMemoryStorage = !process.env.DATABASE_URL && !process.env.PRIVATE_DATABASE_URL;
 
   let environment: EnvironmentInfo['environment'] = 'development';
@@ -176,7 +165,6 @@ export function getServerEnvironment(): EnvironmentInfo {
     isReplit,
     isProduction,
     isDevelopment,
-    isDocker,
     isMemoryStorage,
     hostname,
     environment
@@ -214,22 +202,10 @@ export function shouldEnablePWA(): boolean {
 }
 
 /**
- * Get appropriate database configuration for current environment
+ * Get appropriate database configuration for current environment - SIMPLIFIED!
  */
 export function getEnvironmentDatabaseConfig() {
   const env = getEnvironment();
-  
-  // Debug logging for development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 Environment Detection Debug:', {
-      isReplit: env.isReplit,
-      isDocker: env.isDocker,
-      isLocalhost: env.isLocalhost,
-      DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not Set',
-      COMPOSE_PROJECT_NAME: process.env.COMPOSE_PROJECT_NAME,
-      DOCKER_ENV: process.env.DOCKER_ENV
-    });
-  }
   
   if (env.isReplit) {
     const isNeon = process.env.DATABASE_URL?.includes('neon.tech');
@@ -240,27 +216,15 @@ export function getEnvironmentDatabaseConfig() {
       ssl: isNeon ? 'require' : undefined,
       neonOptimized: isNeon
     };
-  } else if (env.isDocker) {
-    // Extract actual database URL from environment or use default
-    const dbUrl = process.env.DATABASE_URL || 'postgresql://pelangi_user:pelangi_password@localhost:5432/pelangi_manager';
-    
-    // Try to extract database name from URL for better labeling
-    let dbName = 'pelangi_manager'; // default
-    try {
-      const urlMatch = dbUrl.match(/\/\/([^:]+:[^@]+@)?[^\/]+\/([^?]+)/);
-      if (urlMatch && urlMatch[2]) {
-        dbName = urlMatch[2];
-      }
-    } catch (e) {
-      // If parsing fails, use default
-    }
-    
+  } else if (process.env.DATABASE_URL) {
+    // SIMPLE: Any DATABASE_URL = use database
     return {
-      type: 'docker' as const,
-      url: dbUrl,
-      label: `Docker DB (${dbName})`
+      type: 'database' as const,
+      url: process.env.DATABASE_URL,
+      label: 'Database'
     };
   } else {
+    // SIMPLE: No DATABASE_URL = use memory
     return {
       type: 'memory' as const,
       label: 'Memory Storage'

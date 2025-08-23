@@ -39,9 +39,7 @@ export function EnvironmentInfo() {
 
   const getDatabaseIcon = (type: string) => {
     switch (type) {
-      case 'replit':
-        return <Cloud className="h-4 w-4 text-green-600" />;
-      case 'docker':
+      case 'database':
         return <Database className="h-4 w-4 text-blue-600" />;
       case 'memory':
       default:

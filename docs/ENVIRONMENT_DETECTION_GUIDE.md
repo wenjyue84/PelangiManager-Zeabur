@@ -1,10 +1,27 @@
-# 🌍 Environment Detection Guide
+# 🌍 Environment Detection Guide - SIMPLIFIED
 
 ## Overview
 
-This guide explains how to use the centralized environment detection utilities in PelangiManager to differentiate between localhost, Replit, and production environments.
+This guide explains the simplified environment detection in PelangiManager. The system now automatically chooses storage based on a simple rule: if `DATABASE_URL` exists, use database; otherwise, use memory storage.
 
-## 🚀 Quick Start
+## ✨ Simplified Approach
+
+**The system is now super simple:**
+
+```typescript
+// The entire storage selection logic:
+if (process.env.DATABASE_URL) {
+  storage = new DatabaseStorage(); // Shows "Database" badge
+} else {
+  storage = new MemStorage();      // Shows "Memory" badge
+}
+```
+
+**That's it!** No more complex environment detection, no Docker mode, just:
+- 🟠 **Memory** - No DATABASE_URL set
+- 🔵 **Database** - DATABASE_URL is set
+
+## 🚀 Quick Start (Legacy - For Reference Only)
 
 ### Import the Utilities
 
@@ -46,7 +63,7 @@ Use this in React components and client-side code.
   isReplit: boolean;         // true if .replit.dev/.replit.app
   isProduction: boolean;     // true if NODE_ENV=production
   isDevelopment: boolean;    // true if not production
-  isDocker: boolean;         // true if localhost + not Replit
+
   isMemoryStorage: boolean;  // false (client can't determine)
   hostname: string;          // current hostname
   environment: 'localhost' | 'replit' | 'production' | 'development'

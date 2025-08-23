@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Link2, Copy, Clock, MapPin, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import type { Capsule } from "@shared/schema";
 
@@ -130,10 +131,14 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       onTokenCreated?.();
     },
     onError: (error: any) => {
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create check-in link",
-        variant: "destructive",
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 8000, // Longer duration for detailed errors
       });
     },
   });
@@ -165,10 +170,14 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       onTokenCreated?.();
     },
     onError: (error: any) => {
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create instant check-in link",
-        variant: "destructive",
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 8000, // Longer duration for detailed errors
       });
     },
   });
@@ -271,22 +280,11 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
           </TooltipContent>
         </Tooltip>
       
-        {isReplit ? (
-          // Replit-specific dialog implementation
-          <div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex items-center gap-2"
-                  onClick={() => {
-                    console.log('Create Link button clicked (Replit), opening dialog');
-                    console.log('Current dialog state:', isDialogOpen);
-                    setIsDialogOpen(true);
-                    console.log('Dialog state set to true');
-                  }}
-                >
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
                   <Link2 className="h-4 w-4" />
                   Create Link
                 </Button>
@@ -295,76 +293,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                 <p>Create custom check-in link with specific options</p>
               </TooltipContent>
             </Tooltip>
-            
-            {/* Replit dialog overlay */}
-            {isDialogOpen && (
-              <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Users className="h-5 w-5 text-orange-600" />
-                        Create Guest Check-in Link
-                      </h2>
-                      <button
-                        onClick={() => setIsDialogOpen(false)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Generate a link that guests can use to complete their own check-in process
-                    </p>
-                    
-                    {/* Dialog content will go here - simplified for Replit */}
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">Dialog content loading...</p>
-                      <Button 
-                        onClick={() => setIsDialogOpen(false)}
-                        className="mt-4"
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          // Standard Dialog component for localhost
-          <Dialog 
-            open={isDialogOpen} 
-            onOpenChange={(open) => {
-              console.log('Dialog onOpenChange called with:', open);
-              console.log('Previous state was:', isDialogOpen);
-              setIsDialogOpen(open);
-            }}
-          >
-            <DialogTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2"
-                    onClick={() => {
-                      console.log('Create Link button clicked (Local), opening dialog');
-                      console.log('Current dialog state:', isDialogOpen);
-                      setIsDialogOpen(true);
-                      console.log('Dialog state set to true');
-                    }}
-                  >
-                    <Link2 className="h-4 w-4" />
-                    Create Link
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Create custom check-in link with specific options</p>
-                </TooltipContent>
-              </Tooltip>
-            </DialogTrigger>
+          </DialogTrigger>
         <DialogContent className="w-full max-w-sm sm:max-w-md mx-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -682,7 +611,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
         )}
               </DialogContent>
         </Dialog>
-        )}
       </div>
     </TooltipProvider>
   );

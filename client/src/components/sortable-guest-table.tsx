@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import GuestDetailsModal from "./guest-details-modal";
 import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
@@ -465,76 +466,14 @@ export default function SortableGuestTable() {
       });
     },
     onError: (error: any) => {
-      console.error(`💥 Cancel token mutation failed:`, error);
-      
-      // Enhanced error handling with detailed error messages
-      let errorTitle = "Error";
-      let errorDescription = "Failed to cancel pending check-in";
-      
-      // Check if error message contains authentication info
-      if (error?.message?.includes('401:') || error?.message?.includes('No token provided')) {
-        errorTitle = "Login Required";
-        errorDescription = "Please log in to cancel pending check-ins. You'll be redirected to the login page.";
-        
-        // Redirect to login after showing the error
-        setTimeout(() => {
-          setLocation('/login?redirect=' + encodeURIComponent(window.location.pathname));
-        }, 2000);
-      } else if (error?.response?.status) {
-        const status = error.response.status;
-        const errorData = error.response.data;
-        
-        switch (status) {
-          case 401:
-            errorTitle = "Login Required";
-            errorDescription = "Please log in to cancel pending check-ins. You'll be redirected to the login page.";
-            
-            // Redirect to login after showing the error
-            setTimeout(() => {
-              setLocation('/login?redirect=' + encodeURIComponent(window.location.pathname));
-            }, 2000);
-            break;
-          case 403:
-            errorTitle = "Permission Denied";
-            errorDescription = errorData?.message || "You don't have permission to cancel this pending check-in";
-            break;
-          case 404:
-            errorTitle = "Token Not Found";
-            errorDescription = errorData?.message || "The pending check-in token was not found or has already been cancelled";
-            break;
-          case 500:
-            errorTitle = "Server Error";
-            errorDescription = errorData?.message || "Database or server error occurred. Please try again or contact support";
-            break;
-          default:
-            errorTitle = `Error ${status}`;
-            errorDescription = errorData?.message || `Unexpected error occurred (Status: ${status})`;
-        }
-      } else if (error?.message) {
-        // Network or other errors
-        if (error.message.includes('fetch')) {
-          errorTitle = "Network Error";
-          errorDescription = "Unable to connect to server. Please check your internet connection and try again";
-        } else if (error.message.includes('timeout')) {
-          errorTitle = "Request Timeout";
-          errorDescription = "Request took too long. Please try again";
-        } else {
-          errorDescription = error.message;
-        }
-      }
-      
-      console.error("Cancel token error details:", {
-        error,
-        status: error?.response?.status,
-        message: error?.response?.data?.message,
-        fullError: error
-      });
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
       
       toast({
-        title: errorTitle,
-        description: errorDescription,
-        variant: "destructive",
-        duration: 5000, // Show longer for detailed error messages
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 8000, // Longer duration for detailed errors
       });
     },
   });

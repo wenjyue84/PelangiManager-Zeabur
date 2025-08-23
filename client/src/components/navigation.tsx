@@ -5,8 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Home, UserPlus, UserX, Settings, Clock, LayoutGrid, LogOut, ChevronRightCircle, CalendarDays, ListChecks, Database, HardDrive, DollarSign } from "lucide-react";
 import { AuthContext } from "../lib/auth";
 import { useQuery } from "@tanstack/react-query";
-import { DatabaseSelector } from "./DatabaseSelector";
-import { DatabaseHealthMonitor } from "./DatabaseHealthMonitor";
+import { DatabaseStatus } from "./DatabaseSelector";
 
 const navigationItems = [
   { 
@@ -170,11 +169,8 @@ export default function Navigation() {
               </TooltipContent>
             </Tooltip>
             
-            {/* Database Health Monitor */}
-            <DatabaseHealthMonitor />
-            
-            {/* Database Selector for authenticated users */}
-            <DatabaseSelector />
+            {/* Database Status for authenticated users */}
+            <DatabaseStatus />
           </>
                  ) : (
            <div className="flex items-center gap-2">
@@ -195,11 +191,8 @@ export default function Navigation() {
                </TooltipContent>
              </Tooltip>
              
-             {/* Database Health Monitor */}
-             <DatabaseHealthMonitor />
-             
-             {/* Database Selector */}
-             <DatabaseSelector />
+             {/* Database Status */}
+             <DatabaseStatus />
            </div>
          )}
         </div>

@@ -88,11 +88,11 @@ describe('Environment Detection Utilities', () => {
       expect(env.environment).toBe('replit');
     });
 
-    it('should detect Docker correctly', () => {
+    it('should detect database mode correctly', () => {
       process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/db';
       const env = getServerEnvironment();
       
-      expect(env.isDocker).toBe(true);
+      expect(env.isMemoryStorage).toBe(false);
       expect(env.isLocalhost).toBe(true);
     });
 

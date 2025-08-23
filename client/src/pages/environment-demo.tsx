@@ -335,7 +335,7 @@ export default function EnvironmentDemoPage() {
                     <p>• <strong>Localhost:</strong> Detected when hostname is 'localhost' or '127.0.0.1'</p>
                     <p>• <strong>Replit:</strong> Detected when hostname contains '.replit.dev' or '.replit.app', or when REPL_ID is set</p>
                     <p>• <strong>Production:</strong> Detected when NODE_ENV is 'production'</p>
-                    <p>• <strong>Docker:</strong> Detected when DATABASE_URL contains 'localhost:5432'</p>
+                    <p>• <strong>Database:</strong> Detected when DATABASE_URL environment variable is set</p>
                   </div>
                 </div>
               </div>

@@ -13,6 +13,7 @@ import { UserPlus, User, Bed, Phone, Mail, CreditCard, Calendar, Users } from "l
 import { insertGuestSchema, type InsertGuest, type Capsule, type Guest } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/components/auth-provider";
@@ -257,10 +258,14 @@ export default function CheckIn() {
       });
     },
     onError: (error: any) => {
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to check in guest",
-        variant: "destructive",
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 10000, // Longer duration for check-in errors
       });
     },
   });
