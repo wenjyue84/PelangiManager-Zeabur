@@ -1783,6 +1783,57 @@ This case validates that Problem #007's solution pattern is reliable and should 
 
 ---
 
+## 📱 **PWA TROUBLESHOOTING REFERENCE**
+
+### **PWA Disabled on Replit: Why and How to Fix**
+
+**Issue:** PWA features disabled on Replit deployment
+**Symptoms:** 
+- No "Add to Home Screen" option on mobile
+- Service worker not registering
+- PWA features work locally but not on Replit
+
+**Root Cause:**
+- **Deployment Conflicts**: Replit's auto-redeploy system conflicts with service worker caching
+- **Build Process Issues**: Service workers can interfere with Replit's build pipeline
+- **Conservative Configuration**: PWA disabled to prevent deployment failures
+
+**Solution Strategy:**
+1. **Smart PWA Configuration**: Enable PWA with deployment-safe settings
+2. **Conditional Service Worker**: Use environment-specific service worker strategies
+3. **Cache Management**: Implement cache invalidation for rapid deployments
+
+**Key Configuration Changes:**
+```typescript
+// Enable PWA on all environments including Replit
+export function shouldEnablePWA(): boolean {
+  return true; // Smart configuration handles deployment conflicts
+}
+
+// Environment-specific PWA configuration
+export function getPWAConfig() {
+  const env = getEnvironment();
+  return {
+    enablePWA: true,
+    swStrategy: env.isReplit ? 'deployment-safe' : 'aggressive-cache',
+    skipWaiting: env.isReplit ? false : true,
+    clientsClaim: env.isReplit ? false : true
+  };
+}
+```
+
+**Files to Modify:**
+- `shared/utils.ts` - Update shouldEnablePWA function
+- `client/src/main.tsx` - Add deployment-safe service worker registration
+- `vite.config.ts` - Configure PWA plugin for Replit compatibility
+
+**Prevention:**
+- Use deployment-safe PWA configurations on cloud platforms
+- Test PWA features in production environment before full deployment
+- Monitor service worker registration in browser dev tools
+
+---
+
 **Document Control:**
 - **Maintained By:** Development Team
 - **Last Updated:** August 21, 2025
