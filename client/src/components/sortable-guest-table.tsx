@@ -471,14 +471,28 @@ export default function SortableGuestTable() {
       let errorTitle = "Error";
       let errorDescription = "Failed to cancel pending check-in";
       
-      if (error?.response?.status) {
+      // Check if error message contains authentication info
+      if (error?.message?.includes('401:') || error?.message?.includes('No token provided')) {
+        errorTitle = "Login Required";
+        errorDescription = "Please log in to cancel pending check-ins. You'll be redirected to the login page.";
+        
+        // Redirect to login after showing the error
+        setTimeout(() => {
+          setLocation('/login?redirect=' + encodeURIComponent(window.location.pathname));
+        }, 2000);
+      } else if (error?.response?.status) {
         const status = error.response.status;
         const errorData = error.response.data;
         
         switch (status) {
           case 401:
-            errorTitle = "Authentication Error";
-            errorDescription = errorData?.message || "Please log in again to cancel pending check-ins";
+            errorTitle = "Login Required";
+            errorDescription = "Please log in to cancel pending check-ins. You'll be redirected to the login page.";
+            
+            // Redirect to login after showing the error
+            setTimeout(() => {
+              setLocation('/login?redirect=' + encodeURIComponent(window.location.pathname));
+            }, 2000);
             break;
           case 403:
             errorTitle = "Permission Denied";
