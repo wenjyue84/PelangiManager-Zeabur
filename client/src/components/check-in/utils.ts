@@ -47,88 +47,32 @@ export function getDefaultCollector(user: any): string {
   return user.email || "";
 }
 
-// Gender-based capsule assignment logic
+// Gender-based capsule assignment logic - SIMPLIFIED!
 export function getRecommendedCapsule(gender: string, availableCapsules: any[]): string {
-  console.log('🔍 Smart Assignment Debug:', {
-    gender,
-    totalCapsules: availableCapsules?.length || 0,
-    capsules: availableCapsules?.map(c => ({
-      number: c.number,
-      section: c.section,
-      position: c.position,
-      cleaningStatus: c.cleaningStatus,
-      isAvailable: c.isAvailable,
-      toRent: c.toRent,
-      canAssign: c.canAssign
-    }))
-  });
-
   if (!availableCapsules || availableCapsules.length === 0) {
-    console.warn('❌ No available capsules for smart assignment');
     return "";
   }
   
-  // Filter for capsules that can be assigned
+  // SIMPLE: Just filter for available capsules (ignore cleaning/maintenance)
   const assignableCapsules = availableCapsules.filter(capsule => 
-    capsule.cleaningStatus === "cleaned" && 
-    capsule.isAvailable && 
-    capsule.toRent !== false &&
-    (capsule.canAssign !== false)
+    capsule.isAvailable && capsule.toRent !== false
   );
   
-  console.log('✅ Assignable capsules:', assignableCapsules.length);
-  
   if (assignableCapsules.length === 0) {
-    console.warn('❌ No assignable capsules found after filtering');
     return "";
   }
   
-  // Parse capsule numbers for sorting
-  const capsulesWithNumbers = assignableCapsules.map(capsule => {
-    const match = capsule.number.match(/C(\d+)/);
-    const numericValue = match ? parseInt(match[1]) : 0;
-    return { ...capsule, numericValue, originalNumber: capsule.number };
-  });
-
-  let recommendedCapsule = "";
-  
+  // SIMPLE: Just assign based on gender and section
   if (gender === "female") {
-    // For females: back capsules with lowest number first
-    const backCapsules = capsulesWithNumbers
-      .filter(c => c.section === "back")
-      .sort((a, b) => a.numericValue - b.numericValue);
-    
-    console.log('👩 Female assignment - Back capsules found:', backCapsules.map(c => c.originalNumber));
-    
-    if (backCapsules.length > 0) {
-      recommendedCapsule = backCapsules[0].originalNumber;
-      console.log('✅ Female assigned to back capsule:', recommendedCapsule);
-    } else {
-      console.warn('⚠️ No back capsules available for female, will use fallback');
-    }
+    // For females: find first available back capsule
+    const backCapsule = assignableCapsules.find(c => c.section === "back");
+    if (backCapsule) return backCapsule.number;
   } else {
-    // For non-females: front capsules with lowest number first
-    const frontCapsules = capsulesWithNumbers
-      .filter(c => c.section === "front")
-      .sort((a, b) => a.numericValue - b.numericValue);
-    
-    console.log('👨 Male assignment - Front capsules found:', frontCapsules.map(c => c.originalNumber));
-    
-    if (frontCapsules.length > 0) {
-      recommendedCapsule = frontCapsules[0].originalNumber;
-      console.log('✅ Male assigned to front capsule:', recommendedCapsule);
-    } else {
-      console.warn('⚠️ No front capsules available for male, will use fallback');
-    }
+    // For males: find first available front capsule
+    const frontCapsule = assignableCapsules.find(c => c.section === "front");
+    if (frontCapsule) return frontCapsule.number;
   }
-
-  // Fallback: any available capsule in sequential order
-  if (!recommendedCapsule) {
-    const sortedCapsules = capsulesWithNumbers.sort((a, b) => a.numericValue - b.numericValue);
-    recommendedCapsule = sortedCapsules[0]?.originalNumber || "";
-    console.log('🔄 Using fallback capsule (lowest number):', recommendedCapsule);
-  }
-
-  console.log('🎯 Final recommendation:', recommendedCapsule);
-  return recommendedCapsule;
+  
+  // SIMPLE: Fallback to any available capsule
+  return assignableCapsules[0]?.number || "";
 }

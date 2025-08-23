@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import GuestDetailsModal from "./guest-details-modal";
 import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
@@ -460,11 +461,15 @@ export default function SortableGuestTable() {
         description: "Pending check-in cancelled successfully",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
+      
       toast({
-        title: "Error",
-        description: "Failed to cancel pending check-in",
-        variant: "destructive",
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 8000, // Longer duration for detailed errors
       });
     },
   });

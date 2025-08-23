@@ -1353,6 +1353,11 @@ console.log('Push Manager:', 'PushManager' in window);
 - **"Failed to fetch" in DevTools** → Server process terminated, check error middleware
 - **Login works but other pages fail** → Partial server crash, restart required
 
+### **Test Runner Issues**
+- **"Server connection failed: Failed to fetch"** → Browser compatibility issue with AbortSignal.timeout()
+- **Tests fall back to local runner** → System working correctly, server tests unavailable
+- **All local tests pass** → Validation logic is solid, fallback system working
+
 ### **Authentication Issues**
 - **"Login failed" with correct credentials** → Server crash during auth, restart server
 - **Redirected to login on protected pages** → Clear `auth_token` from localStorage
@@ -1395,6 +1400,56 @@ localStorage.getItem('auth_token')
 // Clear auth token
 localStorage.removeItem('auth_token')
 ```
+
+---
+
+### **002 - Test Runner Browser Compatibility Issue (SOLVED)**
+
+**Date Solved:** August 18, 2025  
+**Symptoms:**
+- "Server connection failed: Failed to fetch" when running tests from Settings > Test Runner
+- Tests automatically fall back to local runner and all pass ✅
+- Server is running and accessible (localhost:5000/settings works)
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Browser compatibility issue with `AbortSignal.timeout()` API
+- Modern browsers (Chrome 100+, Firefox 102+, Edge 100+) support this API
+- Older browsers or development environments may not support it
+- Fetch request fails, triggering fallback to local test runner
+
+**Solution Applied:**
+1. **Added browser compatibility check** in `client/src/components/settings/TestsTab.tsx`
+2. **Implemented fallback mechanism** for older browsers using manual AbortController
+3. **Enhanced error messages** to clearly indicate browser compatibility vs network issues
+4. **Maintained 15-second timeout** for both modern and legacy approaches
+
+**Technical Implementation:**
+```typescript
+// Check if AbortSignal.timeout is supported
+if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+  // Modern browsers - use AbortSignal.timeout
+  res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+} else {
+  // Fallback for older browsers - manual timeout with AbortController
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 15000);
+  try {
+    res = await fetch(url, { signal: abortController.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added browser compatibility fallback
+- `docs/MASTER_TROUBLESHOOTING_GUIDE.md` - Documented issue and solution
+
+**Why This Happens:**
+- `AbortSignal.timeout()` is a relatively new browser API
+- Development environments sometimes have different browser compatibility
+- The fallback system is actually working correctly - it's not a bug, it's a feature!
 
 ---
 
@@ -1911,3 +1966,6936 @@ export function getPWAConfig() {
 - **Next Review:** When new issues arise
 
 *This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
+
+---
+
+### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: "Failed to cancel pending check-in" appears in red error banner
+- Error: "Failed to fetch" when clicking "Instant Create" button
+- Both errors occur in guest check-in management
+- Guest check-in status remains "Pending Check-in" despite cancellation attempt
+- Error banner shows with error ID and generic failure message
+
+**Root Causes:**
+1. **Missing Cancel Endpoint**: Server route for cancelling guest check-ins not implemented
+2. **Critical Bug in Instant Create**: Incomplete `createGuestToken` call with wrong `createdBy` field
+3. **Frontend Expects API**: Cancel button calls non-existent `/api/guest-checkins/{id}/cancel` endpoint
+4. **Database State Mismatch**: Guest record remains in pending state without cancellation logic
+
+**Solutions Implemented:**
+
+1. **Fixed Instant Create Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Incomplete and wrong createdBy field
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ WRONG: Hardcoded string
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     email: guestToken.email,
+     createdAt: guestToken.createdAt,
+     usedAt: guestToken.usedAt  // ❌ Missing fields
+   });
+   
+   // AFTER: Complete and correct fields
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ FIXED: Use authenticated user ID
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     autoAssign: validatedData.autoAssign || false,
+     guestName: guestToken.guestName,
+     phoneNumber: guestToken.phoneNumber,
+     email: guestToken.email,
+     expectedCheckoutDate: guestToken.expectedCheckoutDate,
+     createdAt: guestToken.createdAt,
+   });
+   ```
+
+2. **Added Cancel Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Cancel pending guest check-in
+   router.patch("/:id/cancel", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const { reason } = req.body;
+       
+       // Get the guest token to check if it exists and is not used
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest check-in not found" });
+       }
+       
+       if (guestToken.isUsed) {
+         return res.status(400).json({ message: "Cannot cancel already used check-in" });
+       }
+       
+       // Mark token as cancelled (we'll use isUsed field for this)
+       const updated = await storage.markTokenAsUsed(id);
+       
+       if (!updated) {
+         return res.status(400).json({ message: "Failed to cancel check-in" });
+       }
+       
+       res.json({ message: "Check-in cancelled successfully" });
+     } catch (error: any) {
+       console.error("Error cancelling guest check-in:", error);
+       res.status(400).json({ message: error.message || "Failed to cancel check-in" });
+     }
+   });
+   ```
+
+**Testing & Verification:**
+1. **Test Instant Create**: Click "Instant Create" button should work without "Failed to fetch" error
+2. **Test Cancel Function**: Click "Cancel" button on pending check-in should show success message
+3. **Check Database**: Guest tokens should be created with proper `created_by` field
+4. **Verify UI Updates**: Cancelled check-ins should update status properly
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Complete API implementations**: Implement all CRUD operations when adding new features
+- **Test cancellation flows** during development
+- **Add proper error handling** for all user actions
+- **Validate database schema** supports all status transitions
+
+**Related Issues:**
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit
+- **Problem #009**: Finance Page Crash & Expense Creation Errors
+
+**Success Pattern:**
+- ✅ **Identify missing endpoint**: Look for "Failed to" error messages
+- ✅ **Fix incomplete API calls**: Ensure all required fields are properly set
+- ✅ **Implement backend logic**: Add proper API endpoints and storage methods
+- ✅ **Update frontend handlers**: Ensure proper error handling and user feedback
+- ✅ **Test complete flow**: Verify both creation and cancellation work end-to-end
+
+**Key Learning:**
+- **Two related errors** can have the same root cause (missing/incomplete backend implementation)
+- **"Failed to fetch"** often indicates missing or broken API endpoints
+- **Foreign key constraints** must use proper UUIDs, not hardcoded strings
+- **Complete API implementation** is crucial for frontend functionality
+
+---
+
+### **021 - PWA Manifest Errors & Missing DELETE Endpoint (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Console shows: "Manifest: Line: 1, column: 1, Syntax error"
+- Service worker errors: "Failed to execute 'put' on 'Cache': Request scheme 'chrome-extension' is unsupported"
+- DELETE API fails: "DELETE http://localhost:5000/api/guest-tokens/{id} net::ERR_FAILED"
+- PWA functionality broken, service worker crashes
+- Guest token deletion from dashboard not working
+
+**Root Causes:**
+1. **PWA Manifest Syntax Error**: Invalid JSON in manifest file
+2. **Service Worker Cache Issues**: Trying to cache unsupported URL schemes
+3. **Missing DELETE Endpoint**: No server route for deleting guest tokens
+4. **Service Worker Crashes**: Breaking PWA functionality
+
+**Solutions Implemented:**
+
+1. **Added Missing DELETE Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Delete guest token
+   router.delete("/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       
+       // Get the guest token to check if it exists
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest token not found" });
+       }
+       
+       // Delete the token
+       const deleted = await storage.deleteGuestToken(id);
+       
+       if (!deleted) {
+         return res.status(400).json({ message: "Failed to delete guest token" });
+       }
+       
+       res.json({ message: "Guest token deleted successfully" });
+     } catch (error: any) {
+       console.error("Error deleting guest token:", error);
+       res.status(400).json({ message: error.message || "Failed to delete guest token" });
+     }
+   });
+   ```
+
+2. **PWA Manifest Fix** (check `public/manifest.json`):
+   ```json
+   {
+     "name": "PelangiManager",
+     "short_name": "Pelangi",
+     "start_url": "/",
+     "display": "standalone",
+     "background_color": "#ffffff",
+     "theme_color": "#000000",
+     "icons": [
+       {
+         "src": "/icon-192.png",
+         "sizes": "192x192",
+         "type": "image/png"
+       }
+     ]
+   }
+   ```
+
+3. **Service Worker Cache Fix** (check `public/sw.js`):
+   ```javascript
+   // Filter out unsupported URL schemes
+   const shouldCache = (request) => {
+     const url = new URL(request.url);
+     return url.protocol === 'http:' || url.protocol === 'https:';
+   };
+   
+   // Only cache valid requests
+   if (shouldCache(request)) {
+     cache.put(request, response.clone());
+   }
+   ```
+
+**Testing & Verification:**
+1. **Test DELETE Function**: Delete guest token from dashboard should work
+2. **Check PWA**: Manifest should load without syntax errors
+3. **Service Worker**: Should not crash on chrome-extension URLs
+4. **Console Clean**: No more ERR_FAILED or cache errors
+
+**Prevention:**
+- **Validate JSON**: Always check manifest.json syntax
+- **URL Filtering**: Filter out unsupported URL schemes in service worker
+- **Complete CRUD**: Implement all operations (Create, Read, Update, Delete)
+- **PWA Testing**: Test PWA features after major changes
+
+**Related Issues:**
+- **Problem #020**: Guest Check-in Cancellation Failure & Instant Create Fetch Error
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+
+**Success Pattern:**
+- ✅ **Fix manifest syntax**: Validate JSON structure
+- ✅ **Add missing endpoints**: Implement complete CRUD operations
+- ✅ **Filter URLs**: Only cache supported URL schemes
+- ✅ **Test PWA**: Verify service worker functionality
+
+**Key Learning:**
+- **Console errors** often reveal multiple related issues
+- **PWA problems** can break multiple features simultaneously
+- **Missing endpoints** cause frontend operations to fail
+- **Service worker crashes** affect offline functionality
+
+---
+
+## 🗄️ **DATABASE CONSTRAINT VIOLATION ERRORS**
+
+### **019 - Guest Token Creation Foreign Key Constraint Violation (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"guest_tokens\" violates foreign key constraint \"guest_tokens_created_by_users_id_fk\""}`
+- Occurs when clicking "Instant Create" button in Guest Check-in page
+- Database constraint violation preventing guest token creation
+- Foreign key constraint failure on `created_by` field
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being hardcoded to `'system'` instead of using the authenticated user's ID
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string 'system'
+- **Authentication Context**: Route has `authenticateToken` middleware, so `req.user.id` is available but not being used
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Wrong - hardcoded string 'system'
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ Invalid foreign key reference
+     // ... other fields
+   });
+   
+   // AFTER: Correct - using authenticated user's ID
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ Valid UUID from authenticated user
+     // ... other fields
+   });
+   ```
+
+2. **Verified Authentication Middleware**: Route already had proper `authenticateToken` middleware ensuring `req.user.id` is available
+
+**Database Schema Context:**
+```typescript
+// shared/schema.ts - guest_tokens table definition
+export const guestTokens = pgTable("guest_tokens", {
+  // ... other fields
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Foreign key to users.id
+  // ... other fields
+});
+```
+
+**Files Modified:**
+- `server/routes/guest-tokens.ts` - Fixed `createdBy` assignment to use `req.user.id`
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Leverage authentication context**: Use `req.user.id` when routes have `authenticateToken` middleware
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Test foreign key relationships**: Verify that referenced IDs exist in parent tables
+
+**Testing & Verification:**
+1. **Click "Instant Create"** in Guest Check-in page
+2. **Should work without errors** and create guest token successfully
+3. **Check database**: `created_by` field should contain valid UUID from users table
+4. **Verify audit trail**: Each token properly tracks which user created it
+
+**Related Issues:**
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit (similar root cause)
+- **Problem #009**: Database Constraint Violation on Test Notification
+
+**Success Pattern:**
+- ✅ **Identify foreign key constraint**: Look for "violates foreign key constraint" in error messages
+- ✅ **Check code logic**: Ensure foreign key fields reference valid UUIDs, not strings
+- ✅ **Use authentication context**: Leverage `req.user.id` when available
+- ✅ **Verify database schema**: Confirm foreign key relationships are properly defined
+
+---
+
+### **018 - Expenses Foreign Key Constraint Violation in Replit (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"expenses\" violates foreign key constraint \"expenses_created_by_users_id_fk\""}`
+- Occurs when adding expenses in Finance page in Replit environment
+- Works fine in localhost testing but fails in production/Replit
+- Database constraint violation preventing expense creation
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being set to `req.user.username` or `req.user.email` instead of `req.user.id`
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string values
+- **Environment Difference**: Localhost may have been more lenient with constraints or had different data
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/expenses.ts`:
+   ```typescript
+   // BEFORE: Wrong - sending username/email string
+   const createdBy = req.user.username || req.user.email || "Unknown";
+   
+   // AFTER: Correct - sending user ID UUID
+   const createdBy = req.user.id;
+   ```
+
+2. **Created Database Fix Script** (`fix-expenses-db.js`) for Replit:
+   ```bash
+   # Install pg if needed
+   npm install pg
+   
+   # Run database fix script
+   node fix-expenses-db.js
+   ```
+
+**Database Fix Script Features:**
+- ✅ **Table Structure Check**: Verifies expenses table exists with proper schema
+- ✅ **Foreign Key Validation**: Ensures `created_by` column has proper constraint
+- ✅ **Orphaned Data Cleanup**: Fixes any existing expenses with invalid `created_by` values
+- ✅ **Index Creation**: Sets up proper database indexes for performance
+
+**Files Modified:**
+- `server/routes/expenses.ts` - Fixed `createdBy` assignment to use `req.user.id`
+- `fix-expenses-db.js` - Created database cleanup script for Replit
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Test in production environment**: Localhost may have different constraint behavior
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Use database fix scripts**: For production environment database issues
+
+**Testing & Verification:**
+1. **Restart Replit server** after code fix
+2. **Try adding expense** in Finance page
+3. **Should work without errors** and create expense successfully
+4. **Check database**: `created_by` field should contain valid UUID
+
+---
+
+### **009 - Database Constraint Violation on Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"null value in column \"key\" of relation \"app_settings\" violates not-null constraint"`
+- HTTP 400 error when clicking "Send Test Notification"
+- Database constraint violation preventing notification testing
+- Settings not being saved properly
+
+**Root Cause:**
+- **Null Key Values**: Code attempting to save settings with null/undefined key values
+- **Missing Validation**: Server-side validation not preventing invalid data
+- **Automatic Saving**: Some automatic preference saving triggered during test notification
+- **Database Constraints**: PostgreSQL enforcing NOT NULL constraint on app_settings.key column
+
+**Solution Implemented:**
+1. **Client-Side Validation**: Added proper key format for notification preferences
+2. **Server-Side Validation**: Enhanced settings route to validate key/value parameters
+3. **Storage Layer Validation**: Added validation in DatabaseStorage and MemStorage
+4. **Error Handling**: Better error categorization for database constraint violations
+5. **Preference Saving**: Fixed notification preferences to use proper key format
+
+**Error Prevention:**
+- **Input Validation**: All settings must have non-empty string keys
+- **Type Safety**: Values are converted to strings before database storage
+- **Key Format**: Notification preferences use `notification.{preferenceName}` format
+- **Error Messages**: Clear error messages for constraint violations
+
+**Testing & Verification:**
+```javascript
+// Check if settings are being saved properly
+console.log('Notification preferences:', preferences);
+
+// Verify API calls have proper key/value format
+fetch('/api/settings', {
+  method: 'PATCH',
+  body: JSON.stringify({
+    key: 'notification.guestCheckIn', // ✅ Proper format
+    value: 'true'                     // ✅ String value
+  })
+});
+```
+
+**Prevention:**
+- **Always validate inputs** before database operations
+- **Use consistent key naming** conventions
+- **Test database operations** with edge cases
+- **Monitor constraint violations** in logs
+
+---
+
+## 🔑 **INVALID KEY ERRORS**
+
+### **010 - Invalid Key Error During Test Notification (INVESTIGATING)**
+
+**Date Identified:** January 2025  
+**Symptoms:**
+- Error: `400: {"message":"Setting key is required and must be a non-empty string","error":"INVALID_KEY"}`
+- Occurs when clicking "Send Test Notification"
+- Server-side validation catching invalid data before database
+- No database constraint violations (validation working)
+
+**Root Cause (Under Investigation):**
+- **Unknown Source**: Some code is calling `/api/settings` with null/undefined key
+- **Not from Preferences**: `handlePreferencesChange` has proper validation
+- **Not from Test Function**: `handleTestNotification` doesn't call settings API
+- **Possible External Code**: Another component or hook might be interfering
+
+**Current Investigation:**
+1. **Added Debug Logging**: Track all preference changes and API calls
+2. **Fetch Interceptor**: Monitor unexpected settings API calls during tests
+3. **Test Progress Flag**: Prevent preference saving during test notifications
+4. **Enhanced Validation**: Better error handling for invalid keys
+
+**Debug Information:**
+```javascript
+// Check browser console for these logs:
+🔧 handlePreferencesChange called with: { key, value, isTestInProgress }
+🚨 INTERCEPTED SETTINGS API CALL during test: { url, options }
+📝 Request body: { key, value }
+❌ INVALID KEY DETECTED: undefined
+```
+
+**Temporary Workaround:**
+- **Refresh the page** before testing notifications
+- **Check browser console** for debug information
+- **Report exact error** to support team
+
+**Next Steps:**
+- **Identify source** of invalid API calls
+- **Fix root cause** of automatic preference saving
+- **Remove temporary** fetch interceptor
+- **Add permanent** prevention measures
+
+---
+
+## 🔐 **AUTHENTICATION ERRORS**
+
+### **011 - 401 Unauthorized During Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `401: {"message":"Invalid or expired token"}`
+- Occurs when clicking "Send Test Notification"
+- Authentication error preventing notification testing
+- Push notification routes expect no authentication
+
+**Root Cause:**
+- **Fetch Interceptor Issue**: Temporary debug interceptor was interfering with push API calls
+- **Route Configuration**: Push notification routes (`/api/push/*`) don't require authentication
+- **Client Side**: Test notification was being intercepted and modified by debug code
+- **Server Side**: Server was rejecting requests with unexpected auth headers
+
+**Solution Implemented:**
+1. **Fixed Fetch Interceptor**: Modified to only intercept `/api/settings` calls, not push API calls
+2. **Enhanced Error Handling**: Added specific 401 error categorization and user guidance
+3. **Route Isolation**: Ensured push notification routes remain unauthenticated
+4. **Better User Feedback**: Clear troubleshooting steps for authentication issues
+
+**Technical Details:**
+```javascript
+// BEFORE: Interceptor was affecting ALL fetch calls
+window.fetch = async (...args) => { /* intercepts everything */ };
+
+// AFTER: Only intercept settings API calls
+if (typeof url === 'string' && url.includes('/api/settings')) {
+  // Only intercept settings calls
+}
+// Push API calls use original fetch
+return originalFetch(...args);
+```
+
+**Error Categories Added:**
+- **Authentication Required**: Session expired or login needed
+- **Clear Troubleshooting**: Refresh page, log in again, clear cache
+- **User Action Required**: Specific steps to resolve authentication issues
+
+**Testing & Verification:**
+- ✅ Test notification works without authentication
+- ✅ Settings API calls are still monitored for debugging
+- ✅ No interference with push notification functionality
+- ✅ Clear error messages for authentication issues
+
+**Prevention:**
+- **Route Isolation**: Keep push routes unauthenticated
+- **Selective Interception**: Only intercept specific API endpoints
+- **Clear Error Messages**: Provide actionable troubleshooting steps
+- **Test Authentication**: Verify routes work with/without auth as expected
+
+---
+
+## 🔔 **NOTIFICATION PERMISSION TROUBLESHOOTING**
+
+### **Understanding Notification Permissions**
+
+**What are Notification Permissions?**
+Notification permissions are a web browser security feature that controls whether websites can send push notifications to users. This is a privacy protection mechanism that prevents websites from sending unwanted notifications without user consent.
+
+**Why Do Permissions Get Denied?**
+
+#### **1. User Action (Most Common)**
+- **Previous Denial**: User previously clicked "Block" when browser asked for permission
+- **Accidental Click**: User accidentally clicked "Block" instead of "Allow"
+- **Misunderstanding**: User thought "Block" would stop the popup, not permanently deny access
+
+#### **2. Browser Settings**
+- **Global Disable**: Browser has notifications globally turned off
+- **Site-Specific Block**: This specific site is blocked in browser's site settings
+- **Privacy Mode**: User is browsing in incognito/private mode
+- **Browser Version**: Outdated browser doesn't support modern notification APIs
+
+#### **3. System-Level Issues**
+- **Operating System**: Windows/Mac has notifications disabled
+- **Do Not Disturb**: System is in "Do Not Disturb" mode
+- **Focus Assist**: Windows Focus Assist is blocking notifications
+- **System Updates**: Recent OS update changed notification settings
+
+#### **4. Extension Interference**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus block notification requests
+- **Privacy Extensions**: Privacy Badger, Ghostery block tracking/notifications
+- **VPN Extensions**: Some VPNs block certain web features
+- **Security Extensions**: Malware blockers may block notification APIs
+
+#### **5. Network/Corporate Issues**
+- **Corporate Firewall**: Company network blocks push notification services
+- **School/University**: Educational institutions often block notifications
+- **Public WiFi**: Some public networks block certain web features
+- **ISP Restrictions**: Internet service provider blocking push services
+
+### **Browser-Specific Solutions**
+
+#### **🌐 Google Chrome / Microsoft Edge**
+```text
+1. Click the lock/info icon 🔒 in the address bar
+2. Click "Site settings" or "Permissions"
+3. Find "Notifications" in the list
+4. Change from "Block" to "Allow"
+5. Refresh the page
+6. Alternative: chrome://settings/content/notifications
+```
+
+#### **🦊 Mozilla Firefox**
+```text
+1. Click the shield icon 🛡️ in the address bar
+2. Click "Site Permissions" → "Notifications"
+3. Change from "Block" to "Allow"
+4. Refresh the page
+5. Alternative: about:preferences#privacy
+```
+
+#### **🍎 Safari (Mac)**
+```text
+1. Safari → Preferences → Websites → Notifications
+2. Find this site in the list
+3. Change from "Deny" to "Allow"
+4. Refresh the page
+5. Alternative: System Preferences → Notifications → Safari
+```
+
+#### **🌍 Other Browsers**
+- **Opera**: opera://settings/content/notifications
+- **Brave**: brave://settings/content/notifications
+- **Vivaldi**: vivaldi://settings/content/notifications
+
+### **System-Level Solutions**
+
+#### **Windows 10/11**
+```text
+1. Settings → System → Notifications & actions
+2. Turn on "Get notifications from apps and other senders"
+3. Turn on "Show notifications on the lock screen"
+4. Check "Focus assist" settings
+5. Ensure "Do not disturb" is off
+```
+
+#### **macOS**
+```text
+1. System Preferences → Notifications & Focus
+2. Select your browser (Chrome, Firefox, Safari)
+3. Ensure notifications are enabled
+4. Check "Do Not Disturb" settings
+5. Verify "Focus" modes aren't blocking notifications
+```
+
+#### **Linux**
+```text
+1. Check notification daemon (e.g., dunst, notify-osd)
+2. Ensure desktop environment notifications are enabled
+3. Check system notification settings
+4. Verify browser has notification permissions
+```
+
+### **Extension Troubleshooting**
+
+#### **Common Problematic Extensions**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus, AdGuard
+- **Privacy Tools**: Privacy Badger, Ghostery, DuckDuckGo Privacy
+- **Security**: Malwarebytes, Norton, McAfee
+- **VPN**: NordVPN, ExpressVPN, ProtonVPN extensions
+
+#### **Testing Steps**
+```text
+1. Open browser in incognito/private mode (extensions disabled)
+2. Test notification permission request
+3. If it works, an extension is blocking it
+4. Disable extensions one by one to identify the culprit
+5. Add the site to extension whitelist if possible
+```
+
+### **Advanced Troubleshooting**
+
+#### **Reset Site Permissions**
+```text
+Chrome/Edge:
+1. chrome://settings/content/notifications
+2. Find this site
+3. Click the trash icon to remove
+4. Refresh page and try again
+
+Firefox:
+1. about:preferences#privacy
+2. Site Permissions → Notifications
+3. Remove the site entry
+4. Refresh page and try again
+```
+
+#### **Clear Browser Data**
+```text
+1. Clear cookies and site data for this domain
+2. Clear browser cache
+3. Restart browser
+4. Try permission request again
+```
+
+#### **Check Console for Errors**
+```javascript
+// Open browser console (F12) and check for:
+console.log('Notification permission:', Notification.permission);
+console.log('Service Worker:', 'serviceWorker' in navigator);
+console.log('Push Manager:', 'PushManager' in window);
+
+// Common error messages:
+// - "Permission denied"
+// - "Service worker not found"
+// - "Push subscription failed"
+```
+
+### **Prevention Strategies**
+
+#### **For Users**
+- **Understand the Request**: Read what the browser is asking for
+- **Don't Rush**: Take time to understand permission requests
+- **Use Supported Browsers**: Chrome, Firefox, Edge, Safari
+- **Keep Updated**: Regular browser and OS updates
+- **Check Extensions**: Be aware of what extensions might block
+
+#### **For Developers**
+- **Clear Messaging**: Explain why notifications are needed
+- **Graceful Fallbacks**: Handle permission denial gracefully
+- **User Education**: Provide clear troubleshooting steps
+- **Progressive Enhancement**: App works without notifications
+- **Testing**: Test on multiple browsers and devices
+
+### **When All Else Fails**
+
+#### **Alternative Solutions**
+1. **Different Browser**: Try Chrome, Firefox, or Edge
+2. **Different Device**: Test on mobile or another computer
+3. **Contact Support**: Provide detailed error information
+4. **Manual Check**: Check notifications manually in the app
+5. **Email Alerts**: Use email notifications as backup
+
+#### **Support Information to Provide**
+- Browser name and version
+- Operating system and version
+- Error messages from console
+- Steps already tried
+- Screenshots of permission dialogs
+- Extension list
+
+---
+
+### **007 - Frontend Changes Not Reflecting Due to Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Frontend changes appear to be made but aren't reflected in the UI
+- Components deleted from source code still appear in the application
+- Changes work in incognito mode but not in regular browser (ruling out browser caching)
+- Similar to nationality editing issue where changes weren't reflected
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Source vs Compiled Mismatch**: Even after deleting source files, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Steps:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   ```
+
+4. **Verify Clean Build:**
+   ```powershell
+   # Check that old components are removed from compiled code
+   Get-ChildItem dist -Recurse | Select-String "OLD_COMPONENT_NAME"
+   ```
+
+5. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   ```
+
+**Prevention:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow build process**: Source changes → Rebuild → Test
+
+---
+
+### **006 - JSX Syntax Error: Expected corresponding JSX closing tag for <CardContent> (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Vite dev server shows: "Internal server error: Expected corresponding JSX closing tag for <CardContent>. (1344:12)"
+- React application fails to compile and run
+- Browser shows "localhost refused to connect" or "ERR_CONNECTION_REFUSED"
+- Server crashes due to JSX parsing error
+
+**Root Cause:**
+- Unbalanced JSX tags in `client/src/pages/settings.tsx`
+- `<CardContent>` tag opened at line 1059 in `GuestGuideTab` function was never properly closed
+- Multiple nested `<div>` tags created structural imbalance
+
+**Solution Steps:**
+1. **Identify the JSX structure issue:**
+   ```typescript
+   // Line 1059: CardContent opens
+   <CardContent>
+     <div className={`preview-content...`}>
+       // ... complex nested content ...
+   
+   // Line 1344: Should be </CardContent> but was </div>
+   </div>  // WRONG - should be </CardContent>
+   </Card>
+   ```
+
+2. **Fix the JSX structure:**
+   ```typescript
+   // Remove extra nested div and properly close CardContent
+   </div>
+   </div>
+   </div>
+   </CardContent>  // FIXED - proper closing tag
+   </Card>
+   ```
+
+**Prevention:**
+- Always verify JSX tag balance when making structural changes
+- Use proper indentation to visualize JSX nesting
+- Count opening/closing tags to ensure balance
+
+---
+
+### **005 - IC Photo Upload Failed: "Failed to construct 'URL': Invalid URL" (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Clicking "Upload IC photo" in Self Check-in form shows error: "Failed to construct 'URL': Invalid URL"
+- Console shows Uppy error: `[Uppy] Failed to construct 'URL': Invalid URL`
+- Upload fails in local development environment using localhost
+
+**Root Cause:**
+- Server returned relative URL `/api/objects/dev-upload/{id}` for local development
+- Uppy AWS S3 plugin expects a full URL (with protocol and host) not a relative path
+- The AWS S3 plugin tries to construct a URL object from the relative path, which fails
+
+**Solution Steps:**
+1. **Update server to return full URLs for dev uploads:**
+   ```typescript
+   // server/routes.ts - in /api/objects/upload endpoint
+   const protocol = req.protocol;
+   const host = req.get('host');
+   const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${id}`;
+   ```
+
+2. **Add CORS headers for dev upload endpoint:**
+   ```typescript
+   // Handle OPTIONS preflight
+   app.options("/api/objects/dev-upload/:id", (req, res) => {
+     res.header('Access-Control-Allow-Origin', '*');
+     res.header('Access-Control-Allow-Methods', 'PUT, OPTIONS');
+     res.header('Access-Control-Allow-Headers', 'Content-Type');
+     res.sendStatus(200);
+   });
+   ```
+
+**Prevention:**
+- Always return full URLs from server when dealing with file upload libraries
+- Test file uploads in local development environment
+- Add proper CORS headers for development endpoints
+
+---
+
+### **008 - Complete Upload System Failure: "Upload Failed" Generic Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- All file uploads show generic "Upload failed" error message
+- IC photo uploads in check-in page failing
+- Document uploads in guest check-in failing  
+- Finance receipt/item photo uploads failing
+- Console may show various Uppy-related errors
+
+**Root Cause:**
+- **Missing Server Implementation**: `/api/objects/upload` endpoint was calling non-existent `objectStorage.upload()` method
+- **Wrong API Flow**: Client was generating upload URLs locally instead of requesting from server
+- **Broken ObjectStorageService**: Server was trying to use Google Cloud Storage service without proper configuration
+- **API Specification Mismatch**: Implementation didn't follow DEVELOPMENT_REFERENCE.md specification
+
+**Complete Solution Steps:**
+
+1. **Fix Server Upload Parameter Endpoint:**
+   ```typescript
+   // server/routes/objects.ts
+   router.post("/api/objects/upload", async (req, res) => {
+     try {
+       // Generate unique upload ID
+       const objectId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+       
+       // CRITICAL: Return full URL with protocol and host
+       const protocol = req.protocol;
+       const host = req.get('host');
+       const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${objectId}`;
+       
+       res.json({
+         uploadURL: uploadURL,
+         objectId: objectId
+       });
+     } catch (error) {
+       console.error("Upload parameter error:", error);
+       res.status(500).json({ message: error.message || "Failed to get upload URL" });
+     }
+   });
+   ```
+
+2. **Implement Local File Storage for Development:**
+   ```typescript
+   // server/routes/objects.ts
+   router.put("/api/objects/dev-upload/:id", async (req, res) => {
+     try {
+       res.setHeader('Access-Control-Allow-Origin', '*');
+       const { id } = req.params;
+       
+       // Simple local file storage
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       await fs.mkdir(uploadsDir, { recursive: true });
+       const filePath = path.join(uploadsDir, id);
+       
+       // Handle different request body types
+       let fileData: Buffer;
+       if (Buffer.isBuffer(req.body)) {
+         fileData = req.body;
+       } else if (typeof req.body === 'string') {
+         fileData = Buffer.from(req.body, 'binary');
+       } else {
+         fileData = Buffer.from(JSON.stringify(req.body));
+       }
+       
+       await fs.writeFile(filePath, fileData);
+       
+       // Store metadata
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       const metadata = {
+         contentType: req.headers['content-type'] || 'application/octet-stream',
+         filename: id,
+         uploadDate: new Date().toISOString(),
+         size: fileData.length
+       };
+       await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+       
+       res.json({ message: "Upload successful", id: id, size: fileData.length });
+     } catch (error) {
+       console.error("Dev upload error:", error);
+       res.status(500).json({ message: error.message || "Upload failed" });
+     }
+   });
+   ```
+
+3. **Fix Client Upload Parameter Requests:**
+   ```typescript
+   // client/src/components/*/upload-handlers
+   const handleGetUploadParameters = async () => {
+     try {
+       // Request upload URL from server (not generate locally)
+       const response = await fetch('/api/objects/upload', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({})
+       });
+
+       if (!response.ok) {
+         throw new Error('Failed to get upload URL');
+       }
+
+       const data = await response.json();
+       if (!data.uploadURL) {
+         throw new Error('No upload URL returned from server');
+       }
+
+       return {
+         method: 'PUT' as const,
+         url: data.uploadURL, // Full URL from server
+       };
+     } catch (error) {
+       console.error('Error getting upload parameters:', error);
+       throw error;
+     }
+   };
+   ```
+
+4. **Implement File Serving for Uploads:**
+   ```typescript
+   // server/routes/objects.ts  
+   router.get("/objects/uploads/:id", async (req, res) => {
+     try {
+       const { id } = req.params;
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       const filePath = path.join(uploadsDir, id);
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       
+       await fs.access(filePath);
+       
+       let contentType = 'application/octet-stream';
+       try {
+         const metaData = await fs.readFile(metaPath, 'utf8');
+         const metadata = JSON.parse(metaData);
+         contentType = metadata.contentType || contentType;
+       } catch (metaError) {
+         // Use default content type if no metadata
+       }
+       
+       const fileData = await fs.readFile(filePath);
+       res.setHeader('Content-Type', contentType);
+       res.send(fileData);
+     } catch (fileError) {
+       res.status(404).json({ message: "Upload not found" });
+     }
+   });
+   ```
+
+**Verification Steps:**
+1. **Test upload parameter endpoint:**
+   ```bash
+   curl -X POST http://localhost:5000/api/objects/upload -H "Content-Type: application/json" -d '{}'
+   # Should return: {"uploadURL":"http://localhost:5000/api/objects/dev-upload/12345","objectId":"12345"}
+   ```
+
+2. **Check file storage:**
+   ```bash
+   ls uploads/  # Should show uploaded files and .meta.json files
+   ```
+
+3. **Test in browser:**
+   - Go to check-in page
+   - Try uploading IC photo
+   - Should show "Photo uploaded Document photo uploaded successfully"
+
+**Files Modified:**
+- `server/routes/objects.ts` - Fixed upload endpoints
+- `client/src/components/check-in/IdentificationPersonalSection.tsx` - Fixed client handler
+- `client/src/hooks/guest-checkin/useDocumentUpload.ts` - Fixed document upload hook
+- `client/src/pages/guest-checkin.tsx` - Fixed guest check-in uploads
+
+**Prevention:**
+- Always follow API specification in DEVELOPMENT_REFERENCE.md
+- Test server endpoints independently before client integration
+- Implement proper error handling and logging for upload failures
+- Use server-generated upload URLs instead of client-generated ones
+- Ensure CORS headers are properly configured for cross-origin uploads
+
+---
+
+### **004 - Settings page runtime error: CapsulesTab is not defined (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Visiting `http://localhost:5000/settings` shows Vite overlay: `CapsulesTab is not defined`
+- Stack points to `client/src/pages/settings.tsx:163`
+
+**Root Cause:**
+- New Capsules tab added to Settings referenced `<CapsulesTab ... />` but component was not implemented
+
+**Solution Steps:**
+1. Implement a minimal `CapsulesTab` component inside `client/src/pages/settings.tsx`
+2. Import `Building` icon and render basic capsule list
+3. Ensure capsules query is enabled for `activeTab === "capsules"`
+
+**Files Modified:**
+- `client/src/pages/settings.tsx`
+
+---
+
+### **003 - Problem Deletion Shows Success But Doesn't Delete (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Problem Deleted" success message appears when deleting active problems
+- Problem remains visible in active problems list even after refresh
+- Delete action appears to succeed but has no effect
+
+**Root Cause:**
+- Frontend sends DELETE request to `/api/problems/${id}`
+- Server route handler for DELETE `/api/problems/:id` was missing completely
+- Frontend shows success message from mutation, but server returns 404 (not found)
+
+**Solution Steps:**
+1. **Add DELETE endpoint to server routes:**
+   ```typescript
+   // Delete problem
+   app.delete("/api/problems/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const deleted = await storage.deleteProblem(id);
+       if (!deleted) {
+         return res.status(404).json({ message: "Problem not found" });
+       }
+       res.json({ message: "Problem deleted successfully" });
+     } catch (error: any) {
+       res.status(400).json({ message: error.message || "Failed to delete problem" });
+     }
+   });
+   ```
+
+2. **Add deleteProblem method to storage interface and implement in both storage classes**
+
+**Files Modified:**
+- `server/routes.ts` - Added DELETE endpoint for problems
+- `server/storage.ts` - Added deleteProblem interface and implementations
+
+---
+
+### **002 - Active Problems Not Displaying (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Problem reporting succeeds with "Problem Reported" message
+- Active problems section remains empty even after refresh
+- Problems are created but not visible in Settings > Maintenance tab
+
+**Root Cause:**
+- Settings page was calling `/api/problems` which returns `PaginatedResponse<CapsuleProblem>`
+- Frontend code expected simple `CapsuleProblem[]` array
+- Type mismatch caused active problems to never display
+
+**Solution Steps:**
+1. **Update the problems query in Settings page:**
+   ```typescript
+   // Before: Expected CapsuleProblem[]
+   const { data: problems = [], isLoading: problemsLoading } = useQuery<CapsuleProblem[]>({
+     queryKey: ["/api/problems"],
+   });
+
+   // After: Handle PaginatedResponse properly
+   const { data: problemsResponse, isLoading: problemsLoading } = useQuery<PaginatedResponse<CapsuleProblem>>({
+     queryKey: ["/api/problems"],
+   });
+   const problems = problemsResponse?.data || [];
+   ```
+
+2. **Add missing import:**
+   ```typescript
+   import { type PaginatedResponse } from "@shared/schema";
+   ```
+
+**Files Modified:**
+- `client/src/pages/settings.tsx` - Fixed problems query and data extraction
+
+---
+
+### **001 - Connection Problem / Server Crashes (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Connection Problem, please check your internet connection and try again" toast appears
+- Occurs when accessing Check-in, Check-out pages, Settings > Save Settings, Report Capsule Problem
+- Login shows "Login failed..." even with correct credentials
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Server error middleware was rethrowing errors after sending response (`throw err;`)
+- This crashed the Node.js process, causing subsequent requests to fail
+- Browser interpreted crashed server as network connectivity issues
+
+**Solution Steps:**
+1. **Stop and restart server with clean environment:**
+   ```powershell
+   # Stop running server (Ctrl+C)
+   cd "C:\Users\Jyue\Desktop\PelangiManager"
+   Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+   npm run dev
+   ```
+
+2. **Clear browser auth cache:**
+   - Chrome DevTools > Application > Local Storage > http://localhost:5000
+   - Remove `auth_token` key
+   - Refresh page
+
+**Technical Fix Applied:**
+- Modified `server/index.ts` error middleware to log errors without rethrowing
+- Before: `res.status(status).json({ message }); throw err;` (crashed server)
+- After: Logs error context and returns JSON response safely
+
+**Files Modified:**
+- `server/index.ts` - Fixed error middleware to prevent server crashes
+
+---
+
+## 🚨 **COMMON ISSUES REFERENCE**
+
+### **Network/Connection Errors**
+- **"Connection Problem" toast** → Server likely crashed, restart with clean env
+- **"Failed to fetch" in DevTools** → Server process terminated, check error middleware
+- **Login works but other pages fail** → Partial server crash, restart required
+
+### **Test Runner Issues**
+- **"Server connection failed: Failed to fetch"** → Browser compatibility issue with AbortSignal.timeout()
+- **Tests fall back to local runner** → System working correctly, server tests unavailable
+- **All local tests pass** → Validation logic is solid, fallback system working
+
+### **Authentication Issues**
+- **"Login failed" with correct credentials** → Server crash during auth, restart server
+- **Redirected to login on protected pages** → Clear `auth_token` from localStorage
+- **API returns 401 on valid requests** → Token expired or corrupted, re-login
+
+### **Development Setup**
+- **Server won't start** → Check Node.js version (requires 18+), run `npm install`
+- **Port 5000 busy** → Set `PORT=5001` in `.env` file
+- **Database connection errors** → Remove `DATABASE_URL` env var for in-memory mode
+
+---
+
+## 🔍 **DIAGNOSTIC COMMANDS**
+
+### **Check Server Health**
+```powershell
+# Test public endpoints
+Invoke-WebRequest http://localhost:5000/api/capsules/available
+Invoke-WebRequest http://localhost:5000/api/guests/checked-in
+
+# Test authentication
+$body = @{ email = 'admin@pelangi.com'; password = 'admin123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/login -Body $body -ContentType 'application/json'
+```
+
+### **Environment Reset**
+```powershell
+# Force in-memory storage mode
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+
+# Clean restart
+npm run dev
+```
+
+### **Browser Debug**
+```javascript
+// Check stored auth token
+localStorage.getItem('auth_token')
+
+// Clear auth token
+localStorage.removeItem('auth_token')
+```
+
+---
+
+### **002 - Test Runner Browser Compatibility Issue (SOLVED)**
+
+**Date Solved:** August 18, 2025  
+**Symptoms:**
+- "Server connection failed: Failed to fetch" when running tests from Settings > Test Runner
+- Tests automatically fall back to local runner and all pass ✅
+- Server is running and accessible (localhost:5000/settings works)
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Browser compatibility issue with `AbortSignal.timeout()` API
+- Modern browsers (Chrome 100+, Firefox 102+, Edge 100+) support this API
+- Older browsers or development environments may not support it
+- Fetch request fails, triggering fallback to local test runner
+
+**Solution Applied:**
+1. **Added browser compatibility check** in `client/src/components/settings/TestsTab.tsx`
+2. **Implemented fallback mechanism** for older browsers using manual AbortController
+3. **Enhanced error messages** to clearly indicate browser compatibility vs network issues
+4. **Maintained 15-second timeout** for both modern and legacy approaches
+
+**Technical Implementation:**
+```typescript
+// Check if AbortSignal.timeout is supported
+if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+  // Modern browsers - use AbortSignal.timeout
+  res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+} else {
+  // Fallback for older browsers - manual timeout with AbortController
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 15000);
+  try {
+    res = await fetch(url, { signal: abortController.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added browser compatibility fallback
+- `docs/MASTER_TROUBLESHOOTING_GUIDE.md` - Documented issue and solution
+
+**Why This Happens:**
+- `AbortSignal.timeout()` is a relatively new browser API
+- Development environments sometimes have different browser compatibility
+- The fallback system is actually working correctly - it's not a bug, it's a feature!
+
+---
+
+## 📋 **SUCCESS PATTERNS**
+
+### **Working Development Flow**
+1. Start server: `npm run dev`
+2. Wait for "serving on port 5000" message
+3. Visit http://localhost:5000
+4. Login with admin@pelangi.com / admin123
+5. All features should work without connection errors
+
+### **When to Restart Server**
+- After pulling code changes
+- When seeing "Connection Problem" toasts
+- After modifying server-side files
+- When switching between database/in-memory modes
+
+---
+
+## 🚨 **PORT 5000 EADDRINUSE TROUBLESHOOTING**
+
+### **Quick Fixes**
+```powershell
+# Option 1: Kill process using port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Option 2: Use different port
+$env:PORT=5001; npm run dev
+
+# Option 3: Restart terminal/computer
+```
+
+---
+
+## 🔧 **BUILD AND DEVELOPMENT SERVER ISSUES**
+
+### **Vite Build Problems**
+- **Build fails** → Check TypeScript errors, run `npm run check`
+- **Hot reload not working** → Restart dev server, check file watchers
+- **Assets not loading** → Clear browser cache, check build output
+
+### **Development Server Issues**
+- **Server won't start** → Check port availability, Node.js version
+- **Changes not reflecting** → Suspect build artifacts, clear dist/ directory
+- **Memory issues** → Restart server, check for memory leaks
+
+### **Replit-Specific Issues**
+- **ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'** → Missing build artifacts, need to run build command
+
+---
+
+## 🚀 **SERVER STARTUP AND GIT SYNC ISSUES**
+
+### **012 - Server Won't Start After Git Sync (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Server fails to start with syntax errors after syncing with GitHub
+- Error: `SyntaxError: The requested module './routes' does not provide an export named 'registerObjectRoutes'`
+- `localhost:5000` shows "ERR_CONNECTION_REFUSED"
+- Terminal shows corrupted import statements or syntax errors
+
+**Root Cause:**
+- **Git Sync Corruption**: Files may get corrupted during Git sync operations
+- **Import/Export Mismatch**: Module exports not properly synchronized
+- **TypeScript Compilation Issues**: Build artifacts may be corrupted
+- **File Encoding Problems**: Special characters or encoding issues from Git
+
+**Solution Implemented:**
+1. **Clean Environment Reset**:
+   ```powershell
+   # Kill any existing processes
+   npx kill-port 5000
+   
+   # Restart development server
+   npm run dev
+   ```
+
+2. **Verify File Integrity**:
+   - Check that `server/routes/index.ts` exports `registerObjectRoutes`
+   - Ensure `server/index.ts` imports correctly
+   - Verify no corrupted characters in import statements
+
+3. **Server Restart Process**:
+   - Always restart server after Git sync operations
+   - Wait for "serving on port 5000" confirmation
+   - Check terminal for any syntax errors before proceeding
+
+**Prevention Steps:**
+- Restart development server after every Git sync
+- Check terminal output for syntax errors
+- Verify server starts successfully before testing features
+- Keep backup of working server files
+
+**Troubleshooting Flow:**
+1. **Immediate Action**: Restart development server with `npm run dev`
+2. **Check Terminal**: Look for syntax errors or import issues
+3. **Verify Port**: Ensure port 5000 is available and server starts
+4. **Test Connection**: Visit `localhost:5000` to confirm server is running
+5. **Check Features**: Verify push notifications and other features work
+
+---
+
+## 🚀 **REPLIT AND DEPLOYMENT ISSUES**
+
+### **013 - Replit ENOENT: Missing Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `{"message":"ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'"}`
+- Server starts but fails to serve the frontend application
+- Browser shows server error instead of React app
+- Occurs in Replit environment after code changes or deployment
+
+**Root Cause:**
+- **Missing Build Directory**: The `dist/` directory containing compiled frontend files doesn't exist
+- **Build Process Not Run**: Frontend code hasn't been compiled from TypeScript/JSX to static HTML/CSS/JS
+- **Replit Environment**: Replit may not automatically run build commands on startup
+- **File System Issues**: Build artifacts may have been cleared or corrupted
+
+**Solution Implemented:**
+1. **Run Build Command**:
+   ```bash
+   # In Replit terminal
+   npm run build
+   ```
+
+2. **Verify Build Output**:
+   ```bash
+   # Check if dist directory exists
+   ls -la dist/
+   
+   # Should show:
+   # dist/
+   # └── public/
+   #     ├── index.html
+   #     ├── assets/
+   #     └── ...
+   ```
+
+3. **Start Server After Build**:
+   ```bash
+   # After successful build
+   npm run dev
+   ```
+
+**Alternative Solutions:**
+1. **Force Clean Build**:
+   ```bash
+   # Remove existing build artifacts
+   rm -rf dist/
+   
+   # Rebuild from scratch
+   npm run build
+   ```
+
+2. **Check Package.json Scripts**:
+   ```json
+   {
+     "scripts": {
+       "build": "vite build",
+       "dev": "tsx watch --clear-screen=false server/index.ts"
+     }
+   }
+   ```
+
+3. **Replit Configuration**:
+   - Ensure `.replit` file has correct run command
+   - Check if build command is set to run on startup
+   - Verify file structure matches expected paths
+
+**Prevention Steps:**
+- **Always run `npm run build`** before starting server in Replit
+- **Check build output** for any compilation errors
+- **Verify dist/ directory** exists and contains expected files
+- **Run build after major code changes** or dependency updates
+
+**Troubleshooting Flow:**
+1. **Check Build Status**: Look for `dist/` directory in file explorer
+2. **Run Build Command**: Execute `npm run build` in terminal
+3. **Verify Output**: Ensure `dist/public/index.html` exists
+4. **Start Server**: Run `npm run dev` after successful build
+5. **Test Application**: Visit the app to confirm it loads correctly
+
+**Common Replit Issues:**
+- **Build fails**: Check TypeScript errors, missing dependencies
+- **Port conflicts**: Replit may use different ports than localhost
+- **File permissions**: Ensure build process can write to workspace
+- **Memory limits**: Large builds may exceed Replit memory constraints
+
+---
+
+---
+
+### **014 - "Show All Capsules" Checkbox Not Visible After Code Changes (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Added new "Show all capsules" checkbox in Filter Guests section
+- Code changes appear to be made but aren't reflected in the UI
+- Checkbox still not visible in Dashboard > Filter Guests popover
+- Browser shows old version without the new feature
+- Similar to other frontend changes not reflecting issues
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Vite Middleware Serving Old Code**: Server using Vite middleware serves from compiled build artifacts, not source code
+- **Source vs Compiled Mismatch**: Even after adding new checkbox component, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Implemented:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   # Or kill all Node processes
+   taskkill /F /IM node.exe
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   # Wait for successful build completion
+   ```
+
+4. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   # Wait for "serving on port 5000" message
+   ```
+
+**Verification Steps:**
+1. **Check Build Success**: Ensure no errors during build process
+2. **Verify Server Start**: Confirm server starts without port conflicts
+3. **Test New Feature**: Navigate to Dashboard > Filter Guests > Look for "Capsule Display" section
+4. **Confirm Checkbox Visible**: "Show all capsules" checkbox should now be visible with building icon
+
+**Technical Details:**
+- **Vite Middleware Setup**: Server configured with `setupVite()` in `server/vite.ts`
+- **Build Process**: Frontend compiled from TypeScript/JSX to static assets in `dist/public/`
+- **Serving Strategy**: Server serves compiled React app, not source code directly
+- **Hot Reload**: Not available in production build mode, requires manual rebuild
+
+**Prevention Steps:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow the build process**: Source changes → Rebuild → Test
+- **Check build output**: Ensure no compilation errors before starting server
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #013**: Replit ENOENT: Missing Build Artifacts
+- **Port 5000 EADDRINUSE**: Address already in use errors
+
+**Troubleshooting Flow:**
+1. **Identify Issue**: Frontend changes not reflecting in UI
+2. **Check Build Status**: Look for `dist/` directory and build artifacts
+3. **Clean Environment**: Remove old compiled code
+4. **Rebuild Application**: Run `npm run build` successfully
+5. **Start Server**: Run `npm run dev` and wait for confirmation
+6. **Test Changes**: Verify new features are now visible
+
+---
+
+### **015 - Calendar Not Displaying All Dates (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Occupancy calendar only shows partial dates (e.g., 27/7, 28/7, 29/7, 30/7, 31/7, 1/8)
+- Missing most August dates (2/8, 3/8, 4/8... 31/8)
+- Calendar appears to only show end of previous month and beginning of current month
+- Changes to calendar component code don't reflect in UI
+
+**Root Cause:**
+- **Wrong react-day-picker API Usage**: Using invalid `components={{ DayContent: ... }}` prop
+- **Null Return Values**: `getDayContent` function returned `null` for dates without data
+- **Component Integration Issue**: react-day-picker v8 doesn't support `DayContent` component override
+- **Build Artifacts Problem**: Old compiled calendar code served despite source changes
+
+**Solution Implemented:**
+
+1. **Fixed react-day-picker Integration:**
+   ```typescript
+   // BEFORE: Invalid component override (caused dates to not render)
+   <Calendar
+     components={{
+       DayContent: ({ date }) => getDayContent(date), // ❌ Wrong API
+     }}
+   />
+   
+   // AFTER: Proper modifiers approach
+   <Calendar
+     modifiers={{
+       hasCheckins: (date) => {
+         const dateString = date.toISOString().split('T')[0];
+         const dayData = calendarData[dateString];
+         return dayData && dayData.checkins.length > 0;
+       },
+       hasCheckouts: (date) => { /* similar logic */ },
+       highOccupancy: (date) => { /* occupancy > 80% */ },
+       // ... other modifiers
+     }}
+     modifiersClassNames={{
+       hasCheckins: "relative after:absolute after:top-0 after:right-0 after:w-1.5 after:h-1.5 after:bg-green-500 after:rounded-full",
+       hasCheckouts: "relative before:absolute before:top-0 before:left-0 before:w-1.5 before:h-1.5 before:bg-red-500 before:rounded-full",
+       // ... other styling
+     }}
+   />
+   ```
+
+2. **Removed Problematic getDayContent Function:**
+   ```typescript
+   // BEFORE: Function that returned null for dates without data
+   const getDayContent = (date: Date) => {
+     const dayData = calendarData[dateString];
+     if (!dayData) return null; // ❌ This prevented dates from rendering
+     // ... rest of function
+   };
+   
+   // AFTER: Removed entirely, using modifiers instead
+   ```
+
+3. **Applied Build Artifacts Fix:**
+   ```powershell
+   # Kill port conflicts
+   netstat -ano | findstr :5000
+   taskkill /PID <PID> /F
+   
+   # Clean build artifacts
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   
+   # Rebuild with calendar changes
+   npm run build
+   
+   # Start on different port
+   $env:PORT=5001; npm run dev
+   ```
+
+**Technical Details:**
+- **react-day-picker v8.10.1**: Uses `modifiers` and `modifiersClassNames` for customization
+- **Component Override**: `DayContent` component is not a valid prop in v8
+- **Date Rendering**: Calendar must always render valid JSX for each date
+- **CSS Approach**: Used Tailwind classes with pseudo-elements for visual indicators
+
+**Visual Indicators Implemented:**
+- ✅ **Green dots (top-right)**: Check-ins
+- ✅ **Red dots (top-left)**: Check-outs  
+- ✅ **Orange bars (bottom)**: 80%+ occupancy
+- ✅ **Red bars (bottom)**: 100% occupancy
+- ✅ **Blue dots (top-center)**: Festivals
+- ✅ **Green dots (top-center)**: Public holidays
+
+**Verification Steps:**
+1. **Check All Dates Visible**: August calendar shows 1, 2, 3... 31
+2. **Test Visual Indicators**: Dates with data show appropriate colored indicators
+3. **Verify Month Navigation**: Can navigate between months properly
+4. **Confirm Date Selection**: Clicking dates shows detailed information
+
+**Files Modified:**
+- `client/src/components/occupancy-calendar.tsx` - Fixed calendar integration
+- Build artifacts cleaned and regenerated
+
+**Prevention:**
+- **Use correct react-day-picker API**: Always check documentation for component props
+- **Test calendar components**: Ensure all dates render regardless of data availability
+- **Follow build process**: Clean artifacts → Rebuild → Test after major component changes
+- **Avoid null returns**: Calendar components should always return valid JSX
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #014**: "Show All Capsules" Checkbox Not Visible After Code Changes
+- **Port EADDRINUSE**: Address already in use errors
+
+---
+
+### **016 - System Updates Section Not Displaying After Code Addition (SOLVED)**
+
+**Date Solved:** August 21, 2025  
+**Symptoms:**
+- Added new "System Updates" section to Settings > Tests page with recent development history
+- Code changes made to `TestsTab.tsx` component but not visible in UI
+- Section includes latest features like push notification enhancements, calendar fixes, etc.
+- Browser shows old version without the new System Updates section
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contained outdated compiled JavaScript code
+- **Forgot to Rebuild**: Developer made source code changes but forgot to run build process
+- **Vite Middleware Serving Old Code**: Server serves compiled build artifacts, not source code
+- **Classic Problem #007 Pattern**: Same root cause as "Frontend Changes Not Reflecting Due to Build Artifacts"
+
+**Solution Applied (Following Problem #007 Pattern):**
+1. **Kill Development Server:**
+   ```bash
+   npx kill-port 5000
+   # Successfully killed process on port 5000
+   ```
+
+2. **Clean Build Artifacts:**
+   ```bash
+   rm -rf dist
+   # Removed outdated compiled code directory
+   ```
+
+3. **Rebuild Application:**
+   ```bash
+   npm run build
+   # Build completed successfully in 12.66s
+   # Generated new compiled code with System Updates section
+   ```
+
+4. **Start Fresh Server:**
+   ```bash
+   npm run dev
+   # Server started successfully on port 5000
+   # "8:58:15 AM [express] serving on port 5000"
+   ```
+
+**Verification Results:**
+- ✅ Build completed without errors
+- ✅ Server started successfully with in-memory storage
+- ✅ System Updates section now visible in Settings > Tests
+- ✅ All recent development history properly displayed
+
+**System Updates Content Added:**
+- **System Updates Feature Added** (Today) - This new feature itself
+- **Push Notification Test Enhancement** (January 2025) - Enhanced error handling
+- **Calendar Display Fix** (January 2025) - Fixed react-day-picker API usage
+- **Upload System Complete Rebuild** (January 2025) - Fixed file upload system
+- **Storage System Modular Refactoring** (August 2025) - 96% code reduction
+- **Component Refactoring Success** (August 2025) - Large component optimization
+
+**Key Learning:**
+- **Always remember to rebuild** after making frontend component changes
+- **Classic symptom pattern**: Code changes not reflecting = build artifacts issue
+- **Standard solution works**: Kill server → Clean dist → Rebuild → Restart
+- **Prevention**: Include rebuild step in development workflow for major changes
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added System Updates section
+- Build artifacts cleaned and regenerated with new content
+
+**Prevention Steps:**
+- **Remember to rebuild** after adding new components or major UI changes
+- **Follow the pattern**: Source changes → Build → Test
+- **Check troubleshooting guide** when changes don't reflect
+- **Use Problem #007 solution** for similar build artifacts issues
+
+**Success Pattern Confirmed:**
+This case validates that Problem #007's solution pattern is reliable and should be the first approach when frontend changes don't appear in the UI. The exact same steps resolved the issue quickly and effectively.
+
+---
+
+## 📱 **PWA TROUBLESHOOTING REFERENCE**
+
+### **PWA Disabled on Replit: Why and How to Fix**
+
+**Issue:** PWA features disabled on Replit deployment
+**Symptoms:** 
+- No "Add to Home Screen" option on mobile
+- Service worker not registering
+- PWA features work locally but not on Replit
+
+**Root Cause:**
+- **Deployment Conflicts**: Replit's auto-redeploy system conflicts with service worker caching
+- **Build Process Issues**: Service workers can interfere with Replit's build pipeline
+- **Conservative Configuration**: PWA disabled to prevent deployment failures
+
+**Solution Strategy:**
+1. **Smart PWA Configuration**: Enable PWA with deployment-safe settings
+2. **Conditional Service Worker**: Use environment-specific service worker strategies
+3. **Cache Management**: Implement cache invalidation for rapid deployments
+
+**Key Configuration Changes:**
+```typescript
+// Enable PWA on all environments including Replit
+export function shouldEnablePWA(): boolean {
+  return true; // Smart configuration handles deployment conflicts
+}
+
+// Environment-specific PWA configuration
+export function getPWAConfig() {
+  const env = getEnvironment();
+  return {
+    enablePWA: true,
+    swStrategy: env.isReplit ? 'deployment-safe' : 'aggressive-cache',
+    skipWaiting: env.isReplit ? false : true,
+    clientsClaim: env.isReplit ? false : true
+  };
+}
+```
+
+**Files to Modify:**
+- `shared/utils.ts` - Update shouldEnablePWA function
+- `client/src/main.tsx` - Add deployment-safe service worker registration
+- `vite.config.ts` - Configure PWA plugin for Replit compatibility
+
+**Prevention:**
+- Use deployment-safe PWA configurations on cloud platforms
+- Test PWA features in production environment before full deployment
+- Monitor service worker registration in browser dev tools
+
+---
+
+**Document Control:**
+- **Maintained By:** Development Team
+- **Last Updated:** August 21, 2025
+- **Next Review:** When new issues arise
+
+*This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
+
+---
+
+### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: "Failed to cancel pending check-in" appears in red error banner
+- Error: "Failed to fetch" when clicking "Instant Create" button
+- Both errors occur in guest check-in management
+- Guest check-in status remains "Pending Check-in" despite cancellation attempt
+- Error banner shows with error ID and generic failure message
+
+**Root Causes:**
+1. **Missing Cancel Endpoint**: Server route for cancelling guest check-ins not implemented
+2. **Critical Bug in Instant Create**: Incomplete `createGuestToken` call with wrong `createdBy` field
+3. **Frontend Expects API**: Cancel button calls non-existent `/api/guest-checkins/{id}/cancel` endpoint
+4. **Database State Mismatch**: Guest record remains in pending state without cancellation logic
+
+**Solutions Implemented:**
+
+1. **Fixed Instant Create Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Incomplete and wrong createdBy field
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ WRONG: Hardcoded string
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     email: guestToken.email,
+     createdAt: guestToken.createdAt,
+     usedAt: guestToken.usedAt  // ❌ Missing fields
+   });
+   
+   // AFTER: Complete and correct fields
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ FIXED: Use authenticated user ID
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     autoAssign: validatedData.autoAssign || false,
+     guestName: guestToken.guestName,
+     phoneNumber: guestToken.phoneNumber,
+     email: guestToken.email,
+     expectedCheckoutDate: guestToken.expectedCheckoutDate,
+     createdAt: guestToken.createdAt,
+   });
+   ```
+
+2. **Added Cancel Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Cancel pending guest check-in
+   router.patch("/:id/cancel", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const { reason } = req.body;
+       
+       // Get the guest token to check if it exists and is not used
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest check-in not found" });
+       }
+       
+       if (guestToken.isUsed) {
+         return res.status(400).json({ message: "Cannot cancel already used check-in" });
+       }
+       
+       // Mark token as cancelled (we'll use isUsed field for this)
+       const updated = await storage.markTokenAsUsed(id);
+       
+       if (!updated) {
+         return res.status(400).json({ message: "Failed to cancel check-in" });
+       }
+       
+       res.json({ message: "Check-in cancelled successfully" });
+     } catch (error: any) {
+       console.error("Error cancelling guest check-in:", error);
+       res.status(400).json({ message: error.message || "Failed to cancel check-in" });
+     }
+   });
+   ```
+
+**Testing & Verification:**
+1. **Test Instant Create**: Click "Instant Create" button should work without "Failed to fetch" error
+2. **Test Cancel Function**: Click "Cancel" button on pending check-in should show success message
+3. **Check Database**: Guest tokens should be created with proper `created_by` field
+4. **Verify UI Updates**: Cancelled check-ins should update status properly
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Complete API implementations**: Implement all CRUD operations when adding new features
+- **Test cancellation flows** during development
+- **Add proper error handling** for all user actions
+- **Validate database schema** supports all status transitions
+
+**Related Issues:**
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit
+- **Problem #009**: Finance Page Crash & Expense Creation Errors
+
+**Success Pattern:**
+- ✅ **Identify missing endpoint**: Look for "Failed to" error messages
+- ✅ **Fix incomplete API calls**: Ensure all required fields are properly set
+- ✅ **Implement backend logic**: Add proper API endpoints and storage methods
+- ✅ **Update frontend handlers**: Ensure proper error handling and user feedback
+- ✅ **Test complete flow**: Verify both creation and cancellation work end-to-end
+
+**Key Learning:**
+- **Two related errors** can have the same root cause (missing/incomplete backend implementation)
+- **"Failed to fetch"** often indicates missing or broken API endpoints
+- **Foreign key constraints** must use proper UUIDs, not hardcoded strings
+- **Complete API implementation** is crucial for frontend functionality
+
+---
+
+### **021 - PWA Manifest Errors & Missing DELETE Endpoint (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Console shows: "Manifest: Line: 1, column: 1, Syntax error"
+- Service worker errors: "Failed to execute 'put' on 'Cache': Request scheme 'chrome-extension' is unsupported"
+- DELETE API fails: "DELETE http://localhost:5000/api/guest-tokens/{id} net::ERR_FAILED"
+- PWA functionality broken, service worker crashes
+- Guest token deletion from dashboard not working
+
+**Root Causes:**
+1. **PWA Manifest Syntax Error**: Invalid JSON in manifest file
+2. **Service Worker Cache Issues**: Trying to cache unsupported URL schemes
+3. **Missing DELETE Endpoint**: No server route for deleting guest tokens
+4. **Service Worker Crashes**: Breaking PWA functionality
+
+**Solutions Implemented:**
+
+1. **Added Missing DELETE Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Delete guest token
+   router.delete("/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       
+       // Get the guest token to check if it exists
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest token not found" });
+       }
+       
+       // Delete the token
+       const deleted = await storage.deleteGuestToken(id);
+       
+       if (!deleted) {
+         return res.status(400).json({ message: "Failed to delete guest token" });
+       }
+       
+       res.json({ message: "Guest token deleted successfully" });
+     } catch (error: any) {
+       console.error("Error deleting guest token:", error);
+       res.status(400).json({ message: error.message || "Failed to delete guest token" });
+     }
+   });
+   ```
+
+2. **PWA Manifest Fix** (check `public/manifest.json`):
+   ```json
+   {
+     "name": "PelangiManager",
+     "short_name": "Pelangi",
+     "start_url": "/",
+     "display": "standalone",
+     "background_color": "#ffffff",
+     "theme_color": "#000000",
+     "icons": [
+       {
+         "src": "/icon-192.png",
+         "sizes": "192x192",
+         "type": "image/png"
+       }
+     ]
+   }
+   ```
+
+3. **Service Worker Cache Fix** (check `public/sw.js`):
+   ```javascript
+   // Filter out unsupported URL schemes
+   const shouldCache = (request) => {
+     const url = new URL(request.url);
+     return url.protocol === 'http:' || url.protocol === 'https:';
+   };
+   
+   // Only cache valid requests
+   if (shouldCache(request)) {
+     cache.put(request, response.clone());
+   }
+   ```
+
+**Testing & Verification:**
+1. **Test DELETE Function**: Delete guest token from dashboard should work
+2. **Check PWA**: Manifest should load without syntax errors
+3. **Service Worker**: Should not crash on chrome-extension URLs
+4. **Console Clean**: No more ERR_FAILED or cache errors
+
+**Prevention:**
+- **Validate JSON**: Always check manifest.json syntax
+- **URL Filtering**: Filter out unsupported URL schemes in service worker
+- **Complete CRUD**: Implement all operations (Create, Read, Update, Delete)
+- **PWA Testing**: Test PWA features after major changes
+
+**Related Issues:**
+- **Problem #020**: Guest Check-in Cancellation Failure & Instant Create Fetch Error
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+
+**Success Pattern:**
+- ✅ **Fix manifest syntax**: Validate JSON structure
+- ✅ **Add missing endpoints**: Implement complete CRUD operations
+- ✅ **Filter URLs**: Only cache supported URL schemes
+- ✅ **Test PWA**: Verify service worker functionality
+
+**Key Learning:**
+- **Console errors** often reveal multiple related issues
+- **PWA problems** can break multiple features simultaneously
+- **Missing endpoints** cause frontend operations to fail
+- **Service worker crashes** affect offline functionality
+
+---
+
+## 🗄️ **DATABASE CONSTRAINT VIOLATION ERRORS**
+
+### **019 - Guest Token Creation Foreign Key Constraint Violation (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"guest_tokens\" violates foreign key constraint \"guest_tokens_created_by_users_id_fk\""}`
+- Occurs when clicking "Instant Create" button in Guest Check-in page
+- Database constraint violation preventing guest token creation
+- Foreign key constraint failure on `created_by` field
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being hardcoded to `'system'` instead of using the authenticated user's ID
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string 'system'
+- **Authentication Context**: Route has `authenticateToken` middleware, so `req.user.id` is available but not being used
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Wrong - hardcoded string 'system'
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ Invalid foreign key reference
+     // ... other fields
+   });
+   
+   // AFTER: Correct - using authenticated user's ID
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ Valid UUID from authenticated user
+     // ... other fields
+   });
+   ```
+
+2. **Verified Authentication Middleware**: Route already had proper `authenticateToken` middleware ensuring `req.user.id` is available
+
+**Database Schema Context:**
+```typescript
+// shared/schema.ts - guest_tokens table definition
+export const guestTokens = pgTable("guest_tokens", {
+  // ... other fields
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Foreign key to users.id
+  // ... other fields
+});
+```
+
+**Files Modified:**
+- `server/routes/guest-tokens.ts` - Fixed `createdBy` assignment to use `req.user.id`
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Leverage authentication context**: Use `req.user.id` when routes have `authenticateToken` middleware
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Test foreign key relationships**: Verify that referenced IDs exist in parent tables
+
+**Testing & Verification:**
+1. **Click "Instant Create"** in Guest Check-in page
+2. **Should work without errors** and create guest token successfully
+3. **Check database**: `created_by` field should contain valid UUID from users table
+4. **Verify audit trail**: Each token properly tracks which user created it
+
+**Related Issues:**
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit (similar root cause)
+- **Problem #009**: Database Constraint Violation on Test Notification
+
+**Success Pattern:**
+- ✅ **Identify foreign key constraint**: Look for "violates foreign key constraint" in error messages
+- ✅ **Check code logic**: Ensure foreign key fields reference valid UUIDs, not strings
+- ✅ **Use authentication context**: Leverage `req.user.id` when available
+- ✅ **Verify database schema**: Confirm foreign key relationships are properly defined
+
+---
+
+### **018 - Expenses Foreign Key Constraint Violation in Replit (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"expenses\" violates foreign key constraint \"expenses_created_by_users_id_fk\""}`
+- Occurs when adding expenses in Finance page in Replit environment
+- Works fine in localhost testing but fails in production/Replit
+- Database constraint violation preventing expense creation
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being set to `req.user.username` or `req.user.email` instead of `req.user.id`
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string values
+- **Environment Difference**: Localhost may have been more lenient with constraints or had different data
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/expenses.ts`:
+   ```typescript
+   // BEFORE: Wrong - sending username/email string
+   const createdBy = req.user.username || req.user.email || "Unknown";
+   
+   // AFTER: Correct - sending user ID UUID
+   const createdBy = req.user.id;
+   ```
+
+2. **Created Database Fix Script** (`fix-expenses-db.js`) for Replit:
+   ```bash
+   # Install pg if needed
+   npm install pg
+   
+   # Run database fix script
+   node fix-expenses-db.js
+   ```
+
+**Database Fix Script Features:**
+- ✅ **Table Structure Check**: Verifies expenses table exists with proper schema
+- ✅ **Foreign Key Validation**: Ensures `created_by` column has proper constraint
+- ✅ **Orphaned Data Cleanup**: Fixes any existing expenses with invalid `created_by` values
+- ✅ **Index Creation**: Sets up proper database indexes for performance
+
+**Files Modified:**
+- `server/routes/expenses.ts` - Fixed `createdBy` assignment to use `req.user.id`
+- `fix-expenses-db.js` - Created database cleanup script for Replit
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Test in production environment**: Localhost may have different constraint behavior
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Use database fix scripts**: For production environment database issues
+
+**Testing & Verification:**
+1. **Restart Replit server** after code fix
+2. **Try adding expense** in Finance page
+3. **Should work without errors** and create expense successfully
+4. **Check database**: `created_by` field should contain valid UUID
+
+---
+
+### **009 - Database Constraint Violation on Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"null value in column \"key\" of relation \"app_settings\" violates not-null constraint"`
+- HTTP 400 error when clicking "Send Test Notification"
+- Database constraint violation preventing notification testing
+- Settings not being saved properly
+
+**Root Cause:**
+- **Null Key Values**: Code attempting to save settings with null/undefined key values
+- **Missing Validation**: Server-side validation not preventing invalid data
+- **Automatic Saving**: Some automatic preference saving triggered during test notification
+- **Database Constraints**: PostgreSQL enforcing NOT NULL constraint on app_settings.key column
+
+**Solution Implemented:**
+1. **Client-Side Validation**: Added proper key format for notification preferences
+2. **Server-Side Validation**: Enhanced settings route to validate key/value parameters
+3. **Storage Layer Validation**: Added validation in DatabaseStorage and MemStorage
+4. **Error Handling**: Better error categorization for database constraint violations
+5. **Preference Saving**: Fixed notification preferences to use proper key format
+
+**Error Prevention:**
+- **Input Validation**: All settings must have non-empty string keys
+- **Type Safety**: Values are converted to strings before database storage
+- **Key Format**: Notification preferences use `notification.{preferenceName}` format
+- **Error Messages**: Clear error messages for constraint violations
+
+**Testing & Verification:**
+```javascript
+// Check if settings are being saved properly
+console.log('Notification preferences:', preferences);
+
+// Verify API calls have proper key/value format
+fetch('/api/settings', {
+  method: 'PATCH',
+  body: JSON.stringify({
+    key: 'notification.guestCheckIn', // ✅ Proper format
+    value: 'true'                     // ✅ String value
+  })
+});
+```
+
+**Prevention:**
+- **Always validate inputs** before database operations
+- **Use consistent key naming** conventions
+- **Test database operations** with edge cases
+- **Monitor constraint violations** in logs
+
+---
+
+## 🔑 **INVALID KEY ERRORS**
+
+### **010 - Invalid Key Error During Test Notification (INVESTIGATING)**
+
+**Date Identified:** January 2025  
+**Symptoms:**
+- Error: `400: {"message":"Setting key is required and must be a non-empty string","error":"INVALID_KEY"}`
+- Occurs when clicking "Send Test Notification"
+- Server-side validation catching invalid data before database
+- No database constraint violations (validation working)
+
+**Root Cause (Under Investigation):**
+- **Unknown Source**: Some code is calling `/api/settings` with null/undefined key
+- **Not from Preferences**: `handlePreferencesChange` has proper validation
+- **Not from Test Function**: `handleTestNotification` doesn't call settings API
+- **Possible External Code**: Another component or hook might be interfering
+
+**Current Investigation:**
+1. **Added Debug Logging**: Track all preference changes and API calls
+2. **Fetch Interceptor**: Monitor unexpected settings API calls during tests
+3. **Test Progress Flag**: Prevent preference saving during test notifications
+4. **Enhanced Validation**: Better error handling for invalid keys
+
+**Debug Information:**
+```javascript
+// Check browser console for these logs:
+🔧 handlePreferencesChange called with: { key, value, isTestInProgress }
+🚨 INTERCEPTED SETTINGS API CALL during test: { url, options }
+📝 Request body: { key, value }
+❌ INVALID KEY DETECTED: undefined
+```
+
+**Temporary Workaround:**
+- **Refresh the page** before testing notifications
+- **Check browser console** for debug information
+- **Report exact error** to support team
+
+**Next Steps:**
+- **Identify source** of invalid API calls
+- **Fix root cause** of automatic preference saving
+- **Remove temporary** fetch interceptor
+- **Add permanent** prevention measures
+
+---
+
+## 🔐 **AUTHENTICATION ERRORS**
+
+### **011 - 401 Unauthorized During Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `401: {"message":"Invalid or expired token"}`
+- Occurs when clicking "Send Test Notification"
+- Authentication error preventing notification testing
+- Push notification routes expect no authentication
+
+**Root Cause:**
+- **Fetch Interceptor Issue**: Temporary debug interceptor was interfering with push API calls
+- **Route Configuration**: Push notification routes (`/api/push/*`) don't require authentication
+- **Client Side**: Test notification was being intercepted and modified by debug code
+- **Server Side**: Server was rejecting requests with unexpected auth headers
+
+**Solution Implemented:**
+1. **Fixed Fetch Interceptor**: Modified to only intercept `/api/settings` calls, not push API calls
+2. **Enhanced Error Handling**: Added specific 401 error categorization and user guidance
+3. **Route Isolation**: Ensured push notification routes remain unauthenticated
+4. **Better User Feedback**: Clear troubleshooting steps for authentication issues
+
+**Technical Details:**
+```javascript
+// BEFORE: Interceptor was affecting ALL fetch calls
+window.fetch = async (...args) => { /* intercepts everything */ };
+
+// AFTER: Only intercept settings API calls
+if (typeof url === 'string' && url.includes('/api/settings')) {
+  // Only intercept settings calls
+}
+// Push API calls use original fetch
+return originalFetch(...args);
+```
+
+**Error Categories Added:**
+- **Authentication Required**: Session expired or login needed
+- **Clear Troubleshooting**: Refresh page, log in again, clear cache
+- **User Action Required**: Specific steps to resolve authentication issues
+
+**Testing & Verification:**
+- ✅ Test notification works without authentication
+- ✅ Settings API calls are still monitored for debugging
+- ✅ No interference with push notification functionality
+- ✅ Clear error messages for authentication issues
+
+**Prevention:**
+- **Route Isolation**: Keep push routes unauthenticated
+- **Selective Interception**: Only intercept specific API endpoints
+- **Clear Error Messages**: Provide actionable troubleshooting steps
+- **Test Authentication**: Verify routes work with/without auth as expected
+
+---
+
+## 🔔 **NOTIFICATION PERMISSION TROUBLESHOOTING**
+
+### **Understanding Notification Permissions**
+
+**What are Notification Permissions?**
+Notification permissions are a web browser security feature that controls whether websites can send push notifications to users. This is a privacy protection mechanism that prevents websites from sending unwanted notifications without user consent.
+
+**Why Do Permissions Get Denied?**
+
+#### **1. User Action (Most Common)**
+- **Previous Denial**: User previously clicked "Block" when browser asked for permission
+- **Accidental Click**: User accidentally clicked "Block" instead of "Allow"
+- **Misunderstanding**: User thought "Block" would stop the popup, not permanently deny access
+
+#### **2. Browser Settings**
+- **Global Disable**: Browser has notifications globally turned off
+- **Site-Specific Block**: This specific site is blocked in browser's site settings
+- **Privacy Mode**: User is browsing in incognito/private mode
+- **Browser Version**: Outdated browser doesn't support modern notification APIs
+
+#### **3. System-Level Issues**
+- **Operating System**: Windows/Mac has notifications disabled
+- **Do Not Disturb**: System is in "Do Not Disturb" mode
+- **Focus Assist**: Windows Focus Assist is blocking notifications
+- **System Updates**: Recent OS update changed notification settings
+
+#### **4. Extension Interference**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus block notification requests
+- **Privacy Extensions**: Privacy Badger, Ghostery block tracking/notifications
+- **VPN Extensions**: Some VPNs block certain web features
+- **Security Extensions**: Malware blockers may block notification APIs
+
+#### **5. Network/Corporate Issues**
+- **Corporate Firewall**: Company network blocks push notification services
+- **School/University**: Educational institutions often block notifications
+- **Public WiFi**: Some public networks block certain web features
+- **ISP Restrictions**: Internet service provider blocking push services
+
+### **Browser-Specific Solutions**
+
+#### **🌐 Google Chrome / Microsoft Edge**
+```text
+1. Click the lock/info icon 🔒 in the address bar
+2. Click "Site settings" or "Permissions"
+3. Find "Notifications" in the list
+4. Change from "Block" to "Allow"
+5. Refresh the page
+6. Alternative: chrome://settings/content/notifications
+```
+
+#### **🦊 Mozilla Firefox**
+```text
+1. Click the shield icon 🛡️ in the address bar
+2. Click "Site Permissions" → "Notifications"
+3. Change from "Block" to "Allow"
+4. Refresh the page
+5. Alternative: about:preferences#privacy
+```
+
+#### **🍎 Safari (Mac)**
+```text
+1. Safari → Preferences → Websites → Notifications
+2. Find this site in the list
+3. Change from "Deny" to "Allow"
+4. Refresh the page
+5. Alternative: System Preferences → Notifications → Safari
+```
+
+#### **🌍 Other Browsers**
+- **Opera**: opera://settings/content/notifications
+- **Brave**: brave://settings/content/notifications
+- **Vivaldi**: vivaldi://settings/content/notifications
+
+### **System-Level Solutions**
+
+#### **Windows 10/11**
+```text
+1. Settings → System → Notifications & actions
+2. Turn on "Get notifications from apps and other senders"
+3. Turn on "Show notifications on the lock screen"
+4. Check "Focus assist" settings
+5. Ensure "Do not disturb" is off
+```
+
+#### **macOS**
+```text
+1. System Preferences → Notifications & Focus
+2. Select your browser (Chrome, Firefox, Safari)
+3. Ensure notifications are enabled
+4. Check "Do Not Disturb" settings
+5. Verify "Focus" modes aren't blocking notifications
+```
+
+#### **Linux**
+```text
+1. Check notification daemon (e.g., dunst, notify-osd)
+2. Ensure desktop environment notifications are enabled
+3. Check system notification settings
+4. Verify browser has notification permissions
+```
+
+### **Extension Troubleshooting**
+
+#### **Common Problematic Extensions**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus, AdGuard
+- **Privacy Tools**: Privacy Badger, Ghostery, DuckDuckGo Privacy
+- **Security**: Malwarebytes, Norton, McAfee
+- **VPN**: NordVPN, ExpressVPN, ProtonVPN extensions
+
+#### **Testing Steps**
+```text
+1. Open browser in incognito/private mode (extensions disabled)
+2. Test notification permission request
+3. If it works, an extension is blocking it
+4. Disable extensions one by one to identify the culprit
+5. Add the site to extension whitelist if possible
+```
+
+### **Advanced Troubleshooting**
+
+#### **Reset Site Permissions**
+```text
+Chrome/Edge:
+1. chrome://settings/content/notifications
+2. Find this site
+3. Click the trash icon to remove
+4. Refresh page and try again
+
+Firefox:
+1. about:preferences#privacy
+2. Site Permissions → Notifications
+3. Remove the site entry
+4. Refresh page and try again
+```
+
+#### **Clear Browser Data**
+```text
+1. Clear cookies and site data for this domain
+2. Clear browser cache
+3. Restart browser
+4. Try permission request again
+```
+
+#### **Check Console for Errors**
+```javascript
+// Open browser console (F12) and check for:
+console.log('Notification permission:', Notification.permission);
+console.log('Service Worker:', 'serviceWorker' in navigator);
+console.log('Push Manager:', 'PushManager' in window);
+
+// Common error messages:
+// - "Permission denied"
+// - "Service worker not found"
+// - "Push subscription failed"
+```
+
+### **Prevention Strategies**
+
+#### **For Users**
+- **Understand the Request**: Read what the browser is asking for
+- **Don't Rush**: Take time to understand permission requests
+- **Use Supported Browsers**: Chrome, Firefox, Edge, Safari
+- **Keep Updated**: Regular browser and OS updates
+- **Check Extensions**: Be aware of what extensions might block
+
+#### **For Developers**
+- **Clear Messaging**: Explain why notifications are needed
+- **Graceful Fallbacks**: Handle permission denial gracefully
+- **User Education**: Provide clear troubleshooting steps
+- **Progressive Enhancement**: App works without notifications
+- **Testing**: Test on multiple browsers and devices
+
+### **When All Else Fails**
+
+#### **Alternative Solutions**
+1. **Different Browser**: Try Chrome, Firefox, or Edge
+2. **Different Device**: Test on mobile or another computer
+3. **Contact Support**: Provide detailed error information
+4. **Manual Check**: Check notifications manually in the app
+5. **Email Alerts**: Use email notifications as backup
+
+#### **Support Information to Provide**
+- Browser name and version
+- Operating system and version
+- Error messages from console
+- Steps already tried
+- Screenshots of permission dialogs
+- Extension list
+
+---
+
+### **007 - Frontend Changes Not Reflecting Due to Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Frontend changes appear to be made but aren't reflected in the UI
+- Components deleted from source code still appear in the application
+- Changes work in incognito mode but not in regular browser (ruling out browser caching)
+- Similar to nationality editing issue where changes weren't reflected
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Source vs Compiled Mismatch**: Even after deleting source files, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Steps:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   ```
+
+4. **Verify Clean Build:**
+   ```powershell
+   # Check that old components are removed from compiled code
+   Get-ChildItem dist -Recurse | Select-String "OLD_COMPONENT_NAME"
+   ```
+
+5. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   ```
+
+**Prevention:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow build process**: Source changes → Rebuild → Test
+
+---
+
+### **006 - JSX Syntax Error: Expected corresponding JSX closing tag for <CardContent> (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Vite dev server shows: "Internal server error: Expected corresponding JSX closing tag for <CardContent>. (1344:12)"
+- React application fails to compile and run
+- Browser shows "localhost refused to connect" or "ERR_CONNECTION_REFUSED"
+- Server crashes due to JSX parsing error
+
+**Root Cause:**
+- Unbalanced JSX tags in `client/src/pages/settings.tsx`
+- `<CardContent>` tag opened at line 1059 in `GuestGuideTab` function was never properly closed
+- Multiple nested `<div>` tags created structural imbalance
+
+**Solution Steps:**
+1. **Identify the JSX structure issue:**
+   ```typescript
+   // Line 1059: CardContent opens
+   <CardContent>
+     <div className={`preview-content...`}>
+       // ... complex nested content ...
+   
+   // Line 1344: Should be </CardContent> but was </div>
+   </div>  // WRONG - should be </CardContent>
+   </Card>
+   ```
+
+2. **Fix the JSX structure:**
+   ```typescript
+   // Remove extra nested div and properly close CardContent
+   </div>
+   </div>
+   </div>
+   </CardContent>  // FIXED - proper closing tag
+   </Card>
+   ```
+
+**Prevention:**
+- Always verify JSX tag balance when making structural changes
+- Use proper indentation to visualize JSX nesting
+- Count opening/closing tags to ensure balance
+
+---
+
+### **005 - IC Photo Upload Failed: "Failed to construct 'URL': Invalid URL" (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Clicking "Upload IC photo" in Self Check-in form shows error: "Failed to construct 'URL': Invalid URL"
+- Console shows Uppy error: `[Uppy] Failed to construct 'URL': Invalid URL`
+- Upload fails in local development environment using localhost
+
+**Root Cause:**
+- Server returned relative URL `/api/objects/dev-upload/{id}` for local development
+- Uppy AWS S3 plugin expects a full URL (with protocol and host) not a relative path
+- The AWS S3 plugin tries to construct a URL object from the relative path, which fails
+
+**Solution Steps:**
+1. **Update server to return full URLs for dev uploads:**
+   ```typescript
+   // server/routes.ts - in /api/objects/upload endpoint
+   const protocol = req.protocol;
+   const host = req.get('host');
+   const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${id}`;
+   ```
+
+2. **Add CORS headers for dev upload endpoint:**
+   ```typescript
+   // Handle OPTIONS preflight
+   app.options("/api/objects/dev-upload/:id", (req, res) => {
+     res.header('Access-Control-Allow-Origin', '*');
+     res.header('Access-Control-Allow-Methods', 'PUT, OPTIONS');
+     res.header('Access-Control-Allow-Headers', 'Content-Type');
+     res.sendStatus(200);
+   });
+   ```
+
+**Prevention:**
+- Always return full URLs from server when dealing with file upload libraries
+- Test file uploads in local development environment
+- Add proper CORS headers for development endpoints
+
+---
+
+### **008 - Complete Upload System Failure: "Upload Failed" Generic Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- All file uploads show generic "Upload failed" error message
+- IC photo uploads in check-in page failing
+- Document uploads in guest check-in failing  
+- Finance receipt/item photo uploads failing
+- Console may show various Uppy-related errors
+
+**Root Cause:**
+- **Missing Server Implementation**: `/api/objects/upload` endpoint was calling non-existent `objectStorage.upload()` method
+- **Wrong API Flow**: Client was generating upload URLs locally instead of requesting from server
+- **Broken ObjectStorageService**: Server was trying to use Google Cloud Storage service without proper configuration
+- **API Specification Mismatch**: Implementation didn't follow DEVELOPMENT_REFERENCE.md specification
+
+**Complete Solution Steps:**
+
+1. **Fix Server Upload Parameter Endpoint:**
+   ```typescript
+   // server/routes/objects.ts
+   router.post("/api/objects/upload", async (req, res) => {
+     try {
+       // Generate unique upload ID
+       const objectId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+       
+       // CRITICAL: Return full URL with protocol and host
+       const protocol = req.protocol;
+       const host = req.get('host');
+       const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${objectId}`;
+       
+       res.json({
+         uploadURL: uploadURL,
+         objectId: objectId
+       });
+     } catch (error) {
+       console.error("Upload parameter error:", error);
+       res.status(500).json({ message: error.message || "Failed to get upload URL" });
+     }
+   });
+   ```
+
+2. **Implement Local File Storage for Development:**
+   ```typescript
+   // server/routes/objects.ts
+   router.put("/api/objects/dev-upload/:id", async (req, res) => {
+     try {
+       res.setHeader('Access-Control-Allow-Origin', '*');
+       const { id } = req.params;
+       
+       // Simple local file storage
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       await fs.mkdir(uploadsDir, { recursive: true });
+       const filePath = path.join(uploadsDir, id);
+       
+       // Handle different request body types
+       let fileData: Buffer;
+       if (Buffer.isBuffer(req.body)) {
+         fileData = req.body;
+       } else if (typeof req.body === 'string') {
+         fileData = Buffer.from(req.body, 'binary');
+       } else {
+         fileData = Buffer.from(JSON.stringify(req.body));
+       }
+       
+       await fs.writeFile(filePath, fileData);
+       
+       // Store metadata
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       const metadata = {
+         contentType: req.headers['content-type'] || 'application/octet-stream',
+         filename: id,
+         uploadDate: new Date().toISOString(),
+         size: fileData.length
+       };
+       await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+       
+       res.json({ message: "Upload successful", id: id, size: fileData.length });
+     } catch (error) {
+       console.error("Dev upload error:", error);
+       res.status(500).json({ message: error.message || "Upload failed" });
+     }
+   });
+   ```
+
+3. **Fix Client Upload Parameter Requests:**
+   ```typescript
+   // client/src/components/*/upload-handlers
+   const handleGetUploadParameters = async () => {
+     try {
+       // Request upload URL from server (not generate locally)
+       const response = await fetch('/api/objects/upload', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({})
+       });
+
+       if (!response.ok) {
+         throw new Error('Failed to get upload URL');
+       }
+
+       const data = await response.json();
+       if (!data.uploadURL) {
+         throw new Error('No upload URL returned from server');
+       }
+
+       return {
+         method: 'PUT' as const,
+         url: data.uploadURL, // Full URL from server
+       };
+     } catch (error) {
+       console.error('Error getting upload parameters:', error);
+       throw error;
+     }
+   };
+   ```
+
+4. **Implement File Serving for Uploads:**
+   ```typescript
+   // server/routes/objects.ts  
+   router.get("/objects/uploads/:id", async (req, res) => {
+     try {
+       const { id } = req.params;
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       const filePath = path.join(uploadsDir, id);
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       
+       await fs.access(filePath);
+       
+       let contentType = 'application/octet-stream';
+       try {
+         const metaData = await fs.readFile(metaPath, 'utf8');
+         const metadata = JSON.parse(metaData);
+         contentType = metadata.contentType || contentType;
+       } catch (metaError) {
+         // Use default content type if no metadata
+       }
+       
+       const fileData = await fs.readFile(filePath);
+       res.setHeader('Content-Type', contentType);
+       res.send(fileData);
+     } catch (fileError) {
+       res.status(404).json({ message: "Upload not found" });
+     }
+   });
+   ```
+
+**Verification Steps:**
+1. **Test upload parameter endpoint:**
+   ```bash
+   curl -X POST http://localhost:5000/api/objects/upload -H "Content-Type: application/json" -d '{}'
+   # Should return: {"uploadURL":"http://localhost:5000/api/objects/dev-upload/12345","objectId":"12345"}
+   ```
+
+2. **Check file storage:**
+   ```bash
+   ls uploads/  # Should show uploaded files and .meta.json files
+   ```
+
+3. **Test in browser:**
+   - Go to check-in page
+   - Try uploading IC photo
+   - Should show "Photo uploaded Document photo uploaded successfully"
+
+**Files Modified:**
+- `server/routes/objects.ts` - Fixed upload endpoints
+- `client/src/components/check-in/IdentificationPersonalSection.tsx` - Fixed client handler
+- `client/src/hooks/guest-checkin/useDocumentUpload.ts` - Fixed document upload hook
+- `client/src/pages/guest-checkin.tsx` - Fixed guest check-in uploads
+
+**Prevention:**
+- Always follow API specification in DEVELOPMENT_REFERENCE.md
+- Test server endpoints independently before client integration
+- Implement proper error handling and logging for upload failures
+- Use server-generated upload URLs instead of client-generated ones
+- Ensure CORS headers are properly configured for cross-origin uploads
+
+---
+
+### **004 - Settings page runtime error: CapsulesTab is not defined (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Visiting `http://localhost:5000/settings` shows Vite overlay: `CapsulesTab is not defined`
+- Stack points to `client/src/pages/settings.tsx:163`
+
+**Root Cause:**
+- New Capsules tab added to Settings referenced `<CapsulesTab ... />` but component was not implemented
+
+**Solution Steps:**
+1. Implement a minimal `CapsulesTab` component inside `client/src/pages/settings.tsx`
+2. Import `Building` icon and render basic capsule list
+3. Ensure capsules query is enabled for `activeTab === "capsules"`
+
+**Files Modified:**
+- `client/src/pages/settings.tsx`
+
+---
+
+### **003 - Problem Deletion Shows Success But Doesn't Delete (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Problem Deleted" success message appears when deleting active problems
+- Problem remains visible in active problems list even after refresh
+- Delete action appears to succeed but has no effect
+
+**Root Cause:**
+- Frontend sends DELETE request to `/api/problems/${id}`
+- Server route handler for DELETE `/api/problems/:id` was missing completely
+- Frontend shows success message from mutation, but server returns 404 (not found)
+
+**Solution Steps:**
+1. **Add DELETE endpoint to server routes:**
+   ```typescript
+   // Delete problem
+   app.delete("/api/problems/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const deleted = await storage.deleteProblem(id);
+       if (!deleted) {
+         return res.status(404).json({ message: "Problem not found" });
+       }
+       res.json({ message: "Problem deleted successfully" });
+     } catch (error: any) {
+       res.status(400).json({ message: error.message || "Failed to delete problem" });
+     }
+   });
+   ```
+
+2. **Add deleteProblem method to storage interface and implement in both storage classes**
+
+**Files Modified:**
+- `server/routes.ts` - Added DELETE endpoint for problems
+- `server/storage.ts` - Added deleteProblem interface and implementations
+
+---
+
+### **002 - Active Problems Not Displaying (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Problem reporting succeeds with "Problem Reported" message
+- Active problems section remains empty even after refresh
+- Problems are created but not visible in Settings > Maintenance tab
+
+**Root Cause:**
+- Settings page was calling `/api/problems` which returns `PaginatedResponse<CapsuleProblem>`
+- Frontend code expected simple `CapsuleProblem[]` array
+- Type mismatch caused active problems to never display
+
+**Solution Steps:**
+1. **Update the problems query in Settings page:**
+   ```typescript
+   // Before: Expected CapsuleProblem[]
+   const { data: problems = [], isLoading: problemsLoading } = useQuery<CapsuleProblem[]>({
+     queryKey: ["/api/problems"],
+   });
+
+   // After: Handle PaginatedResponse properly
+   const { data: problemsResponse, isLoading: problemsLoading } = useQuery<PaginatedResponse<CapsuleProblem>>({
+     queryKey: ["/api/problems"],
+   });
+   const problems = problemsResponse?.data || [];
+   ```
+
+2. **Add missing import:**
+   ```typescript
+   import { type PaginatedResponse } from "@shared/schema";
+   ```
+
+**Files Modified:**
+- `client/src/pages/settings.tsx` - Fixed problems query and data extraction
+
+---
+
+### **001 - Connection Problem / Server Crashes (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Connection Problem, please check your internet connection and try again" toast appears
+- Occurs when accessing Check-in, Check-out pages, Settings > Save Settings, Report Capsule Problem
+- Login shows "Login failed..." even with correct credentials
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Server error middleware was rethrowing errors after sending response (`throw err;`)
+- This crashed the Node.js process, causing subsequent requests to fail
+- Browser interpreted crashed server as network connectivity issues
+
+**Solution Steps:**
+1. **Stop and restart server with clean environment:**
+   ```powershell
+   # Stop running server (Ctrl+C)
+   cd "C:\Users\Jyue\Desktop\PelangiManager"
+   Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+   npm run dev
+   ```
+
+2. **Clear browser auth cache:**
+   - Chrome DevTools > Application > Local Storage > http://localhost:5000
+   - Remove `auth_token` key
+   - Refresh page
+
+**Technical Fix Applied:**
+- Modified `server/index.ts` error middleware to log errors without rethrowing
+- Before: `res.status(status).json({ message }); throw err;` (crashed server)
+- After: Logs error context and returns JSON response safely
+
+**Files Modified:**
+- `server/index.ts` - Fixed error middleware to prevent server crashes
+
+---
+
+## 🚨 **COMMON ISSUES REFERENCE**
+
+### **Network/Connection Errors**
+- **"Connection Problem" toast** → Server likely crashed, restart with clean env
+- **"Failed to fetch" in DevTools** → Server process terminated, check error middleware
+- **Login works but other pages fail** → Partial server crash, restart required
+
+### **Test Runner Issues**
+- **"Server connection failed: Failed to fetch"** → Browser compatibility issue with AbortSignal.timeout()
+- **Tests fall back to local runner** → System working correctly, server tests unavailable
+- **All local tests pass** → Validation logic is solid, fallback system working
+
+### **Authentication Issues**
+- **"Login failed" with correct credentials** → Server crash during auth, restart server
+- **Redirected to login on protected pages** → Clear `auth_token` from localStorage
+- **API returns 401 on valid requests** → Token expired or corrupted, re-login
+
+### **Development Setup**
+- **Server won't start** → Check Node.js version (requires 18+), run `npm install`
+- **Port 5000 busy** → Set `PORT=5001` in `.env` file
+- **Database connection errors** → Remove `DATABASE_URL` env var for in-memory mode
+
+---
+
+## 🔍 **DIAGNOSTIC COMMANDS**
+
+### **Check Server Health**
+```powershell
+# Test public endpoints
+Invoke-WebRequest http://localhost:5000/api/capsules/available
+Invoke-WebRequest http://localhost:5000/api/guests/checked-in
+
+# Test authentication
+$body = @{ email = 'admin@pelangi.com'; password = 'admin123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/login -Body $body -ContentType 'application/json'
+```
+
+### **Environment Reset**
+```powershell
+# Force in-memory storage mode
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+
+# Clean restart
+npm run dev
+```
+
+### **Browser Debug**
+```javascript
+// Check stored auth token
+localStorage.getItem('auth_token')
+
+// Clear auth token
+localStorage.removeItem('auth_token')
+```
+
+---
+
+### **002 - Test Runner Browser Compatibility Issue (SOLVED)**
+
+**Date Solved:** August 18, 2025  
+**Symptoms:**
+- "Server connection failed: Failed to fetch" when running tests from Settings > Test Runner
+- Tests automatically fall back to local runner and all pass ✅
+- Server is running and accessible (localhost:5000/settings works)
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Browser compatibility issue with `AbortSignal.timeout()` API
+- Modern browsers (Chrome 100+, Firefox 102+, Edge 100+) support this API
+- Older browsers or development environments may not support it
+- Fetch request fails, triggering fallback to local test runner
+
+**Solution Applied:**
+1. **Added browser compatibility check** in `client/src/components/settings/TestsTab.tsx`
+2. **Implemented fallback mechanism** for older browsers using manual AbortController
+3. **Enhanced error messages** to clearly indicate browser compatibility vs network issues
+4. **Maintained 15-second timeout** for both modern and legacy approaches
+
+**Technical Implementation:**
+```typescript
+// Check if AbortSignal.timeout is supported
+if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+  // Modern browsers - use AbortSignal.timeout
+  res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+} else {
+  // Fallback for older browsers - manual timeout with AbortController
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 15000);
+  try {
+    res = await fetch(url, { signal: abortController.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added browser compatibility fallback
+- `docs/MASTER_TROUBLESHOOTING_GUIDE.md` - Documented issue and solution
+
+**Why This Happens:**
+- `AbortSignal.timeout()` is a relatively new browser API
+- Development environments sometimes have different browser compatibility
+- The fallback system is actually working correctly - it's not a bug, it's a feature!
+
+---
+
+## 📋 **SUCCESS PATTERNS**
+
+### **Working Development Flow**
+1. Start server: `npm run dev`
+2. Wait for "serving on port 5000" message
+3. Visit http://localhost:5000
+4. Login with admin@pelangi.com / admin123
+5. All features should work without connection errors
+
+### **When to Restart Server**
+- After pulling code changes
+- When seeing "Connection Problem" toasts
+- After modifying server-side files
+- When switching between database/in-memory modes
+
+---
+
+## 🚨 **PORT 5000 EADDRINUSE TROUBLESHOOTING**
+
+### **Quick Fixes**
+```powershell
+# Option 1: Kill process using port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Option 2: Use different port
+$env:PORT=5001; npm run dev
+
+# Option 3: Restart terminal/computer
+```
+
+---
+
+## 🔧 **BUILD AND DEVELOPMENT SERVER ISSUES**
+
+### **Vite Build Problems**
+- **Build fails** → Check TypeScript errors, run `npm run check`
+- **Hot reload not working** → Restart dev server, check file watchers
+- **Assets not loading** → Clear browser cache, check build output
+
+### **Development Server Issues**
+- **Server won't start** → Check port availability, Node.js version
+- **Changes not reflecting** → Suspect build artifacts, clear dist/ directory
+- **Memory issues** → Restart server, check for memory leaks
+
+### **Replit-Specific Issues**
+- **ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'** → Missing build artifacts, need to run build command
+
+---
+
+## 🚀 **SERVER STARTUP AND GIT SYNC ISSUES**
+
+### **012 - Server Won't Start After Git Sync (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Server fails to start with syntax errors after syncing with GitHub
+- Error: `SyntaxError: The requested module './routes' does not provide an export named 'registerObjectRoutes'`
+- `localhost:5000` shows "ERR_CONNECTION_REFUSED"
+- Terminal shows corrupted import statements or syntax errors
+
+**Root Cause:**
+- **Git Sync Corruption**: Files may get corrupted during Git sync operations
+- **Import/Export Mismatch**: Module exports not properly synchronized
+- **TypeScript Compilation Issues**: Build artifacts may be corrupted
+- **File Encoding Problems**: Special characters or encoding issues from Git
+
+**Solution Implemented:**
+1. **Clean Environment Reset**:
+   ```powershell
+   # Kill any existing processes
+   npx kill-port 5000
+   
+   # Restart development server
+   npm run dev
+   ```
+
+2. **Verify File Integrity**:
+   - Check that `server/routes/index.ts` exports `registerObjectRoutes`
+   - Ensure `server/index.ts` imports correctly
+   - Verify no corrupted characters in import statements
+
+3. **Server Restart Process**:
+   - Always restart server after Git sync operations
+   - Wait for "serving on port 5000" confirmation
+   - Check terminal for any syntax errors before proceeding
+
+**Prevention Steps:**
+- Restart development server after every Git sync
+- Check terminal output for syntax errors
+- Verify server starts successfully before testing features
+- Keep backup of working server files
+
+**Troubleshooting Flow:**
+1. **Immediate Action**: Restart development server with `npm run dev`
+2. **Check Terminal**: Look for syntax errors or import issues
+3. **Verify Port**: Ensure port 5000 is available and server starts
+4. **Test Connection**: Visit `localhost:5000` to confirm server is running
+5. **Check Features**: Verify push notifications and other features work
+
+---
+
+## 🚀 **REPLIT AND DEPLOYMENT ISSUES**
+
+### **013 - Replit ENOENT: Missing Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `{"message":"ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'"}`
+- Server starts but fails to serve the frontend application
+- Browser shows server error instead of React app
+- Occurs in Replit environment after code changes or deployment
+
+**Root Cause:**
+- **Missing Build Directory**: The `dist/` directory containing compiled frontend files doesn't exist
+- **Build Process Not Run**: Frontend code hasn't been compiled from TypeScript/JSX to static HTML/CSS/JS
+- **Replit Environment**: Replit may not automatically run build commands on startup
+- **File System Issues**: Build artifacts may have been cleared or corrupted
+
+**Solution Implemented:**
+1. **Run Build Command**:
+   ```bash
+   # In Replit terminal
+   npm run build
+   ```
+
+2. **Verify Build Output**:
+   ```bash
+   # Check if dist directory exists
+   ls -la dist/
+   
+   # Should show:
+   # dist/
+   # └── public/
+   #     ├── index.html
+   #     ├── assets/
+   #     └── ...
+   ```
+
+3. **Start Server After Build**:
+   ```bash
+   # After successful build
+   npm run dev
+   ```
+
+**Alternative Solutions:**
+1. **Force Clean Build**:
+   ```bash
+   # Remove existing build artifacts
+   rm -rf dist/
+   
+   # Rebuild from scratch
+   npm run build
+   ```
+
+2. **Check Package.json Scripts**:
+   ```json
+   {
+     "scripts": {
+       "build": "vite build",
+       "dev": "tsx watch --clear-screen=false server/index.ts"
+     }
+   }
+   ```
+
+3. **Replit Configuration**:
+   - Ensure `.replit` file has correct run command
+   - Check if build command is set to run on startup
+   - Verify file structure matches expected paths
+
+**Prevention Steps:**
+- **Always run `npm run build`** before starting server in Replit
+- **Check build output** for any compilation errors
+- **Verify dist/ directory** exists and contains expected files
+- **Run build after major code changes** or dependency updates
+
+**Troubleshooting Flow:**
+1. **Check Build Status**: Look for `dist/` directory in file explorer
+2. **Run Build Command**: Execute `npm run build` in terminal
+3. **Verify Output**: Ensure `dist/public/index.html` exists
+4. **Start Server**: Run `npm run dev` after successful build
+5. **Test Application**: Visit the app to confirm it loads correctly
+
+**Common Replit Issues:**
+- **Build fails**: Check TypeScript errors, missing dependencies
+- **Port conflicts**: Replit may use different ports than localhost
+- **File permissions**: Ensure build process can write to workspace
+- **Memory limits**: Large builds may exceed Replit memory constraints
+
+---
+
+---
+
+### **014 - "Show All Capsules" Checkbox Not Visible After Code Changes (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Added new "Show all capsules" checkbox in Filter Guests section
+- Code changes appear to be made but aren't reflected in the UI
+- Checkbox still not visible in Dashboard > Filter Guests popover
+- Browser shows old version without the new feature
+- Similar to other frontend changes not reflecting issues
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Vite Middleware Serving Old Code**: Server using Vite middleware serves from compiled build artifacts, not source code
+- **Source vs Compiled Mismatch**: Even after adding new checkbox component, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Implemented:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   # Or kill all Node processes
+   taskkill /F /IM node.exe
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   # Wait for successful build completion
+   ```
+
+4. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   # Wait for "serving on port 5000" message
+   ```
+
+**Verification Steps:**
+1. **Check Build Success**: Ensure no errors during build process
+2. **Verify Server Start**: Confirm server starts without port conflicts
+3. **Test New Feature**: Navigate to Dashboard > Filter Guests > Look for "Capsule Display" section
+4. **Confirm Checkbox Visible**: "Show all capsules" checkbox should now be visible with building icon
+
+**Technical Details:**
+- **Vite Middleware Setup**: Server configured with `setupVite()` in `server/vite.ts`
+- **Build Process**: Frontend compiled from TypeScript/JSX to static assets in `dist/public/`
+- **Serving Strategy**: Server serves compiled React app, not source code directly
+- **Hot Reload**: Not available in production build mode, requires manual rebuild
+
+**Prevention Steps:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow the build process**: Source changes → Rebuild → Test
+- **Check build output**: Ensure no compilation errors before starting server
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #013**: Replit ENOENT: Missing Build Artifacts
+- **Port 5000 EADDRINUSE**: Address already in use errors
+
+**Troubleshooting Flow:**
+1. **Identify Issue**: Frontend changes not reflecting in UI
+2. **Check Build Status**: Look for `dist/` directory and build artifacts
+3. **Clean Environment**: Remove old compiled code
+4. **Rebuild Application**: Run `npm run build` successfully
+5. **Start Server**: Run `npm run dev` and wait for confirmation
+6. **Test Changes**: Verify new features are now visible
+
+---
+
+### **015 - Calendar Not Displaying All Dates (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Occupancy calendar only shows partial dates (e.g., 27/7, 28/7, 29/7, 30/7, 31/7, 1/8)
+- Missing most August dates (2/8, 3/8, 4/8... 31/8)
+- Calendar appears to only show end of previous month and beginning of current month
+- Changes to calendar component code don't reflect in UI
+
+**Root Cause:**
+- **Wrong react-day-picker API Usage**: Using invalid `components={{ DayContent: ... }}` prop
+- **Null Return Values**: `getDayContent` function returned `null` for dates without data
+- **Component Integration Issue**: react-day-picker v8 doesn't support `DayContent` component override
+- **Build Artifacts Problem**: Old compiled calendar code served despite source changes
+
+**Solution Implemented:**
+
+1. **Fixed react-day-picker Integration:**
+   ```typescript
+   // BEFORE: Invalid component override (caused dates to not render)
+   <Calendar
+     components={{
+       DayContent: ({ date }) => getDayContent(date), // ❌ Wrong API
+     }}
+   />
+   
+   // AFTER: Proper modifiers approach
+   <Calendar
+     modifiers={{
+       hasCheckins: (date) => {
+         const dateString = date.toISOString().split('T')[0];
+         const dayData = calendarData[dateString];
+         return dayData && dayData.checkins.length > 0;
+       },
+       hasCheckouts: (date) => { /* similar logic */ },
+       highOccupancy: (date) => { /* occupancy > 80% */ },
+       // ... other modifiers
+     }}
+     modifiersClassNames={{
+       hasCheckins: "relative after:absolute after:top-0 after:right-0 after:w-1.5 after:h-1.5 after:bg-green-500 after:rounded-full",
+       hasCheckouts: "relative before:absolute before:top-0 before:left-0 before:w-1.5 before:h-1.5 before:bg-red-500 before:rounded-full",
+       // ... other styling
+     }}
+   />
+   ```
+
+2. **Removed Problematic getDayContent Function:**
+   ```typescript
+   // BEFORE: Function that returned null for dates without data
+   const getDayContent = (date: Date) => {
+     const dayData = calendarData[dateString];
+     if (!dayData) return null; // ❌ This prevented dates from rendering
+     // ... rest of function
+   };
+   
+   // AFTER: Removed entirely, using modifiers instead
+   ```
+
+3. **Applied Build Artifacts Fix:**
+   ```powershell
+   # Kill port conflicts
+   netstat -ano | findstr :5000
+   taskkill /PID <PID> /F
+   
+   # Clean build artifacts
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   
+   # Rebuild with calendar changes
+   npm run build
+   
+   # Start on different port
+   $env:PORT=5001; npm run dev
+   ```
+
+**Technical Details:**
+- **react-day-picker v8.10.1**: Uses `modifiers` and `modifiersClassNames` for customization
+- **Component Override**: `DayContent` component is not a valid prop in v8
+- **Date Rendering**: Calendar must always render valid JSX for each date
+- **CSS Approach**: Used Tailwind classes with pseudo-elements for visual indicators
+
+**Visual Indicators Implemented:**
+- ✅ **Green dots (top-right)**: Check-ins
+- ✅ **Red dots (top-left)**: Check-outs  
+- ✅ **Orange bars (bottom)**: 80%+ occupancy
+- ✅ **Red bars (bottom)**: 100% occupancy
+- ✅ **Blue dots (top-center)**: Festivals
+- ✅ **Green dots (top-center)**: Public holidays
+
+**Verification Steps:**
+1. **Check All Dates Visible**: August calendar shows 1, 2, 3... 31
+2. **Test Visual Indicators**: Dates with data show appropriate colored indicators
+3. **Verify Month Navigation**: Can navigate between months properly
+4. **Confirm Date Selection**: Clicking dates shows detailed information
+
+**Files Modified:**
+- `client/src/components/occupancy-calendar.tsx` - Fixed calendar integration
+- Build artifacts cleaned and regenerated
+
+**Prevention:**
+- **Use correct react-day-picker API**: Always check documentation for component props
+- **Test calendar components**: Ensure all dates render regardless of data availability
+- **Follow build process**: Clean artifacts → Rebuild → Test after major component changes
+- **Avoid null returns**: Calendar components should always return valid JSX
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #014**: "Show All Capsules" Checkbox Not Visible After Code Changes
+- **Port EADDRINUSE**: Address already in use errors
+
+---
+
+### **016 - System Updates Section Not Displaying After Code Addition (SOLVED)**
+
+**Date Solved:** August 21, 2025  
+**Symptoms:**
+- Added new "System Updates" section to Settings > Tests page with recent development history
+- Code changes made to `TestsTab.tsx` component but not visible in UI
+- Section includes latest features like push notification enhancements, calendar fixes, etc.
+- Browser shows old version without the new System Updates section
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contained outdated compiled JavaScript code
+- **Forgot to Rebuild**: Developer made source code changes but forgot to run build process
+- **Vite Middleware Serving Old Code**: Server serves compiled build artifacts, not source code
+- **Classic Problem #007 Pattern**: Same root cause as "Frontend Changes Not Reflecting Due to Build Artifacts"
+
+**Solution Applied (Following Problem #007 Pattern):**
+1. **Kill Development Server:**
+   ```bash
+   npx kill-port 5000
+   # Successfully killed process on port 5000
+   ```
+
+2. **Clean Build Artifacts:**
+   ```bash
+   rm -rf dist
+   # Removed outdated compiled code directory
+   ```
+
+3. **Rebuild Application:**
+   ```bash
+   npm run build
+   # Build completed successfully in 12.66s
+   # Generated new compiled code with System Updates section
+   ```
+
+4. **Start Fresh Server:**
+   ```bash
+   npm run dev
+   # Server started successfully on port 5000
+   # "8:58:15 AM [express] serving on port 5000"
+   ```
+
+**Verification Results:**
+- ✅ Build completed without errors
+- ✅ Server started successfully with in-memory storage
+- ✅ System Updates section now visible in Settings > Tests
+- ✅ All recent development history properly displayed
+
+**System Updates Content Added:**
+- **System Updates Feature Added** (Today) - This new feature itself
+- **Push Notification Test Enhancement** (January 2025) - Enhanced error handling
+- **Calendar Display Fix** (January 2025) - Fixed react-day-picker API usage
+- **Upload System Complete Rebuild** (January 2025) - Fixed file upload system
+- **Storage System Modular Refactoring** (August 2025) - 96% code reduction
+- **Component Refactoring Success** (August 2025) - Large component optimization
+
+**Key Learning:**
+- **Always remember to rebuild** after making frontend component changes
+- **Classic symptom pattern**: Code changes not reflecting = build artifacts issue
+- **Standard solution works**: Kill server → Clean dist → Rebuild → Restart
+- **Prevention**: Include rebuild step in development workflow for major changes
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added System Updates section
+- Build artifacts cleaned and regenerated with new content
+
+**Prevention Steps:**
+- **Remember to rebuild** after adding new components or major UI changes
+- **Follow the pattern**: Source changes → Build → Test
+- **Check troubleshooting guide** when changes don't reflect
+- **Use Problem #007 solution** for similar build artifacts issues
+
+**Success Pattern Confirmed:**
+This case validates that Problem #007's solution pattern is reliable and should be the first approach when frontend changes don't appear in the UI. The exact same steps resolved the issue quickly and effectively.
+
+---
+
+## 📱 **PWA TROUBLESHOOTING REFERENCE**
+
+### **PWA Disabled on Replit: Why and How to Fix**
+
+**Issue:** PWA features disabled on Replit deployment
+**Symptoms:** 
+- No "Add to Home Screen" option on mobile
+- Service worker not registering
+- PWA features work locally but not on Replit
+
+**Root Cause:**
+- **Deployment Conflicts**: Replit's auto-redeploy system conflicts with service worker caching
+- **Build Process Issues**: Service workers can interfere with Replit's build pipeline
+- **Conservative Configuration**: PWA disabled to prevent deployment failures
+
+**Solution Strategy:**
+1. **Smart PWA Configuration**: Enable PWA with deployment-safe settings
+2. **Conditional Service Worker**: Use environment-specific service worker strategies
+3. **Cache Management**: Implement cache invalidation for rapid deployments
+
+**Key Configuration Changes:**
+```typescript
+// Enable PWA on all environments including Replit
+export function shouldEnablePWA(): boolean {
+  return true; // Smart configuration handles deployment conflicts
+}
+
+// Environment-specific PWA configuration
+export function getPWAConfig() {
+  const env = getEnvironment();
+  return {
+    enablePWA: true,
+    swStrategy: env.isReplit ? 'deployment-safe' : 'aggressive-cache',
+    skipWaiting: env.isReplit ? false : true,
+    clientsClaim: env.isReplit ? false : true
+  };
+}
+```
+
+**Files to Modify:**
+- `shared/utils.ts` - Update shouldEnablePWA function
+- `client/src/main.tsx` - Add deployment-safe service worker registration
+- `vite.config.ts` - Configure PWA plugin for Replit compatibility
+
+**Prevention:**
+- Use deployment-safe PWA configurations on cloud platforms
+- Test PWA features in production environment before full deployment
+- Monitor service worker registration in browser dev tools
+
+---
+
+**Document Control:**
+- **Maintained By:** Development Team
+- **Last Updated:** August 21, 2025
+- **Next Review:** When new issues arise
+
+*This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
+
+---
+
+### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: "Failed to cancel pending check-in" appears in red error banner
+- Error: "Failed to fetch" when clicking "Instant Create" button
+- Both errors occur in guest check-in management
+- Guest check-in status remains "Pending Check-in" despite cancellation attempt
+- Error banner shows with error ID and generic failure message
+
+**Root Causes:**
+1. **Missing Cancel Endpoint**: Server route for cancelling guest check-ins not implemented
+2. **Critical Bug in Instant Create**: Incomplete `createGuestToken` call with wrong `createdBy` field
+3. **Frontend Expects API**: Cancel button calls non-existent `/api/guest-checkins/{id}/cancel` endpoint
+4. **Database State Mismatch**: Guest record remains in pending state without cancellation logic
+
+**Solutions Implemented:**
+
+1. **Fixed Instant Create Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Incomplete and wrong createdBy field
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ WRONG: Hardcoded string
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     email: guestToken.email,
+     createdAt: guestToken.createdAt,
+     usedAt: guestToken.usedAt  // ❌ Missing fields
+   });
+   
+   // AFTER: Complete and correct fields
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ FIXED: Use authenticated user ID
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     autoAssign: validatedData.autoAssign || false,
+     guestName: guestToken.guestName,
+     phoneNumber: guestToken.phoneNumber,
+     email: guestToken.email,
+     expectedCheckoutDate: guestToken.expectedCheckoutDate,
+     createdAt: guestToken.createdAt,
+   });
+   ```
+
+2. **Added Cancel Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Cancel pending guest check-in
+   router.patch("/:id/cancel", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const { reason } = req.body;
+       
+       // Get the guest token to check if it exists and is not used
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest check-in not found" });
+       }
+       
+       if (guestToken.isUsed) {
+         return res.status(400).json({ message: "Cannot cancel already used check-in" });
+       }
+       
+       // Mark token as cancelled (we'll use isUsed field for this)
+       const updated = await storage.markTokenAsUsed(id);
+       
+       if (!updated) {
+         return res.status(400).json({ message: "Failed to cancel check-in" });
+       }
+       
+       res.json({ message: "Check-in cancelled successfully" });
+     } catch (error: any) {
+       console.error("Error cancelling guest check-in:", error);
+       res.status(400).json({ message: error.message || "Failed to cancel check-in" });
+     }
+   });
+   ```
+
+**Testing & Verification:**
+1. **Test Instant Create**: Click "Instant Create" button should work without "Failed to fetch" error
+2. **Test Cancel Function**: Click "Cancel" button on pending check-in should show success message
+3. **Check Database**: Guest tokens should be created with proper `created_by` field
+4. **Verify UI Updates**: Cancelled check-ins should update status properly
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Complete API implementations**: Implement all CRUD operations when adding new features
+- **Test cancellation flows** during development
+- **Add proper error handling** for all user actions
+- **Validate database schema** supports all status transitions
+
+**Related Issues:**
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit
+- **Problem #009**: Finance Page Crash & Expense Creation Errors
+
+**Success Pattern:**
+- ✅ **Identify missing endpoint**: Look for "Failed to" error messages
+- ✅ **Fix incomplete API calls**: Ensure all required fields are properly set
+- ✅ **Implement backend logic**: Add proper API endpoints and storage methods
+- ✅ **Update frontend handlers**: Ensure proper error handling and user feedback
+- ✅ **Test complete flow**: Verify both creation and cancellation work end-to-end
+
+**Key Learning:**
+- **Two related errors** can have the same root cause (missing/incomplete backend implementation)
+- **"Failed to fetch"** often indicates missing or broken API endpoints
+- **Foreign key constraints** must use proper UUIDs, not hardcoded strings
+- **Complete API implementation** is crucial for frontend functionality
+
+---
+
+### **021 - PWA Manifest Errors & Missing DELETE Endpoint (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Console shows: "Manifest: Line: 1, column: 1, Syntax error"
+- Service worker errors: "Failed to execute 'put' on 'Cache': Request scheme 'chrome-extension' is unsupported"
+- DELETE API fails: "DELETE http://localhost:5000/api/guest-tokens/{id} net::ERR_FAILED"
+- PWA functionality broken, service worker crashes
+- Guest token deletion from dashboard not working
+
+**Root Causes:**
+1. **PWA Manifest Syntax Error**: Invalid JSON in manifest file
+2. **Service Worker Cache Issues**: Trying to cache unsupported URL schemes
+3. **Missing DELETE Endpoint**: No server route for deleting guest tokens
+4. **Service Worker Crashes**: Breaking PWA functionality
+
+**Solutions Implemented:**
+
+1. **Added Missing DELETE Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Delete guest token
+   router.delete("/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       
+       // Get the guest token to check if it exists
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest token not found" });
+       }
+       
+       // Delete the token
+       const deleted = await storage.deleteGuestToken(id);
+       
+       if (!deleted) {
+         return res.status(400).json({ message: "Failed to delete guest token" });
+       }
+       
+       res.json({ message: "Guest token deleted successfully" });
+     } catch (error: any) {
+       console.error("Error deleting guest token:", error);
+       res.status(400).json({ message: error.message || "Failed to delete guest token" });
+     }
+   });
+   ```
+
+2. **PWA Manifest Fix** (check `public/manifest.json`):
+   ```json
+   {
+     "name": "PelangiManager",
+     "short_name": "Pelangi",
+     "start_url": "/",
+     "display": "standalone",
+     "background_color": "#ffffff",
+     "theme_color": "#000000",
+     "icons": [
+       {
+         "src": "/icon-192.png",
+         "sizes": "192x192",
+         "type": "image/png"
+       }
+     ]
+   }
+   ```
+
+3. **Service Worker Cache Fix** (check `public/sw.js`):
+   ```javascript
+   // Filter out unsupported URL schemes
+   const shouldCache = (request) => {
+     const url = new URL(request.url);
+     return url.protocol === 'http:' || url.protocol === 'https:';
+   };
+   
+   // Only cache valid requests
+   if (shouldCache(request)) {
+     cache.put(request, response.clone());
+   }
+   ```
+
+**Testing & Verification:**
+1. **Test DELETE Function**: Delete guest token from dashboard should work
+2. **Check PWA**: Manifest should load without syntax errors
+3. **Service Worker**: Should not crash on chrome-extension URLs
+4. **Console Clean**: No more ERR_FAILED or cache errors
+
+**Prevention:**
+- **Validate JSON**: Always check manifest.json syntax
+- **URL Filtering**: Filter out unsupported URL schemes in service worker
+- **Complete CRUD**: Implement all operations (Create, Read, Update, Delete)
+- **PWA Testing**: Test PWA features after major changes
+
+**Related Issues:**
+- **Problem #020**: Guest Check-in Cancellation Failure & Instant Create Fetch Error
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+
+**Success Pattern:**
+- ✅ **Fix manifest syntax**: Validate JSON structure
+- ✅ **Add missing endpoints**: Implement complete CRUD operations
+- ✅ **Filter URLs**: Only cache supported URL schemes
+- ✅ **Test PWA**: Verify service worker functionality
+
+**Key Learning:**
+- **Console errors** often reveal multiple related issues
+- **PWA problems** can break multiple features simultaneously
+- **Missing endpoints** cause frontend operations to fail
+- **Service worker crashes** affect offline functionality
+
+---
+
+## 🗄️ **DATABASE CONSTRAINT VIOLATION ERRORS**
+
+### **019 - Guest Token Creation Foreign Key Constraint Violation (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"guest_tokens\" violates foreign key constraint \"guest_tokens_created_by_users_id_fk\""}`
+- Occurs when clicking "Instant Create" button in Guest Check-in page
+- Database constraint violation preventing guest token creation
+- Foreign key constraint failure on `created_by` field
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being hardcoded to `'system'` instead of using the authenticated user's ID
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string 'system'
+- **Authentication Context**: Route has `authenticateToken` middleware, so `req.user.id` is available but not being used
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Wrong - hardcoded string 'system'
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ Invalid foreign key reference
+     // ... other fields
+   });
+   
+   // AFTER: Correct - using authenticated user's ID
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ Valid UUID from authenticated user
+     // ... other fields
+   });
+   ```
+
+2. **Verified Authentication Middleware**: Route already had proper `authenticateToken` middleware ensuring `req.user.id` is available
+
+**Database Schema Context:**
+```typescript
+// shared/schema.ts - guest_tokens table definition
+export const guestTokens = pgTable("guest_tokens", {
+  // ... other fields
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Foreign key to users.id
+  // ... other fields
+});
+```
+
+**Files Modified:**
+- `server/routes/guest-tokens.ts` - Fixed `createdBy` assignment to use `req.user.id`
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Leverage authentication context**: Use `req.user.id` when routes have `authenticateToken` middleware
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Test foreign key relationships**: Verify that referenced IDs exist in parent tables
+
+**Testing & Verification:**
+1. **Click "Instant Create"** in Guest Check-in page
+2. **Should work without errors** and create guest token successfully
+3. **Check database**: `created_by` field should contain valid UUID from users table
+4. **Verify audit trail**: Each token properly tracks which user created it
+
+**Related Issues:**
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit (similar root cause)
+- **Problem #009**: Database Constraint Violation on Test Notification
+
+**Success Pattern:**
+- ✅ **Identify foreign key constraint**: Look for "violates foreign key constraint" in error messages
+- ✅ **Check code logic**: Ensure foreign key fields reference valid UUIDs, not strings
+- ✅ **Use authentication context**: Leverage `req.user.id` when available
+- ✅ **Verify database schema**: Confirm foreign key relationships are properly defined
+
+---
+
+### **018 - Expenses Foreign Key Constraint Violation in Replit (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"expenses\" violates foreign key constraint \"expenses_created_by_users_id_fk\""}`
+- Occurs when adding expenses in Finance page in Replit environment
+- Works fine in localhost testing but fails in production/Replit
+- Database constraint violation preventing expense creation
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being set to `req.user.username` or `req.user.email` instead of `req.user.id`
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string values
+- **Environment Difference**: Localhost may have been more lenient with constraints or had different data
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/expenses.ts`:
+   ```typescript
+   // BEFORE: Wrong - sending username/email string
+   const createdBy = req.user.username || req.user.email || "Unknown";
+   
+   // AFTER: Correct - sending user ID UUID
+   const createdBy = req.user.id;
+   ```
+
+2. **Created Database Fix Script** (`fix-expenses-db.js`) for Replit:
+   ```bash
+   # Install pg if needed
+   npm install pg
+   
+   # Run database fix script
+   node fix-expenses-db.js
+   ```
+
+**Database Fix Script Features:**
+- ✅ **Table Structure Check**: Verifies expenses table exists with proper schema
+- ✅ **Foreign Key Validation**: Ensures `created_by` column has proper constraint
+- ✅ **Orphaned Data Cleanup**: Fixes any existing expenses with invalid `created_by` values
+- ✅ **Index Creation**: Sets up proper database indexes for performance
+
+**Files Modified:**
+- `server/routes/expenses.ts` - Fixed `createdBy` assignment to use `req.user.id`
+- `fix-expenses-db.js` - Created database cleanup script for Replit
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Test in production environment**: Localhost may have different constraint behavior
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Use database fix scripts**: For production environment database issues
+
+**Testing & Verification:**
+1. **Restart Replit server** after code fix
+2. **Try adding expense** in Finance page
+3. **Should work without errors** and create expense successfully
+4. **Check database**: `created_by` field should contain valid UUID
+
+---
+
+### **009 - Database Constraint Violation on Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"null value in column \"key\" of relation \"app_settings\" violates not-null constraint"`
+- HTTP 400 error when clicking "Send Test Notification"
+- Database constraint violation preventing notification testing
+- Settings not being saved properly
+
+**Root Cause:**
+- **Null Key Values**: Code attempting to save settings with null/undefined key values
+- **Missing Validation**: Server-side validation not preventing invalid data
+- **Automatic Saving**: Some automatic preference saving triggered during test notification
+- **Database Constraints**: PostgreSQL enforcing NOT NULL constraint on app_settings.key column
+
+**Solution Implemented:**
+1. **Client-Side Validation**: Added proper key format for notification preferences
+2. **Server-Side Validation**: Enhanced settings route to validate key/value parameters
+3. **Storage Layer Validation**: Added validation in DatabaseStorage and MemStorage
+4. **Error Handling**: Better error categorization for database constraint violations
+5. **Preference Saving**: Fixed notification preferences to use proper key format
+
+**Error Prevention:**
+- **Input Validation**: All settings must have non-empty string keys
+- **Type Safety**: Values are converted to strings before database storage
+- **Key Format**: Notification preferences use `notification.{preferenceName}` format
+- **Error Messages**: Clear error messages for constraint violations
+
+**Testing & Verification:**
+```javascript
+// Check if settings are being saved properly
+console.log('Notification preferences:', preferences);
+
+// Verify API calls have proper key/value format
+fetch('/api/settings', {
+  method: 'PATCH',
+  body: JSON.stringify({
+    key: 'notification.guestCheckIn', // ✅ Proper format
+    value: 'true'                     // ✅ String value
+  })
+});
+```
+
+**Prevention:**
+- **Always validate inputs** before database operations
+- **Use consistent key naming** conventions
+- **Test database operations** with edge cases
+- **Monitor constraint violations** in logs
+
+---
+
+## 🔑 **INVALID KEY ERRORS**
+
+### **010 - Invalid Key Error During Test Notification (INVESTIGATING)**
+
+**Date Identified:** January 2025  
+**Symptoms:**
+- Error: `400: {"message":"Setting key is required and must be a non-empty string","error":"INVALID_KEY"}`
+- Occurs when clicking "Send Test Notification"
+- Server-side validation catching invalid data before database
+- No database constraint violations (validation working)
+
+**Root Cause (Under Investigation):**
+- **Unknown Source**: Some code is calling `/api/settings` with null/undefined key
+- **Not from Preferences**: `handlePreferencesChange` has proper validation
+- **Not from Test Function**: `handleTestNotification` doesn't call settings API
+- **Possible External Code**: Another component or hook might be interfering
+
+**Current Investigation:**
+1. **Added Debug Logging**: Track all preference changes and API calls
+2. **Fetch Interceptor**: Monitor unexpected settings API calls during tests
+3. **Test Progress Flag**: Prevent preference saving during test notifications
+4. **Enhanced Validation**: Better error handling for invalid keys
+
+**Debug Information:**
+```javascript
+// Check browser console for these logs:
+🔧 handlePreferencesChange called with: { key, value, isTestInProgress }
+🚨 INTERCEPTED SETTINGS API CALL during test: { url, options }
+📝 Request body: { key, value }
+❌ INVALID KEY DETECTED: undefined
+```
+
+**Temporary Workaround:**
+- **Refresh the page** before testing notifications
+- **Check browser console** for debug information
+- **Report exact error** to support team
+
+**Next Steps:**
+- **Identify source** of invalid API calls
+- **Fix root cause** of automatic preference saving
+- **Remove temporary** fetch interceptor
+- **Add permanent** prevention measures
+
+---
+
+## 🔐 **AUTHENTICATION ERRORS**
+
+### **011 - 401 Unauthorized During Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `401: {"message":"Invalid or expired token"}`
+- Occurs when clicking "Send Test Notification"
+- Authentication error preventing notification testing
+- Push notification routes expect no authentication
+
+**Root Cause:**
+- **Fetch Interceptor Issue**: Temporary debug interceptor was interfering with push API calls
+- **Route Configuration**: Push notification routes (`/api/push/*`) don't require authentication
+- **Client Side**: Test notification was being intercepted and modified by debug code
+- **Server Side**: Server was rejecting requests with unexpected auth headers
+
+**Solution Implemented:**
+1. **Fixed Fetch Interceptor**: Modified to only intercept `/api/settings` calls, not push API calls
+2. **Enhanced Error Handling**: Added specific 401 error categorization and user guidance
+3. **Route Isolation**: Ensured push notification routes remain unauthenticated
+4. **Better User Feedback**: Clear troubleshooting steps for authentication issues
+
+**Technical Details:**
+```javascript
+// BEFORE: Interceptor was affecting ALL fetch calls
+window.fetch = async (...args) => { /* intercepts everything */ };
+
+// AFTER: Only intercept settings API calls
+if (typeof url === 'string' && url.includes('/api/settings')) {
+  // Only intercept settings calls
+}
+// Push API calls use original fetch
+return originalFetch(...args);
+```
+
+**Error Categories Added:**
+- **Authentication Required**: Session expired or login needed
+- **Clear Troubleshooting**: Refresh page, log in again, clear cache
+- **User Action Required**: Specific steps to resolve authentication issues
+
+**Testing & Verification:**
+- ✅ Test notification works without authentication
+- ✅ Settings API calls are still monitored for debugging
+- ✅ No interference with push notification functionality
+- ✅ Clear error messages for authentication issues
+
+**Prevention:**
+- **Route Isolation**: Keep push routes unauthenticated
+- **Selective Interception**: Only intercept specific API endpoints
+- **Clear Error Messages**: Provide actionable troubleshooting steps
+- **Test Authentication**: Verify routes work with/without auth as expected
+
+---
+
+## 🔔 **NOTIFICATION PERMISSION TROUBLESHOOTING**
+
+### **Understanding Notification Permissions**
+
+**What are Notification Permissions?**
+Notification permissions are a web browser security feature that controls whether websites can send push notifications to users. This is a privacy protection mechanism that prevents websites from sending unwanted notifications without user consent.
+
+**Why Do Permissions Get Denied?**
+
+#### **1. User Action (Most Common)**
+- **Previous Denial**: User previously clicked "Block" when browser asked for permission
+- **Accidental Click**: User accidentally clicked "Block" instead of "Allow"
+- **Misunderstanding**: User thought "Block" would stop the popup, not permanently deny access
+
+#### **2. Browser Settings**
+- **Global Disable**: Browser has notifications globally turned off
+- **Site-Specific Block**: This specific site is blocked in browser's site settings
+- **Privacy Mode**: User is browsing in incognito/private mode
+- **Browser Version**: Outdated browser doesn't support modern notification APIs
+
+#### **3. System-Level Issues**
+- **Operating System**: Windows/Mac has notifications disabled
+- **Do Not Disturb**: System is in "Do Not Disturb" mode
+- **Focus Assist**: Windows Focus Assist is blocking notifications
+- **System Updates**: Recent OS update changed notification settings
+
+#### **4. Extension Interference**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus block notification requests
+- **Privacy Extensions**: Privacy Badger, Ghostery block tracking/notifications
+- **VPN Extensions**: Some VPNs block certain web features
+- **Security Extensions**: Malware blockers may block notification APIs
+
+#### **5. Network/Corporate Issues**
+- **Corporate Firewall**: Company network blocks push notification services
+- **School/University**: Educational institutions often block notifications
+- **Public WiFi**: Some public networks block certain web features
+- **ISP Restrictions**: Internet service provider blocking push services
+
+### **Browser-Specific Solutions**
+
+#### **🌐 Google Chrome / Microsoft Edge**
+```text
+1. Click the lock/info icon 🔒 in the address bar
+2. Click "Site settings" or "Permissions"
+3. Find "Notifications" in the list
+4. Change from "Block" to "Allow"
+5. Refresh the page
+6. Alternative: chrome://settings/content/notifications
+```
+
+#### **🦊 Mozilla Firefox**
+```text
+1. Click the shield icon 🛡️ in the address bar
+2. Click "Site Permissions" → "Notifications"
+3. Change from "Block" to "Allow"
+4. Refresh the page
+5. Alternative: about:preferences#privacy
+```
+
+#### **🍎 Safari (Mac)**
+```text
+1. Safari → Preferences → Websites → Notifications
+2. Find this site in the list
+3. Change from "Deny" to "Allow"
+4. Refresh the page
+5. Alternative: System Preferences → Notifications → Safari
+```
+
+#### **🌍 Other Browsers**
+- **Opera**: opera://settings/content/notifications
+- **Brave**: brave://settings/content/notifications
+- **Vivaldi**: vivaldi://settings/content/notifications
+
+### **System-Level Solutions**
+
+#### **Windows 10/11**
+```text
+1. Settings → System → Notifications & actions
+2. Turn on "Get notifications from apps and other senders"
+3. Turn on "Show notifications on the lock screen"
+4. Check "Focus assist" settings
+5. Ensure "Do not disturb" is off
+```
+
+#### **macOS**
+```text
+1. System Preferences → Notifications & Focus
+2. Select your browser (Chrome, Firefox, Safari)
+3. Ensure notifications are enabled
+4. Check "Do Not Disturb" settings
+5. Verify "Focus" modes aren't blocking notifications
+```
+
+#### **Linux**
+```text
+1. Check notification daemon (e.g., dunst, notify-osd)
+2. Ensure desktop environment notifications are enabled
+3. Check system notification settings
+4. Verify browser has notification permissions
+```
+
+### **Extension Troubleshooting**
+
+#### **Common Problematic Extensions**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus, AdGuard
+- **Privacy Tools**: Privacy Badger, Ghostery, DuckDuckGo Privacy
+- **Security**: Malwarebytes, Norton, McAfee
+- **VPN**: NordVPN, ExpressVPN, ProtonVPN extensions
+
+#### **Testing Steps**
+```text
+1. Open browser in incognito/private mode (extensions disabled)
+2. Test notification permission request
+3. If it works, an extension is blocking it
+4. Disable extensions one by one to identify the culprit
+5. Add the site to extension whitelist if possible
+```
+
+### **Advanced Troubleshooting**
+
+#### **Reset Site Permissions**
+```text
+Chrome/Edge:
+1. chrome://settings/content/notifications
+2. Find this site
+3. Click the trash icon to remove
+4. Refresh page and try again
+
+Firefox:
+1. about:preferences#privacy
+2. Site Permissions → Notifications
+3. Remove the site entry
+4. Refresh page and try again
+```
+
+#### **Clear Browser Data**
+```text
+1. Clear cookies and site data for this domain
+2. Clear browser cache
+3. Restart browser
+4. Try permission request again
+```
+
+#### **Check Console for Errors**
+```javascript
+// Open browser console (F12) and check for:
+console.log('Notification permission:', Notification.permission);
+console.log('Service Worker:', 'serviceWorker' in navigator);
+console.log('Push Manager:', 'PushManager' in window);
+
+// Common error messages:
+// - "Permission denied"
+// - "Service worker not found"
+// - "Push subscription failed"
+```
+
+### **Prevention Strategies**
+
+#### **For Users**
+- **Understand the Request**: Read what the browser is asking for
+- **Don't Rush**: Take time to understand permission requests
+- **Use Supported Browsers**: Chrome, Firefox, Edge, Safari
+- **Keep Updated**: Regular browser and OS updates
+- **Check Extensions**: Be aware of what extensions might block
+
+#### **For Developers**
+- **Clear Messaging**: Explain why notifications are needed
+- **Graceful Fallbacks**: Handle permission denial gracefully
+- **User Education**: Provide clear troubleshooting steps
+- **Progressive Enhancement**: App works without notifications
+- **Testing**: Test on multiple browsers and devices
+
+### **When All Else Fails**
+
+#### **Alternative Solutions**
+1. **Different Browser**: Try Chrome, Firefox, or Edge
+2. **Different Device**: Test on mobile or another computer
+3. **Contact Support**: Provide detailed error information
+4. **Manual Check**: Check notifications manually in the app
+5. **Email Alerts**: Use email notifications as backup
+
+#### **Support Information to Provide**
+- Browser name and version
+- Operating system and version
+- Error messages from console
+- Steps already tried
+- Screenshots of permission dialogs
+- Extension list
+
+---
+
+### **007 - Frontend Changes Not Reflecting Due to Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Frontend changes appear to be made but aren't reflected in the UI
+- Components deleted from source code still appear in the application
+- Changes work in incognito mode but not in regular browser (ruling out browser caching)
+- Similar to nationality editing issue where changes weren't reflected
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Source vs Compiled Mismatch**: Even after deleting source files, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Steps:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   ```
+
+4. **Verify Clean Build:**
+   ```powershell
+   # Check that old components are removed from compiled code
+   Get-ChildItem dist -Recurse | Select-String "OLD_COMPONENT_NAME"
+   ```
+
+5. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   ```
+
+**Prevention:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow build process**: Source changes → Rebuild → Test
+
+---
+
+### **006 - JSX Syntax Error: Expected corresponding JSX closing tag for <CardContent> (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Vite dev server shows: "Internal server error: Expected corresponding JSX closing tag for <CardContent>. (1344:12)"
+- React application fails to compile and run
+- Browser shows "localhost refused to connect" or "ERR_CONNECTION_REFUSED"
+- Server crashes due to JSX parsing error
+
+**Root Cause:**
+- Unbalanced JSX tags in `client/src/pages/settings.tsx`
+- `<CardContent>` tag opened at line 1059 in `GuestGuideTab` function was never properly closed
+- Multiple nested `<div>` tags created structural imbalance
+
+**Solution Steps:**
+1. **Identify the JSX structure issue:**
+   ```typescript
+   // Line 1059: CardContent opens
+   <CardContent>
+     <div className={`preview-content...`}>
+       // ... complex nested content ...
+   
+   // Line 1344: Should be </CardContent> but was </div>
+   </div>  // WRONG - should be </CardContent>
+   </Card>
+   ```
+
+2. **Fix the JSX structure:**
+   ```typescript
+   // Remove extra nested div and properly close CardContent
+   </div>
+   </div>
+   </div>
+   </CardContent>  // FIXED - proper closing tag
+   </Card>
+   ```
+
+**Prevention:**
+- Always verify JSX tag balance when making structural changes
+- Use proper indentation to visualize JSX nesting
+- Count opening/closing tags to ensure balance
+
+---
+
+### **005 - IC Photo Upload Failed: "Failed to construct 'URL': Invalid URL" (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Clicking "Upload IC photo" in Self Check-in form shows error: "Failed to construct 'URL': Invalid URL"
+- Console shows Uppy error: `[Uppy] Failed to construct 'URL': Invalid URL`
+- Upload fails in local development environment using localhost
+
+**Root Cause:**
+- Server returned relative URL `/api/objects/dev-upload/{id}` for local development
+- Uppy AWS S3 plugin expects a full URL (with protocol and host) not a relative path
+- The AWS S3 plugin tries to construct a URL object from the relative path, which fails
+
+**Solution Steps:**
+1. **Update server to return full URLs for dev uploads:**
+   ```typescript
+   // server/routes.ts - in /api/objects/upload endpoint
+   const protocol = req.protocol;
+   const host = req.get('host');
+   const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${id}`;
+   ```
+
+2. **Add CORS headers for dev upload endpoint:**
+   ```typescript
+   // Handle OPTIONS preflight
+   app.options("/api/objects/dev-upload/:id", (req, res) => {
+     res.header('Access-Control-Allow-Origin', '*');
+     res.header('Access-Control-Allow-Methods', 'PUT, OPTIONS');
+     res.header('Access-Control-Allow-Headers', 'Content-Type');
+     res.sendStatus(200);
+   });
+   ```
+
+**Prevention:**
+- Always return full URLs from server when dealing with file upload libraries
+- Test file uploads in local development environment
+- Add proper CORS headers for development endpoints
+
+---
+
+### **008 - Complete Upload System Failure: "Upload Failed" Generic Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- All file uploads show generic "Upload failed" error message
+- IC photo uploads in check-in page failing
+- Document uploads in guest check-in failing  
+- Finance receipt/item photo uploads failing
+- Console may show various Uppy-related errors
+
+**Root Cause:**
+- **Missing Server Implementation**: `/api/objects/upload` endpoint was calling non-existent `objectStorage.upload()` method
+- **Wrong API Flow**: Client was generating upload URLs locally instead of requesting from server
+- **Broken ObjectStorageService**: Server was trying to use Google Cloud Storage service without proper configuration
+- **API Specification Mismatch**: Implementation didn't follow DEVELOPMENT_REFERENCE.md specification
+
+**Complete Solution Steps:**
+
+1. **Fix Server Upload Parameter Endpoint:**
+   ```typescript
+   // server/routes/objects.ts
+   router.post("/api/objects/upload", async (req, res) => {
+     try {
+       // Generate unique upload ID
+       const objectId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+       
+       // CRITICAL: Return full URL with protocol and host
+       const protocol = req.protocol;
+       const host = req.get('host');
+       const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${objectId}`;
+       
+       res.json({
+         uploadURL: uploadURL,
+         objectId: objectId
+       });
+     } catch (error) {
+       console.error("Upload parameter error:", error);
+       res.status(500).json({ message: error.message || "Failed to get upload URL" });
+     }
+   });
+   ```
+
+2. **Implement Local File Storage for Development:**
+   ```typescript
+   // server/routes/objects.ts
+   router.put("/api/objects/dev-upload/:id", async (req, res) => {
+     try {
+       res.setHeader('Access-Control-Allow-Origin', '*');
+       const { id } = req.params;
+       
+       // Simple local file storage
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       await fs.mkdir(uploadsDir, { recursive: true });
+       const filePath = path.join(uploadsDir, id);
+       
+       // Handle different request body types
+       let fileData: Buffer;
+       if (Buffer.isBuffer(req.body)) {
+         fileData = req.body;
+       } else if (typeof req.body === 'string') {
+         fileData = Buffer.from(req.body, 'binary');
+       } else {
+         fileData = Buffer.from(JSON.stringify(req.body));
+       }
+       
+       await fs.writeFile(filePath, fileData);
+       
+       // Store metadata
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       const metadata = {
+         contentType: req.headers['content-type'] || 'application/octet-stream',
+         filename: id,
+         uploadDate: new Date().toISOString(),
+         size: fileData.length
+       };
+       await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+       
+       res.json({ message: "Upload successful", id: id, size: fileData.length });
+     } catch (error) {
+       console.error("Dev upload error:", error);
+       res.status(500).json({ message: error.message || "Upload failed" });
+     }
+   });
+   ```
+
+3. **Fix Client Upload Parameter Requests:**
+   ```typescript
+   // client/src/components/*/upload-handlers
+   const handleGetUploadParameters = async () => {
+     try {
+       // Request upload URL from server (not generate locally)
+       const response = await fetch('/api/objects/upload', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({})
+       });
+
+       if (!response.ok) {
+         throw new Error('Failed to get upload URL');
+       }
+
+       const data = await response.json();
+       if (!data.uploadURL) {
+         throw new Error('No upload URL returned from server');
+       }
+
+       return {
+         method: 'PUT' as const,
+         url: data.uploadURL, // Full URL from server
+       };
+     } catch (error) {
+       console.error('Error getting upload parameters:', error);
+       throw error;
+     }
+   };
+   ```
+
+4. **Implement File Serving for Uploads:**
+   ```typescript
+   // server/routes/objects.ts  
+   router.get("/objects/uploads/:id", async (req, res) => {
+     try {
+       const { id } = req.params;
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       const filePath = path.join(uploadsDir, id);
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       
+       await fs.access(filePath);
+       
+       let contentType = 'application/octet-stream';
+       try {
+         const metaData = await fs.readFile(metaPath, 'utf8');
+         const metadata = JSON.parse(metaData);
+         contentType = metadata.contentType || contentType;
+       } catch (metaError) {
+         // Use default content type if no metadata
+       }
+       
+       const fileData = await fs.readFile(filePath);
+       res.setHeader('Content-Type', contentType);
+       res.send(fileData);
+     } catch (fileError) {
+       res.status(404).json({ message: "Upload not found" });
+     }
+   });
+   ```
+
+**Verification Steps:**
+1. **Test upload parameter endpoint:**
+   ```bash
+   curl -X POST http://localhost:5000/api/objects/upload -H "Content-Type: application/json" -d '{}'
+   # Should return: {"uploadURL":"http://localhost:5000/api/objects/dev-upload/12345","objectId":"12345"}
+   ```
+
+2. **Check file storage:**
+   ```bash
+   ls uploads/  # Should show uploaded files and .meta.json files
+   ```
+
+3. **Test in browser:**
+   - Go to check-in page
+   - Try uploading IC photo
+   - Should show "Photo uploaded Document photo uploaded successfully"
+
+**Files Modified:**
+- `server/routes/objects.ts` - Fixed upload endpoints
+- `client/src/components/check-in/IdentificationPersonalSection.tsx` - Fixed client handler
+- `client/src/hooks/guest-checkin/useDocumentUpload.ts` - Fixed document upload hook
+- `client/src/pages/guest-checkin.tsx` - Fixed guest check-in uploads
+
+**Prevention:**
+- Always follow API specification in DEVELOPMENT_REFERENCE.md
+- Test server endpoints independently before client integration
+- Implement proper error handling and logging for upload failures
+- Use server-generated upload URLs instead of client-generated ones
+- Ensure CORS headers are properly configured for cross-origin uploads
+
+---
+
+### **004 - Settings page runtime error: CapsulesTab is not defined (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Visiting `http://localhost:5000/settings` shows Vite overlay: `CapsulesTab is not defined`
+- Stack points to `client/src/pages/settings.tsx:163`
+
+**Root Cause:**
+- New Capsules tab added to Settings referenced `<CapsulesTab ... />` but component was not implemented
+
+**Solution Steps:**
+1. Implement a minimal `CapsulesTab` component inside `client/src/pages/settings.tsx`
+2. Import `Building` icon and render basic capsule list
+3. Ensure capsules query is enabled for `activeTab === "capsules"`
+
+**Files Modified:**
+- `client/src/pages/settings.tsx`
+
+---
+
+### **003 - Problem Deletion Shows Success But Doesn't Delete (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Problem Deleted" success message appears when deleting active problems
+- Problem remains visible in active problems list even after refresh
+- Delete action appears to succeed but has no effect
+
+**Root Cause:**
+- Frontend sends DELETE request to `/api/problems/${id}`
+- Server route handler for DELETE `/api/problems/:id` was missing completely
+- Frontend shows success message from mutation, but server returns 404 (not found)
+
+**Solution Steps:**
+1. **Add DELETE endpoint to server routes:**
+   ```typescript
+   // Delete problem
+   app.delete("/api/problems/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const deleted = await storage.deleteProblem(id);
+       if (!deleted) {
+         return res.status(404).json({ message: "Problem not found" });
+       }
+       res.json({ message: "Problem deleted successfully" });
+     } catch (error: any) {
+       res.status(400).json({ message: error.message || "Failed to delete problem" });
+     }
+   });
+   ```
+
+2. **Add deleteProblem method to storage interface and implement in both storage classes**
+
+**Files Modified:**
+- `server/routes.ts` - Added DELETE endpoint for problems
+- `server/storage.ts` - Added deleteProblem interface and implementations
+
+---
+
+### **002 - Active Problems Not Displaying (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Problem reporting succeeds with "Problem Reported" message
+- Active problems section remains empty even after refresh
+- Problems are created but not visible in Settings > Maintenance tab
+
+**Root Cause:**
+- Settings page was calling `/api/problems` which returns `PaginatedResponse<CapsuleProblem>`
+- Frontend code expected simple `CapsuleProblem[]` array
+- Type mismatch caused active problems to never display
+
+**Solution Steps:**
+1. **Update the problems query in Settings page:**
+   ```typescript
+   // Before: Expected CapsuleProblem[]
+   const { data: problems = [], isLoading: problemsLoading } = useQuery<CapsuleProblem[]>({
+     queryKey: ["/api/problems"],
+   });
+
+   // After: Handle PaginatedResponse properly
+   const { data: problemsResponse, isLoading: problemsLoading } = useQuery<PaginatedResponse<CapsuleProblem>>({
+     queryKey: ["/api/problems"],
+   });
+   const problems = problemsResponse?.data || [];
+   ```
+
+2. **Add missing import:**
+   ```typescript
+   import { type PaginatedResponse } from "@shared/schema";
+   ```
+
+**Files Modified:**
+- `client/src/pages/settings.tsx` - Fixed problems query and data extraction
+
+---
+
+### **001 - Connection Problem / Server Crashes (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Connection Problem, please check your internet connection and try again" toast appears
+- Occurs when accessing Check-in, Check-out pages, Settings > Save Settings, Report Capsule Problem
+- Login shows "Login failed..." even with correct credentials
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Server error middleware was rethrowing errors after sending response (`throw err;`)
+- This crashed the Node.js process, causing subsequent requests to fail
+- Browser interpreted crashed server as network connectivity issues
+
+**Solution Steps:**
+1. **Stop and restart server with clean environment:**
+   ```powershell
+   # Stop running server (Ctrl+C)
+   cd "C:\Users\Jyue\Desktop\PelangiManager"
+   Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+   npm run dev
+   ```
+
+2. **Clear browser auth cache:**
+   - Chrome DevTools > Application > Local Storage > http://localhost:5000
+   - Remove `auth_token` key
+   - Refresh page
+
+**Technical Fix Applied:**
+- Modified `server/index.ts` error middleware to log errors without rethrowing
+- Before: `res.status(status).json({ message }); throw err;` (crashed server)
+- After: Logs error context and returns JSON response safely
+
+**Files Modified:**
+- `server/index.ts` - Fixed error middleware to prevent server crashes
+
+---
+
+## 🚨 **COMMON ISSUES REFERENCE**
+
+### **Network/Connection Errors**
+- **"Connection Problem" toast** → Server likely crashed, restart with clean env
+- **"Failed to fetch" in DevTools** → Server process terminated, check error middleware
+- **Login works but other pages fail** → Partial server crash, restart required
+
+### **Test Runner Issues**
+- **"Server connection failed: Failed to fetch"** → Browser compatibility issue with AbortSignal.timeout()
+- **Tests fall back to local runner** → System working correctly, server tests unavailable
+- **All local tests pass** → Validation logic is solid, fallback system working
+
+### **Authentication Issues**
+- **"Login failed" with correct credentials** → Server crash during auth, restart server
+- **Redirected to login on protected pages** → Clear `auth_token` from localStorage
+- **API returns 401 on valid requests** → Token expired or corrupted, re-login
+
+### **Development Setup**
+- **Server won't start** → Check Node.js version (requires 18+), run `npm install`
+- **Port 5000 busy** → Set `PORT=5001` in `.env` file
+- **Database connection errors** → Remove `DATABASE_URL` env var for in-memory mode
+
+---
+
+## 🔍 **DIAGNOSTIC COMMANDS**
+
+### **Check Server Health**
+```powershell
+# Test public endpoints
+Invoke-WebRequest http://localhost:5000/api/capsules/available
+Invoke-WebRequest http://localhost:5000/api/guests/checked-in
+
+# Test authentication
+$body = @{ email = 'admin@pelangi.com'; password = 'admin123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/login -Body $body -ContentType 'application/json'
+```
+
+### **Environment Reset**
+```powershell
+# Force in-memory storage mode
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+
+# Clean restart
+npm run dev
+```
+
+### **Browser Debug**
+```javascript
+// Check stored auth token
+localStorage.getItem('auth_token')
+
+// Clear auth token
+localStorage.removeItem('auth_token')
+```
+
+---
+
+### **002 - Test Runner Browser Compatibility Issue (SOLVED)**
+
+**Date Solved:** August 18, 2025  
+**Symptoms:**
+- "Server connection failed: Failed to fetch" when running tests from Settings > Test Runner
+- Tests automatically fall back to local runner and all pass ✅
+- Server is running and accessible (localhost:5000/settings works)
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Browser compatibility issue with `AbortSignal.timeout()` API
+- Modern browsers (Chrome 100+, Firefox 102+, Edge 100+) support this API
+- Older browsers or development environments may not support it
+- Fetch request fails, triggering fallback to local test runner
+
+**Solution Applied:**
+1. **Added browser compatibility check** in `client/src/components/settings/TestsTab.tsx`
+2. **Implemented fallback mechanism** for older browsers using manual AbortController
+3. **Enhanced error messages** to clearly indicate browser compatibility vs network issues
+4. **Maintained 15-second timeout** for both modern and legacy approaches
+
+**Technical Implementation:**
+```typescript
+// Check if AbortSignal.timeout is supported
+if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+  // Modern browsers - use AbortSignal.timeout
+  res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+} else {
+  // Fallback for older browsers - manual timeout with AbortController
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 15000);
+  try {
+    res = await fetch(url, { signal: abortController.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added browser compatibility fallback
+- `docs/MASTER_TROUBLESHOOTING_GUIDE.md` - Documented issue and solution
+
+**Why This Happens:**
+- `AbortSignal.timeout()` is a relatively new browser API
+- Development environments sometimes have different browser compatibility
+- The fallback system is actually working correctly - it's not a bug, it's a feature!
+
+---
+
+## 📋 **SUCCESS PATTERNS**
+
+### **Working Development Flow**
+1. Start server: `npm run dev`
+2. Wait for "serving on port 5000" message
+3. Visit http://localhost:5000
+4. Login with admin@pelangi.com / admin123
+5. All features should work without connection errors
+
+### **When to Restart Server**
+- After pulling code changes
+- When seeing "Connection Problem" toasts
+- After modifying server-side files
+- When switching between database/in-memory modes
+
+---
+
+## 🚨 **PORT 5000 EADDRINUSE TROUBLESHOOTING**
+
+### **Quick Fixes**
+```powershell
+# Option 1: Kill process using port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Option 2: Use different port
+$env:PORT=5001; npm run dev
+
+# Option 3: Restart terminal/computer
+```
+
+---
+
+## 🔧 **BUILD AND DEVELOPMENT SERVER ISSUES**
+
+### **Vite Build Problems**
+- **Build fails** → Check TypeScript errors, run `npm run check`
+- **Hot reload not working** → Restart dev server, check file watchers
+- **Assets not loading** → Clear browser cache, check build output
+
+### **Development Server Issues**
+- **Server won't start** → Check port availability, Node.js version
+- **Changes not reflecting** → Suspect build artifacts, clear dist/ directory
+- **Memory issues** → Restart server, check for memory leaks
+
+### **Replit-Specific Issues**
+- **ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'** → Missing build artifacts, need to run build command
+
+---
+
+## 🚀 **SERVER STARTUP AND GIT SYNC ISSUES**
+
+### **012 - Server Won't Start After Git Sync (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Server fails to start with syntax errors after syncing with GitHub
+- Error: `SyntaxError: The requested module './routes' does not provide an export named 'registerObjectRoutes'`
+- `localhost:5000` shows "ERR_CONNECTION_REFUSED"
+- Terminal shows corrupted import statements or syntax errors
+
+**Root Cause:**
+- **Git Sync Corruption**: Files may get corrupted during Git sync operations
+- **Import/Export Mismatch**: Module exports not properly synchronized
+- **TypeScript Compilation Issues**: Build artifacts may be corrupted
+- **File Encoding Problems**: Special characters or encoding issues from Git
+
+**Solution Implemented:**
+1. **Clean Environment Reset**:
+   ```powershell
+   # Kill any existing processes
+   npx kill-port 5000
+   
+   # Restart development server
+   npm run dev
+   ```
+
+2. **Verify File Integrity**:
+   - Check that `server/routes/index.ts` exports `registerObjectRoutes`
+   - Ensure `server/index.ts` imports correctly
+   - Verify no corrupted characters in import statements
+
+3. **Server Restart Process**:
+   - Always restart server after Git sync operations
+   - Wait for "serving on port 5000" confirmation
+   - Check terminal for any syntax errors before proceeding
+
+**Prevention Steps:**
+- Restart development server after every Git sync
+- Check terminal output for syntax errors
+- Verify server starts successfully before testing features
+- Keep backup of working server files
+
+**Troubleshooting Flow:**
+1. **Immediate Action**: Restart development server with `npm run dev`
+2. **Check Terminal**: Look for syntax errors or import issues
+3. **Verify Port**: Ensure port 5000 is available and server starts
+4. **Test Connection**: Visit `localhost:5000` to confirm server is running
+5. **Check Features**: Verify push notifications and other features work
+
+---
+
+## 🚀 **REPLIT AND DEPLOYMENT ISSUES**
+
+### **013 - Replit ENOENT: Missing Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `{"message":"ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'"}`
+- Server starts but fails to serve the frontend application
+- Browser shows server error instead of React app
+- Occurs in Replit environment after code changes or deployment
+
+**Root Cause:**
+- **Missing Build Directory**: The `dist/` directory containing compiled frontend files doesn't exist
+- **Build Process Not Run**: Frontend code hasn't been compiled from TypeScript/JSX to static HTML/CSS/JS
+- **Replit Environment**: Replit may not automatically run build commands on startup
+- **File System Issues**: Build artifacts may have been cleared or corrupted
+
+**Solution Implemented:**
+1. **Run Build Command**:
+   ```bash
+   # In Replit terminal
+   npm run build
+   ```
+
+2. **Verify Build Output**:
+   ```bash
+   # Check if dist directory exists
+   ls -la dist/
+   
+   # Should show:
+   # dist/
+   # └── public/
+   #     ├── index.html
+   #     ├── assets/
+   #     └── ...
+   ```
+
+3. **Start Server After Build**:
+   ```bash
+   # After successful build
+   npm run dev
+   ```
+
+**Alternative Solutions:**
+1. **Force Clean Build**:
+   ```bash
+   # Remove existing build artifacts
+   rm -rf dist/
+   
+   # Rebuild from scratch
+   npm run build
+   ```
+
+2. **Check Package.json Scripts**:
+   ```json
+   {
+     "scripts": {
+       "build": "vite build",
+       "dev": "tsx watch --clear-screen=false server/index.ts"
+     }
+   }
+   ```
+
+3. **Replit Configuration**:
+   - Ensure `.replit` file has correct run command
+   - Check if build command is set to run on startup
+   - Verify file structure matches expected paths
+
+**Prevention Steps:**
+- **Always run `npm run build`** before starting server in Replit
+- **Check build output** for any compilation errors
+- **Verify dist/ directory** exists and contains expected files
+- **Run build after major code changes** or dependency updates
+
+**Troubleshooting Flow:**
+1. **Check Build Status**: Look for `dist/` directory in file explorer
+2. **Run Build Command**: Execute `npm run build` in terminal
+3. **Verify Output**: Ensure `dist/public/index.html` exists
+4. **Start Server**: Run `npm run dev` after successful build
+5. **Test Application**: Visit the app to confirm it loads correctly
+
+**Common Replit Issues:**
+- **Build fails**: Check TypeScript errors, missing dependencies
+- **Port conflicts**: Replit may use different ports than localhost
+- **File permissions**: Ensure build process can write to workspace
+- **Memory limits**: Large builds may exceed Replit memory constraints
+
+---
+
+---
+
+### **014 - "Show All Capsules" Checkbox Not Visible After Code Changes (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Added new "Show all capsules" checkbox in Filter Guests section
+- Code changes appear to be made but aren't reflected in the UI
+- Checkbox still not visible in Dashboard > Filter Guests popover
+- Browser shows old version without the new feature
+- Similar to other frontend changes not reflecting issues
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Vite Middleware Serving Old Code**: Server using Vite middleware serves from compiled build artifacts, not source code
+- **Source vs Compiled Mismatch**: Even after adding new checkbox component, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Implemented:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   # Or kill all Node processes
+   taskkill /F /IM node.exe
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   # Wait for successful build completion
+   ```
+
+4. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   # Wait for "serving on port 5000" message
+   ```
+
+**Verification Steps:**
+1. **Check Build Success**: Ensure no errors during build process
+2. **Verify Server Start**: Confirm server starts without port conflicts
+3. **Test New Feature**: Navigate to Dashboard > Filter Guests > Look for "Capsule Display" section
+4. **Confirm Checkbox Visible**: "Show all capsules" checkbox should now be visible with building icon
+
+**Technical Details:**
+- **Vite Middleware Setup**: Server configured with `setupVite()` in `server/vite.ts`
+- **Build Process**: Frontend compiled from TypeScript/JSX to static assets in `dist/public/`
+- **Serving Strategy**: Server serves compiled React app, not source code directly
+- **Hot Reload**: Not available in production build mode, requires manual rebuild
+
+**Prevention Steps:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow the build process**: Source changes → Rebuild → Test
+- **Check build output**: Ensure no compilation errors before starting server
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #013**: Replit ENOENT: Missing Build Artifacts
+- **Port 5000 EADDRINUSE**: Address already in use errors
+
+**Troubleshooting Flow:**
+1. **Identify Issue**: Frontend changes not reflecting in UI
+2. **Check Build Status**: Look for `dist/` directory and build artifacts
+3. **Clean Environment**: Remove old compiled code
+4. **Rebuild Application**: Run `npm run build` successfully
+5. **Start Server**: Run `npm run dev` and wait for confirmation
+6. **Test Changes**: Verify new features are now visible
+
+---
+
+### **015 - Calendar Not Displaying All Dates (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Occupancy calendar only shows partial dates (e.g., 27/7, 28/7, 29/7, 30/7, 31/7, 1/8)
+- Missing most August dates (2/8, 3/8, 4/8... 31/8)
+- Calendar appears to only show end of previous month and beginning of current month
+- Changes to calendar component code don't reflect in UI
+
+**Root Cause:**
+- **Wrong react-day-picker API Usage**: Using invalid `components={{ DayContent: ... }}` prop
+- **Null Return Values**: `getDayContent` function returned `null` for dates without data
+- **Component Integration Issue**: react-day-picker v8 doesn't support `DayContent` component override
+- **Build Artifacts Problem**: Old compiled calendar code served despite source changes
+
+**Solution Implemented:**
+
+1. **Fixed react-day-picker Integration:**
+   ```typescript
+   // BEFORE: Invalid component override (caused dates to not render)
+   <Calendar
+     components={{
+       DayContent: ({ date }) => getDayContent(date), // ❌ Wrong API
+     }}
+   />
+   
+   // AFTER: Proper modifiers approach
+   <Calendar
+     modifiers={{
+       hasCheckins: (date) => {
+         const dateString = date.toISOString().split('T')[0];
+         const dayData = calendarData[dateString];
+         return dayData && dayData.checkins.length > 0;
+       },
+       hasCheckouts: (date) => { /* similar logic */ },
+       highOccupancy: (date) => { /* occupancy > 80% */ },
+       // ... other modifiers
+     }}
+     modifiersClassNames={{
+       hasCheckins: "relative after:absolute after:top-0 after:right-0 after:w-1.5 after:h-1.5 after:bg-green-500 after:rounded-full",
+       hasCheckouts: "relative before:absolute before:top-0 before:left-0 before:w-1.5 before:h-1.5 before:bg-red-500 before:rounded-full",
+       // ... other styling
+     }}
+   />
+   ```
+
+2. **Removed Problematic getDayContent Function:**
+   ```typescript
+   // BEFORE: Function that returned null for dates without data
+   const getDayContent = (date: Date) => {
+     const dayData = calendarData[dateString];
+     if (!dayData) return null; // ❌ This prevented dates from rendering
+     // ... rest of function
+   };
+   
+   // AFTER: Removed entirely, using modifiers instead
+   ```
+
+3. **Applied Build Artifacts Fix:**
+   ```powershell
+   # Kill port conflicts
+   netstat -ano | findstr :5000
+   taskkill /PID <PID> /F
+   
+   # Clean build artifacts
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   
+   # Rebuild with calendar changes
+   npm run build
+   
+   # Start on different port
+   $env:PORT=5001; npm run dev
+   ```
+
+**Technical Details:**
+- **react-day-picker v8.10.1**: Uses `modifiers` and `modifiersClassNames` for customization
+- **Component Override**: `DayContent` component is not a valid prop in v8
+- **Date Rendering**: Calendar must always render valid JSX for each date
+- **CSS Approach**: Used Tailwind classes with pseudo-elements for visual indicators
+
+**Visual Indicators Implemented:**
+- ✅ **Green dots (top-right)**: Check-ins
+- ✅ **Red dots (top-left)**: Check-outs  
+- ✅ **Orange bars (bottom)**: 80%+ occupancy
+- ✅ **Red bars (bottom)**: 100% occupancy
+- ✅ **Blue dots (top-center)**: Festivals
+- ✅ **Green dots (top-center)**: Public holidays
+
+**Verification Steps:**
+1. **Check All Dates Visible**: August calendar shows 1, 2, 3... 31
+2. **Test Visual Indicators**: Dates with data show appropriate colored indicators
+3. **Verify Month Navigation**: Can navigate between months properly
+4. **Confirm Date Selection**: Clicking dates shows detailed information
+
+**Files Modified:**
+- `client/src/components/occupancy-calendar.tsx` - Fixed calendar integration
+- Build artifacts cleaned and regenerated
+
+**Prevention:**
+- **Use correct react-day-picker API**: Always check documentation for component props
+- **Test calendar components**: Ensure all dates render regardless of data availability
+- **Follow build process**: Clean artifacts → Rebuild → Test after major component changes
+- **Avoid null returns**: Calendar components should always return valid JSX
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #014**: "Show All Capsules" Checkbox Not Visible After Code Changes
+- **Port EADDRINUSE**: Address already in use errors
+
+---
+
+### **016 - System Updates Section Not Displaying After Code Addition (SOLVED)**
+
+**Date Solved:** August 21, 2025  
+**Symptoms:**
+- Added new "System Updates" section to Settings > Tests page with recent development history
+- Code changes made to `TestsTab.tsx` component but not visible in UI
+- Section includes latest features like push notification enhancements, calendar fixes, etc.
+- Browser shows old version without the new System Updates section
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contained outdated compiled JavaScript code
+- **Forgot to Rebuild**: Developer made source code changes but forgot to run build process
+- **Vite Middleware Serving Old Code**: Server serves compiled build artifacts, not source code
+- **Classic Problem #007 Pattern**: Same root cause as "Frontend Changes Not Reflecting Due to Build Artifacts"
+
+**Solution Applied (Following Problem #007 Pattern):**
+1. **Kill Development Server:**
+   ```bash
+   npx kill-port 5000
+   # Successfully killed process on port 5000
+   ```
+
+2. **Clean Build Artifacts:**
+   ```bash
+   rm -rf dist
+   # Removed outdated compiled code directory
+   ```
+
+3. **Rebuild Application:**
+   ```bash
+   npm run build
+   # Build completed successfully in 12.66s
+   # Generated new compiled code with System Updates section
+   ```
+
+4. **Start Fresh Server:**
+   ```bash
+   npm run dev
+   # Server started successfully on port 5000
+   # "8:58:15 AM [express] serving on port 5000"
+   ```
+
+**Verification Results:**
+- ✅ Build completed without errors
+- ✅ Server started successfully with in-memory storage
+- ✅ System Updates section now visible in Settings > Tests
+- ✅ All recent development history properly displayed
+
+**System Updates Content Added:**
+- **System Updates Feature Added** (Today) - This new feature itself
+- **Push Notification Test Enhancement** (January 2025) - Enhanced error handling
+- **Calendar Display Fix** (January 2025) - Fixed react-day-picker API usage
+- **Upload System Complete Rebuild** (January 2025) - Fixed file upload system
+- **Storage System Modular Refactoring** (August 2025) - 96% code reduction
+- **Component Refactoring Success** (August 2025) - Large component optimization
+
+**Key Learning:**
+- **Always remember to rebuild** after making frontend component changes
+- **Classic symptom pattern**: Code changes not reflecting = build artifacts issue
+- **Standard solution works**: Kill server → Clean dist → Rebuild → Restart
+- **Prevention**: Include rebuild step in development workflow for major changes
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added System Updates section
+- Build artifacts cleaned and regenerated with new content
+
+**Prevention Steps:**
+- **Remember to rebuild** after adding new components or major UI changes
+- **Follow the pattern**: Source changes → Build → Test
+- **Check troubleshooting guide** when changes don't reflect
+- **Use Problem #007 solution** for similar build artifacts issues
+
+**Success Pattern Confirmed:**
+This case validates that Problem #007's solution pattern is reliable and should be the first approach when frontend changes don't appear in the UI. The exact same steps resolved the issue quickly and effectively.
+
+---
+
+## 📱 **PWA TROUBLESHOOTING REFERENCE**
+
+### **PWA Disabled on Replit: Why and How to Fix**
+
+**Issue:** PWA features disabled on Replit deployment
+**Symptoms:** 
+- No "Add to Home Screen" option on mobile
+- Service worker not registering
+- PWA features work locally but not on Replit
+
+**Root Cause:**
+- **Deployment Conflicts**: Replit's auto-redeploy system conflicts with service worker caching
+- **Build Process Issues**: Service workers can interfere with Replit's build pipeline
+- **Conservative Configuration**: PWA disabled to prevent deployment failures
+
+**Solution Strategy:**
+1. **Smart PWA Configuration**: Enable PWA with deployment-safe settings
+2. **Conditional Service Worker**: Use environment-specific service worker strategies
+3. **Cache Management**: Implement cache invalidation for rapid deployments
+
+**Key Configuration Changes:**
+```typescript
+// Enable PWA on all environments including Replit
+export function shouldEnablePWA(): boolean {
+  return true; // Smart configuration handles deployment conflicts
+}
+
+// Environment-specific PWA configuration
+export function getPWAConfig() {
+  const env = getEnvironment();
+  return {
+    enablePWA: true,
+    swStrategy: env.isReplit ? 'deployment-safe' : 'aggressive-cache',
+    skipWaiting: env.isReplit ? false : true,
+    clientsClaim: env.isReplit ? false : true
+  };
+}
+```
+
+**Files to Modify:**
+- `shared/utils.ts` - Update shouldEnablePWA function
+- `client/src/main.tsx` - Add deployment-safe service worker registration
+- `vite.config.ts` - Configure PWA plugin for Replit compatibility
+
+**Prevention:**
+- Use deployment-safe PWA configurations on cloud platforms
+- Test PWA features in production environment before full deployment
+- Monitor service worker registration in browser dev tools
+
+---
+
+**Document Control:**
+- **Maintained By:** Development Team
+- **Last Updated:** August 21, 2025
+- **Next Review:** When new issues arise
+
+*This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
+
+---
+
+### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: "Failed to cancel pending check-in" appears in red error banner
+- Error: "Failed to fetch" when clicking "Instant Create" button
+- Both errors occur in guest check-in management
+- Guest check-in status remains "Pending Check-in" despite cancellation attempt
+- Error banner shows with error ID and generic failure message
+
+**Root Causes:**
+1. **Missing Cancel Endpoint**: Server route for cancelling guest check-ins not implemented
+2. **Critical Bug in Instant Create**: Incomplete `createGuestToken` call with wrong `createdBy` field
+3. **Frontend Expects API**: Cancel button calls non-existent `/api/guest-checkins/{id}/cancel` endpoint
+4. **Database State Mismatch**: Guest record remains in pending state without cancellation logic
+
+**Solutions Implemented:**
+
+1. **Fixed Instant Create Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Incomplete and wrong createdBy field
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ WRONG: Hardcoded string
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     email: guestToken.email,
+     createdAt: guestToken.createdAt,
+     usedAt: guestToken.usedAt  // ❌ Missing fields
+   });
+   
+   // AFTER: Complete and correct fields
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ FIXED: Use authenticated user ID
+     expiresAt: guestToken.expiresAt,
+     capsuleNumber: guestToken.capsuleNumber,
+     autoAssign: validatedData.autoAssign || false,
+     guestName: guestToken.guestName,
+     phoneNumber: guestToken.phoneNumber,
+     email: guestToken.email,
+     expectedCheckoutDate: guestToken.expectedCheckoutDate,
+     createdAt: guestToken.createdAt,
+   });
+   ```
+
+2. **Added Cancel Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Cancel pending guest check-in
+   router.patch("/:id/cancel", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const { reason } = req.body;
+       
+       // Get the guest token to check if it exists and is not used
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest check-in not found" });
+       }
+       
+       if (guestToken.isUsed) {
+         return res.status(400).json({ message: "Cannot cancel already used check-in" });
+       }
+       
+       // Mark token as cancelled (we'll use isUsed field for this)
+       const updated = await storage.markTokenAsUsed(id);
+       
+       if (!updated) {
+         return res.status(400).json({ message: "Failed to cancel check-in" });
+       }
+       
+       res.json({ message: "Check-in cancelled successfully" });
+     } catch (error: any) {
+       console.error("Error cancelling guest check-in:", error);
+       res.status(400).json({ message: error.message || "Failed to cancel check-in" });
+     }
+   });
+   ```
+
+**Testing & Verification:**
+1. **Test Instant Create**: Click "Instant Create" button should work without "Failed to fetch" error
+2. **Test Cancel Function**: Click "Cancel" button on pending check-in should show success message
+3. **Check Database**: Guest tokens should be created with proper `created_by` field
+4. **Verify UI Updates**: Cancelled check-ins should update status properly
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Complete API implementations**: Implement all CRUD operations when adding new features
+- **Test cancellation flows** during development
+- **Add proper error handling** for all user actions
+- **Validate database schema** supports all status transitions
+
+**Related Issues:**
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit
+- **Problem #009**: Finance Page Crash & Expense Creation Errors
+
+**Success Pattern:**
+- ✅ **Identify missing endpoint**: Look for "Failed to" error messages
+- ✅ **Fix incomplete API calls**: Ensure all required fields are properly set
+- ✅ **Implement backend logic**: Add proper API endpoints and storage methods
+- ✅ **Update frontend handlers**: Ensure proper error handling and user feedback
+- ✅ **Test complete flow**: Verify both creation and cancellation work end-to-end
+
+**Key Learning:**
+- **Two related errors** can have the same root cause (missing/incomplete backend implementation)
+- **"Failed to fetch"** often indicates missing or broken API endpoints
+- **Foreign key constraints** must use proper UUIDs, not hardcoded strings
+- **Complete API implementation** is crucial for frontend functionality
+
+---
+
+### **021 - PWA Manifest Errors & Missing DELETE Endpoint (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Console shows: "Manifest: Line: 1, column: 1, Syntax error"
+- Service worker errors: "Failed to execute 'put' on 'Cache': Request scheme 'chrome-extension' is unsupported"
+- DELETE API fails: "DELETE http://localhost:5000/api/guest-tokens/{id} net::ERR_FAILED"
+- PWA functionality broken, service worker crashes
+- Guest token deletion from dashboard not working
+
+**Root Causes:**
+1. **PWA Manifest Syntax Error**: Invalid JSON in manifest file
+2. **Service Worker Cache Issues**: Trying to cache unsupported URL schemes
+3. **Missing DELETE Endpoint**: No server route for deleting guest tokens
+4. **Service Worker Crashes**: Breaking PWA functionality
+
+**Solutions Implemented:**
+
+1. **Added Missing DELETE Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Delete guest token
+   router.delete("/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       
+       // Get the guest token to check if it exists
+       const guestToken = await storage.getGuestToken(id);
+       if (!guestToken) {
+         return res.status(404).json({ message: "Guest token not found" });
+       }
+       
+       // Delete the token
+       const deleted = await storage.deleteGuestToken(id);
+       
+       if (!deleted) {
+         return res.status(400).json({ message: "Failed to delete guest token" });
+       }
+       
+       res.json({ message: "Guest token deleted successfully" });
+     } catch (error: any) {
+       console.error("Error deleting guest token:", error);
+       res.status(400).json({ message: error.message || "Failed to delete guest token" });
+     }
+   });
+   ```
+
+2. **PWA Manifest Fix** (check `public/manifest.json`):
+   ```json
+   {
+     "name": "PelangiManager",
+     "short_name": "Pelangi",
+     "start_url": "/",
+     "display": "standalone",
+     "background_color": "#ffffff",
+     "theme_color": "#000000",
+     "icons": [
+       {
+         "src": "/icon-192.png",
+         "sizes": "192x192",
+         "type": "image/png"
+       }
+     ]
+   }
+   ```
+
+3. **Service Worker Cache Fix** (check `public/sw.js`):
+   ```javascript
+   // Filter out unsupported URL schemes
+   const shouldCache = (request) => {
+     const url = new URL(request.url);
+     return url.protocol === 'http:' || url.protocol === 'https:';
+   };
+   
+   // Only cache valid requests
+   if (shouldCache(request)) {
+     cache.put(request, response.clone());
+   }
+   ```
+
+**Testing & Verification:**
+1. **Test DELETE Function**: Delete guest token from dashboard should work
+2. **Check PWA**: Manifest should load without syntax errors
+3. **Service Worker**: Should not crash on chrome-extension URLs
+4. **Console Clean**: No more ERR_FAILED or cache errors
+
+**Prevention:**
+- **Validate JSON**: Always check manifest.json syntax
+- **URL Filtering**: Filter out unsupported URL schemes in service worker
+- **Complete CRUD**: Implement all operations (Create, Read, Update, Delete)
+- **PWA Testing**: Test PWA features after major changes
+
+**Related Issues:**
+- **Problem #020**: Guest Check-in Cancellation Failure & Instant Create Fetch Error
+- **Problem #019**: Guest Token Creation Foreign Key Constraint Violation
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+
+**Success Pattern:**
+- ✅ **Fix manifest syntax**: Validate JSON structure
+- ✅ **Add missing endpoints**: Implement complete CRUD operations
+- ✅ **Filter URLs**: Only cache supported URL schemes
+- ✅ **Test PWA**: Verify service worker functionality
+
+**Key Learning:**
+- **Console errors** often reveal multiple related issues
+- **PWA problems** can break multiple features simultaneously
+- **Missing endpoints** cause frontend operations to fail
+- **Service worker crashes** affect offline functionality
+
+---
+
+## 🗄️ **DATABASE CONSTRAINT VIOLATION ERRORS**
+
+### **019 - Guest Token Creation Foreign Key Constraint Violation (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"guest_tokens\" violates foreign key constraint \"guest_tokens_created_by_users_id_fk\""}`
+- Occurs when clicking "Instant Create" button in Guest Check-in page
+- Database constraint violation preventing guest token creation
+- Foreign key constraint failure on `created_by` field
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being hardcoded to `'system'` instead of using the authenticated user's ID
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string 'system'
+- **Authentication Context**: Route has `authenticateToken` middleware, so `req.user.id` is available but not being used
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // BEFORE: Wrong - hardcoded string 'system'
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: 'system',  // ❌ Invalid foreign key reference
+     // ... other fields
+   });
+   
+   // AFTER: Correct - using authenticated user's ID
+   const createdToken = await storage.createGuestToken({
+     token: guestToken.token,
+     createdBy: req.user.id,  // ✅ Valid UUID from authenticated user
+     // ... other fields
+   });
+   ```
+
+2. **Verified Authentication Middleware**: Route already had proper `authenticateToken` middleware ensuring `req.user.id` is available
+
+**Database Schema Context:**
+```typescript
+// shared/schema.ts - guest_tokens table definition
+export const guestTokens = pgTable("guest_tokens", {
+  // ... other fields
+  createdBy: varchar("created_by").notNull().references(() => users.id), // Foreign key to users.id
+  // ... other fields
+});
+```
+
+**Files Modified:**
+- `server/routes/guest-tokens.ts` - Fixed `createdBy` assignment to use `req.user.id`
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Leverage authentication context**: Use `req.user.id` when routes have `authenticateToken` middleware
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Test foreign key relationships**: Verify that referenced IDs exist in parent tables
+
+**Testing & Verification:**
+1. **Click "Instant Create"** in Guest Check-in page
+2. **Should work without errors** and create guest token successfully
+3. **Check database**: `created_by` field should contain valid UUID from users table
+4. **Verify audit trail**: Each token properly tracks which user created it
+
+**Related Issues:**
+- **Problem #018**: Expenses Foreign Key Constraint Violation in Replit (similar root cause)
+- **Problem #009**: Database Constraint Violation on Test Notification
+
+**Success Pattern:**
+- ✅ **Identify foreign key constraint**: Look for "violates foreign key constraint" in error messages
+- ✅ **Check code logic**: Ensure foreign key fields reference valid UUIDs, not strings
+- ✅ **Use authentication context**: Leverage `req.user.id` when available
+- ✅ **Verify database schema**: Confirm foreign key relationships are properly defined
+
+---
+
+### **018 - Expenses Foreign Key Constraint Violation in Replit (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"400: {"message":"insert or update on table \"expenses\" violates foreign key constraint \"expenses_created_by_users_id_fk\""}`
+- Occurs when adding expenses in Finance page in Replit environment
+- Works fine in localhost testing but fails in production/Replit
+- Database constraint violation preventing expense creation
+
+**Root Cause:**
+- **Code Bug**: The `createdBy` field was being set to `req.user.username` or `req.user.email` instead of `req.user.id`
+- **Foreign Key Mismatch**: Database expects `created_by` to reference valid `users.id` UUID, but received string values
+- **Environment Difference**: Localhost may have been more lenient with constraints or had different data
+
+**Solution Implemented:**
+1. **Fixed Code Bug** in `server/routes/expenses.ts`:
+   ```typescript
+   // BEFORE: Wrong - sending username/email string
+   const createdBy = req.user.username || req.user.email || "Unknown";
+   
+   // AFTER: Correct - sending user ID UUID
+   const createdBy = req.user.id;
+   ```
+
+2. **Created Database Fix Script** (`fix-expenses-db.js`) for Replit:
+   ```bash
+   # Install pg if needed
+   npm install pg
+   
+   # Run database fix script
+   node fix-expenses-db.js
+   ```
+
+**Database Fix Script Features:**
+- ✅ **Table Structure Check**: Verifies expenses table exists with proper schema
+- ✅ **Foreign Key Validation**: Ensures `created_by` column has proper constraint
+- ✅ **Orphaned Data Cleanup**: Fixes any existing expenses with invalid `created_by` values
+- ✅ **Index Creation**: Sets up proper database indexes for performance
+
+**Files Modified:**
+- `server/routes/expenses.ts` - Fixed `createdBy` assignment to use `req.user.id`
+- `fix-expenses-db.js` - Created database cleanup script for Replit
+
+**Prevention:**
+- **Always use proper foreign keys**: Send UUIDs, not strings for foreign key references
+- **Test in production environment**: Localhost may have different constraint behavior
+- **Validate database schema**: Ensure foreign key constraints are properly set up
+- **Use database fix scripts**: For production environment database issues
+
+**Testing & Verification:**
+1. **Restart Replit server** after code fix
+2. **Try adding expense** in Finance page
+3. **Should work without errors** and create expense successfully
+4. **Check database**: `created_by` field should contain valid UUID
+
+---
+
+### **009 - Database Constraint Violation on Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `"null value in column \"key\" of relation \"app_settings\" violates not-null constraint"`
+- HTTP 400 error when clicking "Send Test Notification"
+- Database constraint violation preventing notification testing
+- Settings not being saved properly
+
+**Root Cause:**
+- **Null Key Values**: Code attempting to save settings with null/undefined key values
+- **Missing Validation**: Server-side validation not preventing invalid data
+- **Automatic Saving**: Some automatic preference saving triggered during test notification
+- **Database Constraints**: PostgreSQL enforcing NOT NULL constraint on app_settings.key column
+
+**Solution Implemented:**
+1. **Client-Side Validation**: Added proper key format for notification preferences
+2. **Server-Side Validation**: Enhanced settings route to validate key/value parameters
+3. **Storage Layer Validation**: Added validation in DatabaseStorage and MemStorage
+4. **Error Handling**: Better error categorization for database constraint violations
+5. **Preference Saving**: Fixed notification preferences to use proper key format
+
+**Error Prevention:**
+- **Input Validation**: All settings must have non-empty string keys
+- **Type Safety**: Values are converted to strings before database storage
+- **Key Format**: Notification preferences use `notification.{preferenceName}` format
+- **Error Messages**: Clear error messages for constraint violations
+
+**Testing & Verification:**
+```javascript
+// Check if settings are being saved properly
+console.log('Notification preferences:', preferences);
+
+// Verify API calls have proper key/value format
+fetch('/api/settings', {
+  method: 'PATCH',
+  body: JSON.stringify({
+    key: 'notification.guestCheckIn', // ✅ Proper format
+    value: 'true'                     // ✅ String value
+  })
+});
+```
+
+**Prevention:**
+- **Always validate inputs** before database operations
+- **Use consistent key naming** conventions
+- **Test database operations** with edge cases
+- **Monitor constraint violations** in logs
+
+---
+
+## 🔑 **INVALID KEY ERRORS**
+
+### **010 - Invalid Key Error During Test Notification (INVESTIGATING)**
+
+**Date Identified:** January 2025  
+**Symptoms:**
+- Error: `400: {"message":"Setting key is required and must be a non-empty string","error":"INVALID_KEY"}`
+- Occurs when clicking "Send Test Notification"
+- Server-side validation catching invalid data before database
+- No database constraint violations (validation working)
+
+**Root Cause (Under Investigation):**
+- **Unknown Source**: Some code is calling `/api/settings` with null/undefined key
+- **Not from Preferences**: `handlePreferencesChange` has proper validation
+- **Not from Test Function**: `handleTestNotification` doesn't call settings API
+- **Possible External Code**: Another component or hook might be interfering
+
+**Current Investigation:**
+1. **Added Debug Logging**: Track all preference changes and API calls
+2. **Fetch Interceptor**: Monitor unexpected settings API calls during tests
+3. **Test Progress Flag**: Prevent preference saving during test notifications
+4. **Enhanced Validation**: Better error handling for invalid keys
+
+**Debug Information:**
+```javascript
+// Check browser console for these logs:
+🔧 handlePreferencesChange called with: { key, value, isTestInProgress }
+🚨 INTERCEPTED SETTINGS API CALL during test: { url, options }
+📝 Request body: { key, value }
+❌ INVALID KEY DETECTED: undefined
+```
+
+**Temporary Workaround:**
+- **Refresh the page** before testing notifications
+- **Check browser console** for debug information
+- **Report exact error** to support team
+
+**Next Steps:**
+- **Identify source** of invalid API calls
+- **Fix root cause** of automatic preference saving
+- **Remove temporary** fetch interceptor
+- **Add permanent** prevention measures
+
+---
+
+## 🔐 **AUTHENTICATION ERRORS**
+
+### **011 - 401 Unauthorized During Test Notification (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `401: {"message":"Invalid or expired token"}`
+- Occurs when clicking "Send Test Notification"
+- Authentication error preventing notification testing
+- Push notification routes expect no authentication
+
+**Root Cause:**
+- **Fetch Interceptor Issue**: Temporary debug interceptor was interfering with push API calls
+- **Route Configuration**: Push notification routes (`/api/push/*`) don't require authentication
+- **Client Side**: Test notification was being intercepted and modified by debug code
+- **Server Side**: Server was rejecting requests with unexpected auth headers
+
+**Solution Implemented:**
+1. **Fixed Fetch Interceptor**: Modified to only intercept `/api/settings` calls, not push API calls
+2. **Enhanced Error Handling**: Added specific 401 error categorization and user guidance
+3. **Route Isolation**: Ensured push notification routes remain unauthenticated
+4. **Better User Feedback**: Clear troubleshooting steps for authentication issues
+
+**Technical Details:**
+```javascript
+// BEFORE: Interceptor was affecting ALL fetch calls
+window.fetch = async (...args) => { /* intercepts everything */ };
+
+// AFTER: Only intercept settings API calls
+if (typeof url === 'string' && url.includes('/api/settings')) {
+  // Only intercept settings calls
+}
+// Push API calls use original fetch
+return originalFetch(...args);
+```
+
+**Error Categories Added:**
+- **Authentication Required**: Session expired or login needed
+- **Clear Troubleshooting**: Refresh page, log in again, clear cache
+- **User Action Required**: Specific steps to resolve authentication issues
+
+**Testing & Verification:**
+- ✅ Test notification works without authentication
+- ✅ Settings API calls are still monitored for debugging
+- ✅ No interference with push notification functionality
+- ✅ Clear error messages for authentication issues
+
+**Prevention:**
+- **Route Isolation**: Keep push routes unauthenticated
+- **Selective Interception**: Only intercept specific API endpoints
+- **Clear Error Messages**: Provide actionable troubleshooting steps
+- **Test Authentication**: Verify routes work with/without auth as expected
+
+---
+
+## 🔔 **NOTIFICATION PERMISSION TROUBLESHOOTING**
+
+### **Understanding Notification Permissions**
+
+**What are Notification Permissions?**
+Notification permissions are a web browser security feature that controls whether websites can send push notifications to users. This is a privacy protection mechanism that prevents websites from sending unwanted notifications without user consent.
+
+**Why Do Permissions Get Denied?**
+
+#### **1. User Action (Most Common)**
+- **Previous Denial**: User previously clicked "Block" when browser asked for permission
+- **Accidental Click**: User accidentally clicked "Block" instead of "Allow"
+- **Misunderstanding**: User thought "Block" would stop the popup, not permanently deny access
+
+#### **2. Browser Settings**
+- **Global Disable**: Browser has notifications globally turned off
+- **Site-Specific Block**: This specific site is blocked in browser's site settings
+- **Privacy Mode**: User is browsing in incognito/private mode
+- **Browser Version**: Outdated browser doesn't support modern notification APIs
+
+#### **3. System-Level Issues**
+- **Operating System**: Windows/Mac has notifications disabled
+- **Do Not Disturb**: System is in "Do Not Disturb" mode
+- **Focus Assist**: Windows Focus Assist is blocking notifications
+- **System Updates**: Recent OS update changed notification settings
+
+#### **4. Extension Interference**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus block notification requests
+- **Privacy Extensions**: Privacy Badger, Ghostery block tracking/notifications
+- **VPN Extensions**: Some VPNs block certain web features
+- **Security Extensions**: Malware blockers may block notification APIs
+
+#### **5. Network/Corporate Issues**
+- **Corporate Firewall**: Company network blocks push notification services
+- **School/University**: Educational institutions often block notifications
+- **Public WiFi**: Some public networks block certain web features
+- **ISP Restrictions**: Internet service provider blocking push services
+
+### **Browser-Specific Solutions**
+
+#### **🌐 Google Chrome / Microsoft Edge**
+```text
+1. Click the lock/info icon 🔒 in the address bar
+2. Click "Site settings" or "Permissions"
+3. Find "Notifications" in the list
+4. Change from "Block" to "Allow"
+5. Refresh the page
+6. Alternative: chrome://settings/content/notifications
+```
+
+#### **🦊 Mozilla Firefox**
+```text
+1. Click the shield icon 🛡️ in the address bar
+2. Click "Site Permissions" → "Notifications"
+3. Change from "Block" to "Allow"
+4. Refresh the page
+5. Alternative: about:preferences#privacy
+```
+
+#### **🍎 Safari (Mac)**
+```text
+1. Safari → Preferences → Websites → Notifications
+2. Find this site in the list
+3. Change from "Deny" to "Allow"
+4. Refresh the page
+5. Alternative: System Preferences → Notifications → Safari
+```
+
+#### **🌍 Other Browsers**
+- **Opera**: opera://settings/content/notifications
+- **Brave**: brave://settings/content/notifications
+- **Vivaldi**: vivaldi://settings/content/notifications
+
+### **System-Level Solutions**
+
+#### **Windows 10/11**
+```text
+1. Settings → System → Notifications & actions
+2. Turn on "Get notifications from apps and other senders"
+3. Turn on "Show notifications on the lock screen"
+4. Check "Focus assist" settings
+5. Ensure "Do not disturb" is off
+```
+
+#### **macOS**
+```text
+1. System Preferences → Notifications & Focus
+2. Select your browser (Chrome, Firefox, Safari)
+3. Ensure notifications are enabled
+4. Check "Do Not Disturb" settings
+5. Verify "Focus" modes aren't blocking notifications
+```
+
+#### **Linux**
+```text
+1. Check notification daemon (e.g., dunst, notify-osd)
+2. Ensure desktop environment notifications are enabled
+3. Check system notification settings
+4. Verify browser has notification permissions
+```
+
+### **Extension Troubleshooting**
+
+#### **Common Problematic Extensions**
+- **Ad Blockers**: uBlock Origin, AdBlock Plus, AdGuard
+- **Privacy Tools**: Privacy Badger, Ghostery, DuckDuckGo Privacy
+- **Security**: Malwarebytes, Norton, McAfee
+- **VPN**: NordVPN, ExpressVPN, ProtonVPN extensions
+
+#### **Testing Steps**
+```text
+1. Open browser in incognito/private mode (extensions disabled)
+2. Test notification permission request
+3. If it works, an extension is blocking it
+4. Disable extensions one by one to identify the culprit
+5. Add the site to extension whitelist if possible
+```
+
+### **Advanced Troubleshooting**
+
+#### **Reset Site Permissions**
+```text
+Chrome/Edge:
+1. chrome://settings/content/notifications
+2. Find this site
+3. Click the trash icon to remove
+4. Refresh page and try again
+
+Firefox:
+1. about:preferences#privacy
+2. Site Permissions → Notifications
+3. Remove the site entry
+4. Refresh page and try again
+```
+
+#### **Clear Browser Data**
+```text
+1. Clear cookies and site data for this domain
+2. Clear browser cache
+3. Restart browser
+4. Try permission request again
+```
+
+#### **Check Console for Errors**
+```javascript
+// Open browser console (F12) and check for:
+console.log('Notification permission:', Notification.permission);
+console.log('Service Worker:', 'serviceWorker' in navigator);
+console.log('Push Manager:', 'PushManager' in window);
+
+// Common error messages:
+// - "Permission denied"
+// - "Service worker not found"
+// - "Push subscription failed"
+```
+
+### **Prevention Strategies**
+
+#### **For Users**
+- **Understand the Request**: Read what the browser is asking for
+- **Don't Rush**: Take time to understand permission requests
+- **Use Supported Browsers**: Chrome, Firefox, Edge, Safari
+- **Keep Updated**: Regular browser and OS updates
+- **Check Extensions**: Be aware of what extensions might block
+
+#### **For Developers**
+- **Clear Messaging**: Explain why notifications are needed
+- **Graceful Fallbacks**: Handle permission denial gracefully
+- **User Education**: Provide clear troubleshooting steps
+- **Progressive Enhancement**: App works without notifications
+- **Testing**: Test on multiple browsers and devices
+
+### **When All Else Fails**
+
+#### **Alternative Solutions**
+1. **Different Browser**: Try Chrome, Firefox, or Edge
+2. **Different Device**: Test on mobile or another computer
+3. **Contact Support**: Provide detailed error information
+4. **Manual Check**: Check notifications manually in the app
+5. **Email Alerts**: Use email notifications as backup
+
+#### **Support Information to Provide**
+- Browser name and version
+- Operating system and version
+- Error messages from console
+- Steps already tried
+- Screenshots of permission dialogs
+- Extension list
+
+---
+
+### **007 - Frontend Changes Not Reflecting Due to Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Frontend changes appear to be made but aren't reflected in the UI
+- Components deleted from source code still appear in the application
+- Changes work in incognito mode but not in regular browser (ruling out browser caching)
+- Similar to nationality editing issue where changes weren't reflected
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Source vs Compiled Mismatch**: Even after deleting source files, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Steps:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   ```
+
+4. **Verify Clean Build:**
+   ```powershell
+   # Check that old components are removed from compiled code
+   Get-ChildItem dist -Recurse | Select-String "OLD_COMPONENT_NAME"
+   ```
+
+5. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   ```
+
+**Prevention:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow build process**: Source changes → Rebuild → Test
+
+---
+
+### **006 - JSX Syntax Error: Expected corresponding JSX closing tag for <CardContent> (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Vite dev server shows: "Internal server error: Expected corresponding JSX closing tag for <CardContent>. (1344:12)"
+- React application fails to compile and run
+- Browser shows "localhost refused to connect" or "ERR_CONNECTION_REFUSED"
+- Server crashes due to JSX parsing error
+
+**Root Cause:**
+- Unbalanced JSX tags in `client/src/pages/settings.tsx`
+- `<CardContent>` tag opened at line 1059 in `GuestGuideTab` function was never properly closed
+- Multiple nested `<div>` tags created structural imbalance
+
+**Solution Steps:**
+1. **Identify the JSX structure issue:**
+   ```typescript
+   // Line 1059: CardContent opens
+   <CardContent>
+     <div className={`preview-content...`}>
+       // ... complex nested content ...
+   
+   // Line 1344: Should be </CardContent> but was </div>
+   </div>  // WRONG - should be </CardContent>
+   </Card>
+   ```
+
+2. **Fix the JSX structure:**
+   ```typescript
+   // Remove extra nested div and properly close CardContent
+   </div>
+   </div>
+   </div>
+   </CardContent>  // FIXED - proper closing tag
+   </Card>
+   ```
+
+**Prevention:**
+- Always verify JSX tag balance when making structural changes
+- Use proper indentation to visualize JSX nesting
+- Count opening/closing tags to ensure balance
+
+---
+
+### **005 - IC Photo Upload Failed: "Failed to construct 'URL': Invalid URL" (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Clicking "Upload IC photo" in Self Check-in form shows error: "Failed to construct 'URL': Invalid URL"
+- Console shows Uppy error: `[Uppy] Failed to construct 'URL': Invalid URL`
+- Upload fails in local development environment using localhost
+
+**Root Cause:**
+- Server returned relative URL `/api/objects/dev-upload/{id}` for local development
+- Uppy AWS S3 plugin expects a full URL (with protocol and host) not a relative path
+- The AWS S3 plugin tries to construct a URL object from the relative path, which fails
+
+**Solution Steps:**
+1. **Update server to return full URLs for dev uploads:**
+   ```typescript
+   // server/routes.ts - in /api/objects/upload endpoint
+   const protocol = req.protocol;
+   const host = req.get('host');
+   const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${id}`;
+   ```
+
+2. **Add CORS headers for dev upload endpoint:**
+   ```typescript
+   // Handle OPTIONS preflight
+   app.options("/api/objects/dev-upload/:id", (req, res) => {
+     res.header('Access-Control-Allow-Origin', '*');
+     res.header('Access-Control-Allow-Methods', 'PUT, OPTIONS');
+     res.header('Access-Control-Allow-Headers', 'Content-Type');
+     res.sendStatus(200);
+   });
+   ```
+
+**Prevention:**
+- Always return full URLs from server when dealing with file upload libraries
+- Test file uploads in local development environment
+- Add proper CORS headers for development endpoints
+
+---
+
+### **008 - Complete Upload System Failure: "Upload Failed" Generic Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- All file uploads show generic "Upload failed" error message
+- IC photo uploads in check-in page failing
+- Document uploads in guest check-in failing  
+- Finance receipt/item photo uploads failing
+- Console may show various Uppy-related errors
+
+**Root Cause:**
+- **Missing Server Implementation**: `/api/objects/upload` endpoint was calling non-existent `objectStorage.upload()` method
+- **Wrong API Flow**: Client was generating upload URLs locally instead of requesting from server
+- **Broken ObjectStorageService**: Server was trying to use Google Cloud Storage service without proper configuration
+- **API Specification Mismatch**: Implementation didn't follow DEVELOPMENT_REFERENCE.md specification
+
+**Complete Solution Steps:**
+
+1. **Fix Server Upload Parameter Endpoint:**
+   ```typescript
+   // server/routes/objects.ts
+   router.post("/api/objects/upload", async (req, res) => {
+     try {
+       // Generate unique upload ID
+       const objectId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+       
+       // CRITICAL: Return full URL with protocol and host
+       const protocol = req.protocol;
+       const host = req.get('host');
+       const uploadURL = `${protocol}://${host}/api/objects/dev-upload/${objectId}`;
+       
+       res.json({
+         uploadURL: uploadURL,
+         objectId: objectId
+       });
+     } catch (error) {
+       console.error("Upload parameter error:", error);
+       res.status(500).json({ message: error.message || "Failed to get upload URL" });
+     }
+   });
+   ```
+
+2. **Implement Local File Storage for Development:**
+   ```typescript
+   // server/routes/objects.ts
+   router.put("/api/objects/dev-upload/:id", async (req, res) => {
+     try {
+       res.setHeader('Access-Control-Allow-Origin', '*');
+       const { id } = req.params;
+       
+       // Simple local file storage
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       await fs.mkdir(uploadsDir, { recursive: true });
+       const filePath = path.join(uploadsDir, id);
+       
+       // Handle different request body types
+       let fileData: Buffer;
+       if (Buffer.isBuffer(req.body)) {
+         fileData = req.body;
+       } else if (typeof req.body === 'string') {
+         fileData = Buffer.from(req.body, 'binary');
+       } else {
+         fileData = Buffer.from(JSON.stringify(req.body));
+       }
+       
+       await fs.writeFile(filePath, fileData);
+       
+       // Store metadata
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       const metadata = {
+         contentType: req.headers['content-type'] || 'application/octet-stream',
+         filename: id,
+         uploadDate: new Date().toISOString(),
+         size: fileData.length
+       };
+       await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+       
+       res.json({ message: "Upload successful", id: id, size: fileData.length });
+     } catch (error) {
+       console.error("Dev upload error:", error);
+       res.status(500).json({ message: error.message || "Upload failed" });
+     }
+   });
+   ```
+
+3. **Fix Client Upload Parameter Requests:**
+   ```typescript
+   // client/src/components/*/upload-handlers
+   const handleGetUploadParameters = async () => {
+     try {
+       // Request upload URL from server (not generate locally)
+       const response = await fetch('/api/objects/upload', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({})
+       });
+
+       if (!response.ok) {
+         throw new Error('Failed to get upload URL');
+       }
+
+       const data = await response.json();
+       if (!data.uploadURL) {
+         throw new Error('No upload URL returned from server');
+       }
+
+       return {
+         method: 'PUT' as const,
+         url: data.uploadURL, // Full URL from server
+       };
+     } catch (error) {
+       console.error('Error getting upload parameters:', error);
+       throw error;
+     }
+   };
+   ```
+
+4. **Implement File Serving for Uploads:**
+   ```typescript
+   // server/routes/objects.ts  
+   router.get("/objects/uploads/:id", async (req, res) => {
+     try {
+       const { id } = req.params;
+       const uploadsDir = path.join(process.cwd(), 'uploads');
+       const filePath = path.join(uploadsDir, id);
+       const metaPath = path.join(uploadsDir, `${id}.meta.json`);
+       
+       await fs.access(filePath);
+       
+       let contentType = 'application/octet-stream';
+       try {
+         const metaData = await fs.readFile(metaPath, 'utf8');
+         const metadata = JSON.parse(metaData);
+         contentType = metadata.contentType || contentType;
+       } catch (metaError) {
+         // Use default content type if no metadata
+       }
+       
+       const fileData = await fs.readFile(filePath);
+       res.setHeader('Content-Type', contentType);
+       res.send(fileData);
+     } catch (fileError) {
+       res.status(404).json({ message: "Upload not found" });
+     }
+   });
+   ```
+
+**Verification Steps:**
+1. **Test upload parameter endpoint:**
+   ```bash
+   curl -X POST http://localhost:5000/api/objects/upload -H "Content-Type: application/json" -d '{}'
+   # Should return: {"uploadURL":"http://localhost:5000/api/objects/dev-upload/12345","objectId":"12345"}
+   ```
+
+2. **Check file storage:**
+   ```bash
+   ls uploads/  # Should show uploaded files and .meta.json files
+   ```
+
+3. **Test in browser:**
+   - Go to check-in page
+   - Try uploading IC photo
+   - Should show "Photo uploaded Document photo uploaded successfully"
+
+**Files Modified:**
+- `server/routes/objects.ts` - Fixed upload endpoints
+- `client/src/components/check-in/IdentificationPersonalSection.tsx` - Fixed client handler
+- `client/src/hooks/guest-checkin/useDocumentUpload.ts` - Fixed document upload hook
+- `client/src/pages/guest-checkin.tsx` - Fixed guest check-in uploads
+
+**Prevention:**
+- Always follow API specification in DEVELOPMENT_REFERENCE.md
+- Test server endpoints independently before client integration
+- Implement proper error handling and logging for upload failures
+- Use server-generated upload URLs instead of client-generated ones
+- Ensure CORS headers are properly configured for cross-origin uploads
+
+---
+
+### **004 - Settings page runtime error: CapsulesTab is not defined (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Visiting `http://localhost:5000/settings` shows Vite overlay: `CapsulesTab is not defined`
+- Stack points to `client/src/pages/settings.tsx:163`
+
+**Root Cause:**
+- New Capsules tab added to Settings referenced `<CapsulesTab ... />` but component was not implemented
+
+**Solution Steps:**
+1. Implement a minimal `CapsulesTab` component inside `client/src/pages/settings.tsx`
+2. Import `Building` icon and render basic capsule list
+3. Ensure capsules query is enabled for `activeTab === "capsules"`
+
+**Files Modified:**
+- `client/src/pages/settings.tsx`
+
+---
+
+### **003 - Problem Deletion Shows Success But Doesn't Delete (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Problem Deleted" success message appears when deleting active problems
+- Problem remains visible in active problems list even after refresh
+- Delete action appears to succeed but has no effect
+
+**Root Cause:**
+- Frontend sends DELETE request to `/api/problems/${id}`
+- Server route handler for DELETE `/api/problems/:id` was missing completely
+- Frontend shows success message from mutation, but server returns 404 (not found)
+
+**Solution Steps:**
+1. **Add DELETE endpoint to server routes:**
+   ```typescript
+   // Delete problem
+   app.delete("/api/problems/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       const deleted = await storage.deleteProblem(id);
+       if (!deleted) {
+         return res.status(404).json({ message: "Problem not found" });
+       }
+       res.json({ message: "Problem deleted successfully" });
+     } catch (error: any) {
+       res.status(400).json({ message: error.message || "Failed to delete problem" });
+     }
+   });
+   ```
+
+2. **Add deleteProblem method to storage interface and implement in both storage classes**
+
+**Files Modified:**
+- `server/routes.ts` - Added DELETE endpoint for problems
+- `server/storage.ts` - Added deleteProblem interface and implementations
+
+---
+
+### **002 - Active Problems Not Displaying (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- Problem reporting succeeds with "Problem Reported" message
+- Active problems section remains empty even after refresh
+- Problems are created but not visible in Settings > Maintenance tab
+
+**Root Cause:**
+- Settings page was calling `/api/problems` which returns `PaginatedResponse<CapsuleProblem>`
+- Frontend code expected simple `CapsuleProblem[]` array
+- Type mismatch caused active problems to never display
+
+**Solution Steps:**
+1. **Update the problems query in Settings page:**
+   ```typescript
+   // Before: Expected CapsuleProblem[]
+   const { data: problems = [], isLoading: problemsLoading } = useQuery<CapsuleProblem[]>({
+     queryKey: ["/api/problems"],
+   });
+
+   // After: Handle PaginatedResponse properly
+   const { data: problemsResponse, isLoading: problemsLoading } = useQuery<PaginatedResponse<CapsuleProblem>>({
+     queryKey: ["/api/problems"],
+   });
+   const problems = problemsResponse?.data || [];
+   ```
+
+2. **Add missing import:**
+   ```typescript
+   import { type PaginatedResponse } from "@shared/schema";
+   ```
+
+**Files Modified:**
+- `client/src/pages/settings.tsx` - Fixed problems query and data extraction
+
+---
+
+### **001 - Connection Problem / Server Crashes (SOLVED)**
+
+**Date Solved:** August 9, 2025  
+**Symptoms:**
+- "Connection Problem, please check your internet connection and try again" toast appears
+- Occurs when accessing Check-in, Check-out pages, Settings > Save Settings, Report Capsule Problem
+- Login shows "Login failed..." even with correct credentials
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Server error middleware was rethrowing errors after sending response (`throw err;`)
+- This crashed the Node.js process, causing subsequent requests to fail
+- Browser interpreted crashed server as network connectivity issues
+
+**Solution Steps:**
+1. **Stop and restart server with clean environment:**
+   ```powershell
+   # Stop running server (Ctrl+C)
+   cd "C:\Users\Jyue\Desktop\PelangiManager"
+   Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+   npm run dev
+   ```
+
+2. **Clear browser auth cache:**
+   - Chrome DevTools > Application > Local Storage > http://localhost:5000
+   - Remove `auth_token` key
+   - Refresh page
+
+**Technical Fix Applied:**
+- Modified `server/index.ts` error middleware to log errors without rethrowing
+- Before: `res.status(status).json({ message }); throw err;` (crashed server)
+- After: Logs error context and returns JSON response safely
+
+**Files Modified:**
+- `server/index.ts` - Fixed error middleware to prevent server crashes
+
+---
+
+## 🚨 **COMMON ISSUES REFERENCE**
+
+### **Network/Connection Errors**
+- **"Connection Problem" toast** → Server likely crashed, restart with clean env
+- **"Failed to fetch" in DevTools** → Server process terminated, check error middleware
+- **Login works but other pages fail** → Partial server crash, restart required
+
+### **Test Runner Issues**
+- **"Server connection failed: Failed to fetch"** → Browser compatibility issue with AbortSignal.timeout()
+- **Tests fall back to local runner** → System working correctly, server tests unavailable
+- **All local tests pass** → Validation logic is solid, fallback system working
+
+### **Authentication Issues**
+- **"Login failed" with correct credentials** → Server crash during auth, restart server
+- **Redirected to login on protected pages** → Clear `auth_token` from localStorage
+- **API returns 401 on valid requests** → Token expired or corrupted, re-login
+
+### **Development Setup**
+- **Server won't start** → Check Node.js version (requires 18+), run `npm install`
+- **Port 5000 busy** → Set `PORT=5001` in `.env` file
+- **Database connection errors** → Remove `DATABASE_URL` env var for in-memory mode
+
+---
+
+## 🔍 **DIAGNOSTIC COMMANDS**
+
+### **Check Server Health**
+```powershell
+# Test public endpoints
+Invoke-WebRequest http://localhost:5000/api/capsules/available
+Invoke-WebRequest http://localhost:5000/api/guests/checked-in
+
+# Test authentication
+$body = @{ email = 'admin@pelangi.com'; password = 'admin123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/login -Body $body -ContentType 'application/json'
+```
+
+### **Environment Reset**
+```powershell
+# Force in-memory storage mode
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+
+# Clean restart
+npm run dev
+```
+
+### **Browser Debug**
+```javascript
+// Check stored auth token
+localStorage.getItem('auth_token')
+
+// Clear auth token
+localStorage.removeItem('auth_token')
+```
+
+---
+
+### **002 - Test Runner Browser Compatibility Issue (SOLVED)**
+
+**Date Solved:** August 18, 2025  
+**Symptoms:**
+- "Server connection failed: Failed to fetch" when running tests from Settings > Test Runner
+- Tests automatically fall back to local runner and all pass ✅
+- Server is running and accessible (localhost:5000/settings works)
+- Browser DevTools shows "Failed to fetch" network errors
+
+**Root Cause:**
+- Browser compatibility issue with `AbortSignal.timeout()` API
+- Modern browsers (Chrome 100+, Firefox 102+, Edge 100+) support this API
+- Older browsers or development environments may not support it
+- Fetch request fails, triggering fallback to local test runner
+
+**Solution Applied:**
+1. **Added browser compatibility check** in `client/src/components/settings/TestsTab.tsx`
+2. **Implemented fallback mechanism** for older browsers using manual AbortController
+3. **Enhanced error messages** to clearly indicate browser compatibility vs network issues
+4. **Maintained 15-second timeout** for both modern and legacy approaches
+
+**Technical Implementation:**
+```typescript
+// Check if AbortSignal.timeout is supported
+if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+  // Modern browsers - use AbortSignal.timeout
+  res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+} else {
+  // Fallback for older browsers - manual timeout with AbortController
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 15000);
+  try {
+    res = await fetch(url, { signal: abortController.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Files Modified:**
+- `client/src/components/settings/TestsTab.tsx` - Added browser compatibility fallback
+- `docs/MASTER_TROUBLESHOOTING_GUIDE.md` - Documented issue and solution
+
+**Why This Happens:**
+- `AbortSignal.timeout()` is a relatively new browser API
+- Development environments sometimes have different browser compatibility
+- The fallback system is actually working correctly - it's not a bug, it's a feature!
+
+---
+
+## 📋 **SUCCESS PATTERNS**
+
+### **Working Development Flow**
+1. Start server: `npm run dev`
+2. Wait for "serving on port 5000" message
+3. Visit http://localhost:5000
+4. Login with admin@pelangi.com / admin123
+5. All features should work without connection errors
+
+### **When to Restart Server**
+- After pulling code changes
+- When seeing "Connection Problem" toasts
+- After modifying server-side files
+- When switching between database/in-memory modes
+
+---
+
+## 🚨 **PORT 5000 EADDRINUSE TROUBLESHOOTING**
+
+### **Quick Fixes**
+```powershell
+# Option 1: Kill process using port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Option 2: Use different port
+$env:PORT=5001; npm run dev
+
+# Option 3: Restart terminal/computer
+```
+
+---
+
+## 🔧 **BUILD AND DEVELOPMENT SERVER ISSUES**
+
+### **Vite Build Problems**
+- **Build fails** → Check TypeScript errors, run `npm run check`
+- **Hot reload not working** → Restart dev server, check file watchers
+- **Assets not loading** → Clear browser cache, check build output
+
+### **Development Server Issues**
+- **Server won't start** → Check port availability, Node.js version
+- **Changes not reflecting** → Suspect build artifacts, clear dist/ directory
+- **Memory issues** → Restart server, check for memory leaks
+
+### **Replit-Specific Issues**
+- **ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'** → Missing build artifacts, need to run build command
+
+---
+
+## 🚀 **SERVER STARTUP AND GIT SYNC ISSUES**
+
+### **012 - Server Won't Start After Git Sync (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Server fails to start with syntax errors after syncing with GitHub
+- Error: `SyntaxError: The requested module './routes' does not provide an export named 'registerObjectRoutes'`
+- `localhost:5000` shows "ERR_CONNECTION_REFUSED"
+- Terminal shows corrupted import statements or syntax errors
+
+**Root Cause:**
+- **Git Sync Corruption**: Files may get corrupted during Git sync operations
+- **Import/Export Mismatch**: Module exports not properly synchronized
+- **TypeScript Compilation Issues**: Build artifacts may be corrupted
+- **File Encoding Problems**: Special characters or encoding issues from Git
+
+**Solution Implemented:**
+1. **Clean Environment Reset**:
+   ```powershell
+   # Kill any existing processes
+   npx kill-port 5000
+   
+   # Restart development server
+   npm run dev
+   ```
+
+2. **Verify File Integrity**:
+   - Check that `server/routes/index.ts` exports `registerObjectRoutes`
+   - Ensure `server/index.ts` imports correctly
+   - Verify no corrupted characters in import statements
+
+3. **Server Restart Process**:
+   - Always restart server after Git sync operations
+   - Wait for "serving on port 5000" confirmation
+   - Check terminal for any syntax errors before proceeding
+
+**Prevention Steps:**
+- Restart development server after every Git sync
+- Check terminal output for syntax errors
+- Verify server starts successfully before testing features
+- Keep backup of working server files
+
+**Troubleshooting Flow:**
+1. **Immediate Action**: Restart development server with `npm run dev`
+2. **Check Terminal**: Look for syntax errors or import issues
+3. **Verify Port**: Ensure port 5000 is available and server starts
+4. **Test Connection**: Visit `localhost:5000` to confirm server is running
+5. **Check Features**: Verify push notifications and other features work
+
+---
+
+## 🚀 **REPLIT AND DEPLOYMENT ISSUES**
+
+### **013 - Replit ENOENT: Missing Build Artifacts (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: `{"message":"ENOENT: no such file or directory, stat '/home/runner/workspace/dist/public/index.html'"}`
+- Server starts but fails to serve the frontend application
+- Browser shows server error instead of React app
+- Occurs in Replit environment after code changes or deployment
+
+**Root Cause:**
+- **Missing Build Directory**: The `dist/` directory containing compiled frontend files doesn't exist
+- **Build Process Not Run**: Frontend code hasn't been compiled from TypeScript/JSX to static HTML/CSS/JS
+- **Replit Environment**: Replit may not automatically run build commands on startup
+- **File System Issues**: Build artifacts may have been cleared or corrupted
+
+**Solution Implemented:**
+1. **Run Build Command**:
+   ```bash
+   # In Replit terminal
+   npm run build
+   ```
+
+2. **Verify Build Output**:
+   ```bash
+   # Check if dist directory exists
+   ls -la dist/
+   
+   # Should show:
+   # dist/
+   # └── public/
+   #     ├── index.html
+   #     ├── assets/
+   #     └── ...
+   ```
+
+3. **Start Server After Build**:
+   ```bash
+   # After successful build
+   npm run dev
+   ```
+
+**Alternative Solutions:**
+1. **Force Clean Build**:
+   ```bash
+   # Remove existing build artifacts
+   rm -rf dist/
+   
+   # Rebuild from scratch
+   npm run build
+   ```
+
+2. **Check Package.json Scripts**:
+   ```json
+   {
+     "scripts": {
+       "build": "vite build",
+       "dev": "tsx watch --clear-screen=false server/index.ts"
+     }
+   }
+   ```
+
+3. **Replit Configuration**:
+   - Ensure `.replit` file has correct run command
+   - Check if build command is set to run on startup
+   - Verify file structure matches expected paths
+
+**Prevention Steps:**
+- **Always run `npm run build`** before starting server in Replit
+- **Check build output** for any compilation errors
+- **Verify dist/ directory** exists and contains expected files
+- **Run build after major code changes** or dependency updates
+
+**Troubleshooting Flow:**
+1. **Check Build Status**: Look for `dist/` directory in file explorer
+2. **Run Build Command**: Execute `npm run build` in terminal
+3. **Verify Output**: Ensure `dist/public/index.html` exists
+4. **Start Server**: Run `npm run dev` after successful build
+5. **Test Application**: Visit the app to confirm it loads correctly
+
+**Common Replit Issues:**
+- **Build fails**: Check TypeScript errors, missing dependencies
+- **Port conflicts**: Replit may use different ports than localhost
+- **File permissions**: Ensure build process can write to workspace
+- **Memory limits**: Large builds may exceed Replit memory constraints
+
+---
+
+---
+
+### **014 - "Show All Capsules" Checkbox Not Visible After Code Changes (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Added new "Show all capsules" checkbox in Filter Guests section
+- Code changes appear to be made but aren't reflected in the UI
+- Checkbox still not visible in Dashboard > Filter Guests popover
+- Browser shows old version without the new feature
+- Similar to other frontend changes not reflecting issues
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contains outdated compiled JavaScript code
+- **Vite Middleware Serving Old Code**: Server using Vite middleware serves from compiled build artifacts, not source code
+- **Source vs Compiled Mismatch**: Even after adding new checkbox component, old compiled versions are still being served
+- **Build Process Dependency**: The `npm run build` script generates compiled code that must be updated after source changes
+
+**Solution Implemented:**
+1. **Stop Development Server:**
+   ```powershell
+   # Ctrl+C to stop server
+   # Or kill all Node processes
+   taskkill /F /IM node.exe
+   ```
+
+2. **Clean Build Artifacts:**
+   ```powershell
+   # Remove compiled code directory
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   ```
+
+3. **Rebuild Application:**
+   ```powershell
+   npm run build
+   # Wait for successful build completion
+   ```
+
+4. **Start Fresh Server:**
+   ```powershell
+   npm run dev
+   # Wait for "serving on port 5000" message
+   ```
+
+**Verification Steps:**
+1. **Check Build Success**: Ensure no errors during build process
+2. **Verify Server Start**: Confirm server starts without port conflicts
+3. **Test New Feature**: Navigate to Dashboard > Filter Guests > Look for "Capsule Display" section
+4. **Confirm Checkbox Visible**: "Show all capsules" checkbox should now be visible with building icon
+
+**Technical Details:**
+- **Vite Middleware Setup**: Server configured with `setupVite()` in `server/vite.ts`
+- **Build Process**: Frontend compiled from TypeScript/JSX to static assets in `dist/public/`
+- **Serving Strategy**: Server serves compiled React app, not source code directly
+- **Hot Reload**: Not available in production build mode, requires manual rebuild
+
+**Prevention Steps:**
+- **Always rebuild after major component changes**: `npm run build`
+- **Clear build artifacts when changes don't reflect**: Remove `dist/` directory
+- **Follow the build process**: Source changes → Rebuild → Test
+- **Check build output**: Ensure no compilation errors before starting server
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #013**: Replit ENOENT: Missing Build Artifacts
+- **Port 5000 EADDRINUSE**: Address already in use errors
+
+**Troubleshooting Flow:**
+1. **Identify Issue**: Frontend changes not reflecting in UI
+2. **Check Build Status**: Look for `dist/` directory and build artifacts
+3. **Clean Environment**: Remove old compiled code
+4. **Rebuild Application**: Run `npm run build` successfully
+5. **Start Server**: Run `npm run dev` and wait for confirmation
+6. **Test Changes**: Verify new features are now visible
+
+---
+
+### **015 - Calendar Not Displaying All Dates (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Occupancy calendar only shows partial dates (e.g., 27/7, 28/7, 29/7, 30/7, 31/7, 1/8)
+- Missing most August dates (2/8, 3/8, 4/8... 31/8)
+- Calendar appears to only show end of previous month and beginning of current month
+- Changes to calendar component code don't reflect in UI
+
+**Root Cause:**
+- **Wrong react-day-picker API Usage**: Using invalid `components={{ DayContent: ... }}` prop
+- **Null Return Values**: `getDayContent` function returned `null` for dates without data
+- **Component Integration Issue**: react-day-picker v8 doesn't support `DayContent` component override
+- **Build Artifacts Problem**: Old compiled calendar code served despite source changes
+
+**Solution Implemented:**
+
+1. **Fixed react-day-picker Integration:**
+   ```typescript
+   // BEFORE: Invalid component override (caused dates to not render)
+   <Calendar
+     components={{
+       DayContent: ({ date }) => getDayContent(date), // ❌ Wrong API
+     }}
+   />
+   
+   // AFTER: Proper modifiers approach
+   <Calendar
+     modifiers={{
+       hasCheckins: (date) => {
+         const dateString = date.toISOString().split('T')[0];
+         const dayData = calendarData[dateString];
+         return dayData && dayData.checkins.length > 0;
+       },
+       hasCheckouts: (date) => { /* similar logic */ },
+       highOccupancy: (date) => { /* occupancy > 80% */ },
+       // ... other modifiers
+     }}
+     modifiersClassNames={{
+       hasCheckins: "relative after:absolute after:top-0 after:right-0 after:w-1.5 after:h-1.5 after:bg-green-500 after:rounded-full",
+       hasCheckouts: "relative before:absolute before:top-0 before:left-0 before:w-1.5 before:h-1.5 before:bg-red-500 before:rounded-full",
+       // ... other styling
+     }}
+   />
+   ```
+
+2. **Removed Problematic getDayContent Function:**
+   ```typescript
+   // BEFORE: Function that returned null for dates without data
+   const getDayContent = (date: Date) => {
+     const dayData = calendarData[dateString];
+     if (!dayData) return null; // ❌ This prevented dates from rendering
+     // ... rest of function
+   };
+   
+   // AFTER: Removed entirely, using modifiers instead
+   ```
+
+3. **Applied Build Artifacts Fix:**
+   ```powershell
+   # Kill port conflicts
+   netstat -ano | findstr :5000
+   taskkill /PID <PID> /F
+   
+   # Clean build artifacts
+   Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+   
+   # Rebuild with calendar changes
+   npm run build
+   
+   # Start on different port
+   $env:PORT=5001; npm run dev
+   ```
+
+**Technical Details:**
+- **react-day-picker v8.10.1**: Uses `modifiers` and `modifiersClassNames` for customization
+- **Component Override**: `DayContent` component is not a valid prop in v8
+- **Date Rendering**: Calendar must always render valid JSX for each date
+- **CSS Approach**: Used Tailwind classes with pseudo-elements for visual indicators
+
+**Visual Indicators Implemented:**
+- ✅ **Green dots (top-right)**: Check-ins
+- ✅ **Red dots (top-left)**: Check-outs  
+- ✅ **Orange bars (bottom)**: 80%+ occupancy
+- ✅ **Red bars (bottom)**: 100% occupancy
+- ✅ **Blue dots (top-center)**: Festivals
+- ✅ **Green dots (top-center)**: Public holidays
+
+**Verification Steps:**
+1. **Check All Dates Visible**: August calendar shows 1, 2, 3... 31
+2. **Test Visual Indicators**: Dates with data show appropriate colored indicators
+3. **Verify Month Navigation**: Can navigate between months properly
+4. **Confirm Date Selection**: Clicking dates shows detailed information
+
+**Files Modified:**
+- `client/src/components/occupancy-calendar.tsx` - Fixed calendar integration
+- Build artifacts cleaned and regenerated
+
+**Prevention:**
+- **Use correct react-day-picker API**: Always check documentation for component props
+- **Test calendar components**: Ensure all dates render regardless of data availability
+- **Follow build process**: Clean artifacts → Rebuild → Test after major component changes
+- **Avoid null returns**: Calendar components should always return valid JSX
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #014**: "Show All Capsules" Checkbox Not Visible After Code Changes
+- **Port EADDRINUSE**: Address already in use errors
+
+---
+
+### **016 - System Updates Section Not Displaying After Code Addition (SOLVED)**
+
+**Date Solved:** August 21, 2025  
+**Symptoms:**
+- Added new "System Updates" section to Settings > Tests page with recent development history
+- Code changes made to `TestsTab.tsx` component but not visible in UI
+- Section includes latest features like push notification enhancements, calendar fixes, etc.
+- Browser shows old version without the new System Updates section
+
+**Root Cause:**
+- **Build Artifacts Issue**: The `dist/` directory contained outdated

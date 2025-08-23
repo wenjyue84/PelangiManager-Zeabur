@@ -1,6 +1,6 @@
 import { getServerEnvironment } from "../../shared/utils";
 
-export type DatabaseType = 'memory' | 'docker' | 'replit';
+export type DatabaseType = 'memory' | 'database';
 
 export interface DatabaseConfig {
   type: DatabaseType;
@@ -15,16 +15,11 @@ export const DATABASE_CONFIGS: Record<DatabaseType, DatabaseConfig> = {
     type: 'memory',
     label: 'Memory',
   },
-  docker: {
-    type: 'docker',
-    url: 'postgresql://pelangi_user:pelangi_password@localhost:5432/pelangi_manager',
-    label: 'Docker DB',
-  },
-  replit: {
-    type: 'replit',
-    url: process.env.DATABASE_URL || process.env.PRIVATE_DATABASE_URL,
-    label: process.env.DATABASE_URL?.includes('neon.tech') ? 'Replit DB (Neon)' : 'Replit DB',
-    // Add Neon-specific optimizations
+  database: {
+    type: 'database',
+    url: process.env.DATABASE_URL,
+    label: 'Database',
+    // Check if this is a Neon database for Replit
     ssl: process.env.DATABASE_URL?.includes('neon.tech') ? 'require' : undefined,
     neonOptimized: process.env.DATABASE_URL?.includes('neon.tech') || false,
   },
@@ -38,14 +33,12 @@ export function getDatabaseConfig(): DatabaseConfig {
     return DATABASE_CONFIGS[selectedType];
   }
   
-  // Auto-detect based on environment using centralized utility
-  const env = getServerEnvironment();
-  
-  if (env.isDocker) {
-    return DATABASE_CONFIGS.docker;
-  } else if (env.isReplit) {
-    return DATABASE_CONFIGS.replit;
+  // SIMPLE: Auto-detect based on environment
+  if (process.env.DATABASE_URL) {
+    // SIMPLE: Any DATABASE_URL = database
+    return DATABASE_CONFIGS.database;
   } else {
+    // SIMPLE: No DATABASE_URL = memory
     return DATABASE_CONFIGS.memory;
   }
 }
@@ -53,13 +46,12 @@ export function getDatabaseConfig(): DatabaseConfig {
 export function setDatabaseType(type: DatabaseType): void {
   process.env.PELANGI_DB_TYPE = type;
   
-  // Update DATABASE_URL based on selection
-  if (type === 'docker') {
-    process.env.DATABASE_URL = DATABASE_CONFIGS.docker.url;
-  } else if (type === 'replit') {
-    process.env.DATABASE_URL = DATABASE_CONFIGS.replit.url || '';
+  if (type === 'database') {
+    // Keep existing DATABASE_URL
+    console.log('✅ Database mode enabled');
   } else {
     // Memory - remove DATABASE_URL to trigger in-memory storage
     delete process.env.DATABASE_URL;
+    console.log('✅ Memory storage mode enabled');
   }
 }

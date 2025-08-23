@@ -4,7 +4,7 @@ import { IStorage } from "./IStorage";
 import { MigrationHelper } from "./MigrationHelper";
 
 /**
- * Storage Factory - Automatically chooses storage implementation based on environment
+ * Storage Factory - SIMPLIFIED!
  * Uses DatabaseStorage if DATABASE_URL is set, falls back to MemStorage otherwise
  * Includes automatic migration handling for schema changes
  */
@@ -12,7 +12,7 @@ export function createStorage(): IStorage {
   try {
     if (process.env.DATABASE_URL) {
       const storage = new DatabaseStorage();
-      console.log(`✅ Using database storage (${process.env.DATABASE_URL.includes('localhost') ? 'Docker' : 'Cloud'})`);
+      console.log(`✅ Using database storage`);
       return storage;
     } else {
       const storage = new MemStorage();

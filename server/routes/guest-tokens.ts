@@ -115,12 +115,15 @@ router.post("/",
     
     const createdToken = await storage.createGuestToken({
       token: guestToken.token,
-      createdBy: 'system',
+      createdBy: req.user.id,  // ✅ FIXED: Use authenticated user ID
       expiresAt: guestToken.expiresAt,
       capsuleNumber: guestToken.capsuleNumber,
+      autoAssign: validatedData.autoAssign || false,
+      guestName: guestToken.guestName,
+      phoneNumber: guestToken.phoneNumber,
       email: guestToken.email,
+      expectedCheckoutDate: guestToken.expectedCheckoutDate,
       createdAt: guestToken.createdAt,
-      usedAt: guestToken.usedAt
     });
     
     // Generate the check-in link
@@ -309,6 +312,56 @@ router.delete("/cleanup", authenticateToken, async (req: any, res) => {
   } catch (error) {
     console.error("Error cleaning up expired tokens:", error);
     res.status(500).json({ message: "Failed to cleanup expired tokens" });
+  }
+});
+
+// Delete guest token
+router.delete("/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Delete the token directly by ID
+    // The deleteGuestToken method will handle finding the token by ID
+    const deleted = await storage.deleteGuestToken(id);
+    
+    if (!deleted) {
+      return res.status(404).json({ message: "Guest token not found" });
+    }
+    
+    res.json({ message: "Guest token deleted successfully" });
+  } catch (error: any) {
+    console.error("Error deleting guest token:", error);
+    res.status(500).json({ message: error.message || "Failed to delete guest token" });
+  }
+});
+
+// Cancel pending guest check-in
+router.patch("/:id/cancel", authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    // Get the guest token to check if it exists and is not used
+    const guestToken = await storage.getGuestToken(id);
+    if (!guestToken) {
+      return res.status(404).json({ message: "Guest check-in not found" });
+    }
+    
+    if (guestToken.isUsed) {
+      return res.status(400).json({ message: "Cannot cancel already used check-in" });
+    }
+    
+    // Mark token as cancelled (we'll use isUsed field for this)
+    const updated = await storage.markTokenAsUsed(id);
+    
+    if (!updated) {
+      return res.status(400).json({ message: "Failed to cancel check-in" });
+    }
+    
+    res.json({ message: "Check-in cancelled successfully" });
+  } catch (error: any) {
+    console.error("Error cancelling guest check-in:", error);
+    res.status(400).json({ message: error.message || "Failed to cancel check-in" });
   }
 });
 

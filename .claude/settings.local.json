@@ -53,7 +53,8 @@
       "WebFetch(domain:localhost)",
       "Bash(Gemini:*)",
       "Bash(title \"Add Photo Display to Guest Details\")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(echo:*)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

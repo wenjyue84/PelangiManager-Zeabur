@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Link2, Copy, Clock, MapPin, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import type { Capsule } from "@shared/schema";
 
@@ -104,10 +105,14 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       onTokenCreated?.();
     },
     onError: (error: any) => {
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create check-in link",
-        variant: "destructive",
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 8000, // Longer duration for detailed errors
       });
     },
   });
@@ -139,10 +144,14 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       onTokenCreated?.();
     },
     onError: (error: any) => {
+      const detailedError = extractDetailedError(error);
+      const toastOptions = createErrorToast(detailedError);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create instant check-in link",
-        variant: "destructive",
+        title: toastOptions.title,
+        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
+        variant: toastOptions.variant,
+        duration: 8000, // Longer duration for detailed errors
       });
     },
   });
@@ -224,11 +233,22 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
           </TooltipContent>
         </Tooltip>
       
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          console.log('Dialog state changing:', open);
+          setIsDialogOpen(open);
+        }}>
           <DialogTrigger asChild>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    console.log('Create Link button clicked');
+                    setIsDialogOpen(true);
+                  }}
+                >
                   <Link2 className="h-4 w-4" />
                   Create Link
                 </Button>

@@ -1,9 +1,9 @@
 # Pelangi Manager Setup Guide
 
 ## Overview
-Pelangi Manager is a full-stack capsule hostel management system with automatic storage selection:
+Pelangi Manager is a full-stack capsule hostel management system with **SIMPLE** storage selection:
 - **Local Development**: Uses in-memory storage (no database setup required)
-- **Replit Production**: Uses Neon database with full data persistence
+- **Production**: Uses database if `DATABASE_URL` is set, otherwise falls back to memory
 
 ## Quick Start
 
@@ -21,24 +21,16 @@ The server will start on `http://localhost:5000` and automatically use in-memory
 
 ## Storage System Architecture
 
-The system automatically chooses storage based on environment:
+**SIMPLE RULE:** The system automatically chooses storage based on one environment variable:
 
 ```typescript
-// Automatically choose storage based on environment
-let storage: MemStorage | DatabaseStorage;
-
-try {
-  if (process.env.DATABASE_URL) {
-    storage = new DatabaseStorage();
-    console.log("✅ Using database storage");
-  } else {
-    storage = new MemStorage();
-    console.log("✅ Using in-memory storage (no DATABASE_URL set)");
-  }
-} catch (error) {
-  console.warn("⚠️ Database connection failed, falling back to in-memory storage:", error);
+// SIMPLE: Just check if DATABASE_URL exists
+if (process.env.DATABASE_URL) {
+  storage = new DatabaseStorage();
+  console.log("✅ Using database storage");
+} else {
   storage = new MemStorage();
-  console.log("✅ Using in-memory storage as fallback");
+  console.log("✅ Using in-memory storage");
 }
 ```
 
@@ -56,111 +48,40 @@ try {
 
 ### What Happens
 - No `DATABASE_URL` environment variable = Uses `MemStorage`
-- Sample data is automatically initialized (capsules, guests, users)
+- Sample data is automatically initialized
 - All functionality works with in-memory data
 - Data resets on each server restart
 
-## Replit Deployment Setup
+## Production Deployment
 
-### Prerequisites
-- Replit account
-- Neon database (or any PostgreSQL database)
-
-### Environment Variables Required
-Set these in Replit's Secrets (Tools → Secrets):
-
+### Option 1: Use Database
+Set environment variable:
 ```bash
 DATABASE_URL=postgresql://username:password@host:port/database
 ```
 
-### Steps
-1. Import your project to Replit
-2. Set `DATABASE_URL` in Replit Secrets
-3. Run `npm install`
-4. Start with `npm run dev` or `npm start`
+### Option 2: Use Memory (Simple)
+Don't set `DATABASE_URL` - system will use in-memory storage.
 
-### What Happens
-- `DATABASE_URL` detected = Uses `DatabaseStorage`
-- Full database functionality with data persistence
-- Same code, different storage backend
-- All data is saved and persists between deployments
+## Replit Deployment
 
-## Database Schema Setup
-
-If using a fresh database, run migrations:
-
+Set `DATABASE_URL` in Replit's Secrets (Tools → Secrets):
 ```bash
-npm run db:push
+DATABASE_URL=postgresql://username:password@host:port/database
 ```
 
-## Default Users
+## UI Display
 
-The system automatically creates these users:
+The system shows a simple badge in the navigation:
+- 🟠 **Memory** - When using in-memory storage
+- 🔵 **Database** - When using database storage
 
-- **Admin**: `admin` / `admin123`
-- **Staff**: `Jay` / `Jay123`
-- **Staff**: `Le` / `Le123`
-- **Staff**: `Alston` / `Alston123`
+No dropdown, no switching, no complexity - just shows what you're currently using!
 
-## Available Scripts
+## That's It!
 
-```bash
-npm run dev          # Start development server (in-memory storage)
-npm run build        # Build for production
-npm run start        # Start production server
-npm run db:push      # Push database schema changes
-npm run test         # Run tests
-```
+No complex Docker setup, no environment detection confusion. Just:
+- **No DATABASE_URL** = Memory storage
+- **Has DATABASE_URL** = Database storage
 
-## Troubleshooting
-
-### Local Development Issues
-- **Port already in use**: Change port in `server/index.ts` or kill existing process
-- **Storage errors**: Ensure no `DATABASE_URL` is set locally
-
-### Replit Issues
-- **Database connection failed**: Check `DATABASE_URL` in Replit Secrets
-- **Storage not working**: Verify environment variable is set correctly
-- **Build errors**: Check Node.js version compatibility
-
-### Storage Fallback
-If database connection fails, the system automatically falls back to in-memory storage with a warning message.
-
-## Architecture Benefits
-
-✅ **Zero Configuration Local Development**: Just clone and run  
-✅ **Production Ready**: Same codebase works on Replit  
-✅ **Automatic Storage Selection**: No manual configuration needed  
-✅ **Data Persistence**: Full database functionality on Replit  
-✅ **Easy Testing**: In-memory storage for development/testing  
-
-## File Structure
-
-```
-PelangiManager/
-├── client/           # React frontend
-├── server/           # Express backend
-├── shared/           # Shared schemas and utilities
-├── server/storage.ts # Storage system (MemStorage + DatabaseStorage)
-└── SETUP.md         # This file
-```
-
-## Migration Between Environments
-
-### Local → Replit
-1. Set `DATABASE_URL` in Replit
-2. Deploy code (no changes needed)
-3. System automatically switches to database storage
-
-### Replit → Local
-1. Remove `DATABASE_URL` environment variable
-2. System automatically switches to in-memory storage
-3. All functionality remains the same
-
-## Support
-
-For issues or questions:
-1. Check this SETUP.md file
-2. Review console logs for storage selection messages
-3. Verify environment variables are set correctly
-4. Check database connection if using `DatabaseStorage`
+Simple and effective! 🎯

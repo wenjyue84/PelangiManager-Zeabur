@@ -194,7 +194,7 @@ const createDatabaseConnectionError = (endpoint: string): DetailedErrorResponse 
   return {
     message: 'Database Connection Failed',
     details: `Cannot connect to PostgreSQL database. The database server may be offline or unreachable.`,
-    solution: `Check database connection:\n1. Verify PostgreSQL service is running\n2. Check DATABASE_URL environment variable\n3. Verify network connectivity\n4. Switch to Memory DB mode for testing\n5. Restart Docker containers if using Docker`,
+    solution: `Check database connection:\n1. Verify PostgreSQL service is running\n2. Check DATABASE_URL environment variable\n3. Verify network connectivity\n4. Switch to Memory DB mode for testing`,
     endpoint,
     errorCode: ErrorCodes.DATABASE_CONNECTION,
     statusCode: 500

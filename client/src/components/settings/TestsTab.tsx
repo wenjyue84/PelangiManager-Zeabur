@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, TestTube, Trash2, Copy, Check, ChevronDown } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { TestTube, Copy, CheckCircle, XCircle, Clock, Play, Square, ChevronDown } from "lucide-react";
 
 export default function TestsTab() {
   const { toast } = useToast();
@@ -12,6 +13,9 @@ export default function TestsTab() {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [currentTestNumber, setCurrentTestNumber] = useState(0);
+  const [totalTests, setTotalTests] = useState(0);
+  const [testProgressPercent, setTestProgressPercent] = useState(0);
   const [visibleUpdates, setVisibleUpdates] = useState(6);
 
   // System updates data - Real development history from GitHub
@@ -251,21 +255,64 @@ export default function TestsTab() {
       }}
     ];
 
+    // Set up progress tracking
+    setTotalTests(tests.length);
+    setCurrentTestNumber(0);
+    setTestProgressPercent(0);
+
     let passed = 0;
     let failed = 0;
 
-    for (const test of tests) {
+    // Show test count and start message
+    setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] 🧪 Starting ${tests.length} local tests...`]);
+    
+    for (let i = 0; i < tests.length; i++) {
+      const test = tests[i];
+      const testNumber = i + 1;
+      
+      // Update progress state
+      setCurrentTestNumber(testNumber);
+      setTestProgressPercent((testNumber / tests.length) * 100);
+      
+      // Show test starting
+      setTestProgress(`Running test ${testNumber}/${tests.length}: ${test.name}`);
+      setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${testNumber}. 🔄 Running: ${test.name}...`]);
+      
+      // Small delay to show the "running" state
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       try {
+        // Run the test
         test.fn();
         passed++;
-        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ✅ ${test.name} - PASSED`]);
-      } catch (error) {
+        
+        // Show test passed with green checkmark
+        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${testNumber}. ✅ ${test.name} - PASSED`]);
+        setTestProgress(`Test ${testNumber}/${tests.length} passed: ${test.name}`);
+        
+        // Update progress in real-time
+        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] 📊 Progress: ${passed} passed, ${failed} failed, ${testNumber}/${tests.length} completed`]);
+        
+      } catch (error: any) {
         failed++;
-        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ❌ ${test.name} - FAILED`]);
+        
+        // Show test failed with red X
+        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${testNumber}. ❌ ${test.name} - FAILED: ${error.message}`]);
+        setTestProgress(`Test ${testNumber}/${tests.length} failed: ${test.name}`);
+        
+        // Update progress in real-time
+        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] 📊 Progress: ${passed} passed, ${failed} failed, ${testNumber}/${tests.length} completed`]);
       }
-      // Small delay to show progress
-      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Longer delay between tests so user can see progress
+      if (i < tests.length - 1) { // Don't delay after the last test
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
     }
+
+    // Show final summary
+    setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] 🎯 All tests completed!`]);
+    setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] 📊 Final Results: ${passed} passed, ${failed} failed, ${tests.length} total`]);
 
     return { passed, failed, total: tests.length };
   };
@@ -277,6 +324,10 @@ export default function TestsTab() {
       setTestProgress('Starting test runner...');
       setStartTime(new Date());
       setElapsedTime(0);
+      resetProgress();
+
+      // Note: This function includes browser compatibility fallback for AbortSignal.timeout()
+      // Modern browsers use AbortSignal.timeout(), older browsers use manual AbortController
 
       // Add some progress steps to show user something is happening
       const progressSteps = [
@@ -288,29 +339,65 @@ export default function TestsTab() {
         'Processing test results...'
       ];
 
-      // Simulate progress updates during the first few seconds
-      progressSteps.forEach((step, index) => {
-        setTimeout(() => {
-          if (isRunning) {
-            setTestProgress(step);
-            setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${step}`]);
-          }
-        }, index * 1000);
-      });
+      // Set up progress tracking for server steps
+      setTotalTests(progressSteps.length);
+      setCurrentTestNumber(0);
+      setTestProgressPercent(0);
+
+      // Show progress steps with real-time updates
+      for (let i = 0; i < progressSteps.length; i++) {
+        const step = progressSteps[i];
+        const stepNumber = i + 1;
+        
+        // Update progress state
+        setCurrentTestNumber(stepNumber);
+        setTestProgressPercent((stepNumber / progressSteps.length) * 100);
+        
+        setTestProgress(step);
+        setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${step}`]);
+        
+        // Wait between steps to show progress
+        if (i < progressSteps.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
 
       let serverResponse = null;
       let serverError = null;
 
       // Try to connect to server first
       try {
-        const res = await fetch(`/api/tests/run?watch=${watch ? '1' : '0'}`, { 
-          method: 'POST',
-          headers: {
-            'Accept': 'text/plain',
-            'Content-Type': 'application/json',
-          },
-          signal: AbortSignal.timeout(15000), // 15 second timeout to match server
-        });
+        // Create AbortController with timeout fallback for older browsers
+        let res: Response;
+        
+        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+          // Modern browsers - use AbortSignal.timeout
+          res = await fetch(`/api/tests/run?watch=${watch ? '1' : '0'}`, { 
+            method: 'POST',
+            headers: {
+              'Accept': 'text/plain',
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(15000), // 15 second timeout to match server
+          });
+        } else {
+          // Fallback for older browsers - use manual timeout with AbortController
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => abortController.abort(), 15000);
+          
+          try {
+            res = await fetch(`/api/tests/run?watch=${watch ? '1' : '0'}`, { 
+              method: 'POST',
+              headers: {
+                'Accept': 'text/plain',
+                'Content-Type': 'application/json',
+              },
+              signal: abortController.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        }
         
         const text = await res.text();
         serverResponse = { ok: res.ok, text, status: res.status };
@@ -321,6 +408,25 @@ export default function TestsTab() {
 
       // Wait for progress steps to complete (server takes ~13 seconds)
       await new Promise(resolve => setTimeout(resolve, 6000));
+      
+      // Show waiting for server response with real-time dots
+      setTestProgress('Waiting for server response...');
+      setTestOutput(prev => [...prev, `[${new Date().toLocaleTimeString()}] ⏳ Waiting for server response...`]);
+      
+      // Set up progress tracking for waiting phase
+      setTotalTests(6); // 6 dots
+      setCurrentTestNumber(0);
+      setTestProgressPercent(0);
+      
+      // Show progress dots while waiting
+      let dots = '';
+      for (let i = 0; i < 6; i++) {
+        dots += '.';
+        setCurrentTestNumber(i + 1);
+        setTestProgressPercent(((i + 1) / 6) * 100);
+        setTestProgress(`Waiting for server response${dots}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
 
       if (serverResponse) {
         // Server responded successfully
@@ -346,9 +452,25 @@ export default function TestsTab() {
       } else {
         // Server failed, run local tests as fallback
         setTestProgress('Server unavailable - Running local test suite...');
+        
+        // Provide more helpful error message based on error type
+        let errorMessage = serverError?.message || 'Unknown error';
+        let fallbackReason = 'Server unavailable';
+        
+        if (errorMessage.includes('Failed to fetch')) {
+          if (typeof AbortSignal === 'undefined' || !AbortSignal.timeout) {
+            fallbackReason = 'Browser compatibility issue detected';
+            errorMessage = 'Browser does not support AbortSignal.timeout()';
+          } else {
+            fallbackReason = 'Network connection issue';
+          }
+        } else if (errorMessage.includes('timeout')) {
+          fallbackReason = 'Request timed out';
+        }
+        
         setTestOutput(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] ⚠️ Server connection failed: ${serverError?.message || 'Unknown error'}`,
+          `[${new Date().toLocaleTimeString()}] ⚠️ ${fallbackReason}: ${errorMessage}`,
           `[${new Date().toLocaleTimeString()}] 🔄 Falling back to local test runner...`
         ]);
 
@@ -365,7 +487,7 @@ export default function TestsTab() {
         
         toast({ 
           title: results.failed === 0 ? 'Tests completed successfully' : 'Some tests failed', 
-          description: `Local tests: ${results.passed}/${results.total} passed (server unavailable)`,
+          description: `Local tests: ${results.passed}/${results.total} passed (${fallbackReason.toLowerCase()})`,
           variant: results.failed === 0 ? 'default' : 'destructive'
         });
       }
@@ -403,6 +525,15 @@ export default function TestsTab() {
     setElapsedTime(0);
     setStartTime(null);
     setCopied(false);
+    setCurrentTestNumber(0);
+    setTotalTests(0);
+    setTestProgressPercent(0);
+  };
+
+  const resetProgress = () => {
+    setCurrentTestNumber(0);
+    setTotalTests(0);
+    setTestProgressPercent(0);
   };
 
   const copyToClipboard = async () => {
@@ -467,26 +598,32 @@ export default function TestsTab() {
             )}
           </Button>
           <Button variant="ghost" onClick={clearOutput} disabled={isRunning} className="flex items-center gap-2">
-            <Trash2 className="h-4 w-4" />
+            <Square className="h-4 w-4" />
             Clear Output
           </Button>
         </div>
 
-        {/* Progress indicator */}
-        {isRunning && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-blue-700">{testProgress}</span>
-              </div>
-              <div className="text-xs text-gray-500">
-                Elapsed: {elapsedTime}s
-              </div>
+        {/* Test Progress Display */}
+        {testProgress && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Clock className="h-4 w-4" />
+              {testProgress}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
-            </div>
+            {totalTests > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Test Progress</span>
+                  <span>{currentTestNumber} / {totalTests}</span>
+                </div>
+                <Progress value={testProgressPercent} className="h-2" />
+                {elapsedTime > 0 && (
+                  <div className="text-xs text-gray-500 text-right">
+                    Elapsed: {elapsedTime}s
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -503,7 +640,7 @@ export default function TestsTab() {
               >
                 {copied ? (
                   <>
-                    <Check className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                     Copied
                   </>
                 ) : (
