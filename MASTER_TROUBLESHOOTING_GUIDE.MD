@@ -75,6 +75,74 @@ Fixed TypeScript error in `server/Storage/DatabaseStorage.ts` line 504:
 
 ---
 
+## Cancel Button Authentication Error "Failed to cancel pending check-in" (August 23, 2025)
+
+### Problem Description
+Cancel button for pending check-ins in Dashboard shows generic error "Failed to cancel pending check-in" instead of working or providing clear error messages. Issue occurs when user accesses dashboard in unauthenticated mode but attempts authenticated operations.
+
+### Root Cause Analysis
+1. **Unauthenticated Dashboard Access**: Dashboard allows emergency access without login (intentional feature)
+2. **Authentication Required Operations**: Cancel functionality requires authentication via `authenticateToken` middleware
+3. **Poor Error Messaging**: Frontend showed generic error instead of clear authentication requirements
+4. **API Response**: Server correctly returned 401 "No token provided" but frontend didn't handle it appropriately
+
+### Error Symptoms
+- "Failed to cancel pending check-in" generic error message
+- Backend DELETE endpoint returns 401 Unauthorized (correct behavior)
+- Frontend not providing clear guidance about authentication requirement
+- API logs show: `DELETE /api/guest-tokens/{id} 401 in 1ms :: {"message":"No token provided"}`
+
+### Solution Steps
+
+#### Step 1: Verify Backend Endpoint Status
+```bash
+# Confirm DELETE endpoint exists and works
+curl -X DELETE "http://localhost:5000/api/guest-tokens/{id}"
+# Should return 401 if not authenticated (correct behavior)
+```
+
+#### Step 2: Enhanced Frontend Error Handling
+Updated `client/src/components/sortable-guest-table.tsx`:
+- Added specific authentication error detection
+- Improved error messages: "Login Required" instead of generic failure
+- Added automatic redirection to login page after authentication errors
+- Enhanced error handling for 401 responses with clear user guidance
+
+#### Step 3: Authentication Flow Verification
+```javascript
+// Check if error message contains authentication info
+if (error?.message?.includes('401:') || error?.message?.includes('No token provided')) {
+  errorTitle = "Login Required";
+  errorDescription = "Please log in to cancel pending check-ins. You'll be redirected to the login page.";
+  
+  // Redirect to login after showing the error
+  setTimeout(() => {
+    setLocation('/login?redirect=' + encodeURIComponent(window.location.pathname));
+  }, 2000);
+}
+```
+
+### Technical Details
+- **Backend Endpoint**: `DELETE /api/guest-tokens/:id` (working correctly)
+- **Authentication**: Uses `authenticateToken` middleware (required for data modification)
+- **Frontend Handling**: Enhanced with specific authentication error detection
+- **User Experience**: Clear messaging and automatic login redirection
+
+### Prevention Measures
+1. **Clear Error Messages**: Always provide specific error messages for authentication issues
+2. **User Guidance**: Include next steps (login redirection) in error messages
+3. **Testing Strategy**: Test authenticated operations in both logged-in and logged-out states
+4. **Emergency Access Documentation**: Clearly document which features require authentication vs emergency access
+
+### Success Indicators
+- ✅ Clear "Login Required" error messages instead of generic failures
+- ✅ Automatic redirection to login page when authentication needed
+- ✅ Backend DELETE endpoint working correctly with proper authentication
+- ✅ User understands why operation failed and what to do next
+- ✅ Proper separation between emergency access (viewing) and authenticated operations (modifications)
+
+---
+
 ## PWA "Your app is starting" Hang Issue (August 19, 2025)
 
 ### Problem Description
