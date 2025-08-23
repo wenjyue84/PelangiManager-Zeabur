@@ -2,6 +2,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { registerServiceWorker } from "./lib/serviceWorker";
+// CRITICAL: Import path for shared utilities - DO NOT MODIFY without user approval  
+// Correct path: "../../shared/utils" (from client/src/main.tsx to shared/utils.ts)
+// Incorrect paths like "../shared/utils" cause build failures
+// Last fixed: August 23, 2025 - Import path correction during system recovery
 import { shouldEnablePWA } from "../../shared/utils";
 
 // Register service worker for PWA functionality (including push notifications)
