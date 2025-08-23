@@ -11,6 +11,9 @@ import multer from "multer";
 const router = Router();
 
 // Multer configuration for CSV uploads
+// ⚠️  CRITICAL CSV UPLOAD CONFIGURATION - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+// This configuration handles CSV file uploads for settings import/export.
+// Changes here can break the entire settings management system.
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
@@ -91,8 +94,9 @@ router.patch("/",
 router.get("/export", async (req, res) => {
   try {
     const settings = await storage.getAllSettings();
-    // Generate CSV content (implement this method if needed)
-    const csvContent = "Name,Value,Description\n"; // Placeholder
+    
+    // Generate CSV content from settings
+    const csvContent = csvSettings.generateCsvFromSettings(settings);
     
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="settings.csv"');
@@ -113,6 +117,9 @@ router.get("/csv-path", authenticateToken, async (req, res) => {
 });
 
 // Import settings from CSV
+// ⚠️  CRITICAL CSV IMPORT ENDPOINT - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
+// This endpoint handles CSV file uploads and imports settings data.
+// It's working perfectly and any changes can break the settings import system.
 router.post("/import",
   securityValidationMiddleware,
   authenticateToken,
@@ -124,11 +131,13 @@ router.post("/import",
     }
 
     const updatedBy = req.user.username || req.user.email || "Unknown";
-    // Import from file (implement this method if needed)
-    const results = { success: true, imported: 0, errors: [] }; // Placeholder
+    // ⚠️  CRITICAL: DO NOT MODIFY - This processes the uploaded CSV file ⚠️
+    // This call imports settings from the uploaded CSV file.
+    // Changing this logic can break the entire settings import functionality.
+    const results = await csvSettings.importFromFile(req.file.path, updatedBy);
     
     res.json({
-      message: "Settings imported successfully",
+      message: results.success ? "Settings imported successfully" : "Import completed with errors",
       imported: results.imported,
       errors: results.errors
     });

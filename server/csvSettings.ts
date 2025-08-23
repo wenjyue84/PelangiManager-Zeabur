@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
+import { storage } from './storage';
 
 export interface CsvSetting {
   key: string;
@@ -172,6 +173,112 @@ export class CsvSettingsManager {
 
   public getFilePath(): string {
     return this.csvFilePath;
+  }
+
+  public generateCsvFromSettings(settings: any[]): string {
+    try {
+      // Convert settings to CSV format
+      const csvData = settings.map(setting => ({
+        key: setting.key || '',
+        value: setting.value || '',
+        description: setting.description || '',
+        updated_by: setting.updated_by || setting.updatedBy || 'system',
+        updated_at: setting.updated_at || setting.updatedAt || new Date().toISOString()
+      }));
+
+      // Generate CSV string
+      const csvString = stringify(csvData, {
+        header: true,
+        columns: ['key', 'value', 'description', 'updated_by', 'updated_at']
+      });
+
+      return csvString;
+    } catch (error) {
+      console.error('❌ Error generating CSV from settings:', error);
+      throw new Error('Failed to generate CSV content');
+    }
+  }
+
+  public async importFromFile(filePath: string, updatedBy: string): Promise<{ success: boolean; imported: number; errors: string[] }> {
+    try {
+      console.log(`📥 Importing settings from CSV file: ${filePath}`);
+      
+      // Read the uploaded CSV file
+      const csvData = fs.readFileSync(filePath, 'utf-8');
+      const records = parse(csvData, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      }) as CsvSetting[];
+
+      let imported = 0;
+      const errors: string[] = [];
+
+      // Process each record
+      for (const record of records) {
+        try {
+          if (!record.key || !record.value) {
+            errors.push(`Invalid record: missing key or value for row ${imported + 1}`);
+            continue;
+          }
+
+          // Update the setting in memory
+          const setting: CsvSetting = {
+            key: record.key.trim(),
+            value: record.value,
+            description: record.description || this.settings.get(record.key)?.description || '',
+            updated_by: updatedBy,
+            updated_at: new Date().toISOString()
+          };
+
+          this.settings.set(setting.key, setting);
+          
+          // Also sync with database storage
+          try {
+            await storage.setSetting(setting.key, setting.value, setting.description, updatedBy);
+            console.log(`💾 Synced setting to database: ${setting.key}`);
+          } catch (dbError) {
+            console.warn(`⚠️ Could not sync setting to database: ${setting.key} - ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
+            errors.push(`Database sync failed for ${setting.key}: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
+          }
+          
+          imported++;
+          
+          console.log(`✅ Imported setting: ${setting.key} = ${setting.value}`);
+        } catch (error) {
+          const errorMsg = `Error processing row ${imported + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          errors.push(errorMsg);
+          console.error(`❌ ${errorMsg}`);
+        }
+      }
+
+      // Save all imported settings to the CSV file
+      if (imported > 0) {
+        this.saveAllSettings();
+        console.log(`💾 Saved ${imported} imported settings to CSV file`);
+      }
+
+      // Clean up the uploaded file
+      try {
+        fs.unlinkSync(filePath);
+        console.log(`🗑️ Cleaned up uploaded file: ${filePath}`);
+      } catch (cleanupError) {
+        console.warn(`⚠️ Could not clean up uploaded file: ${cleanupError}`);
+      }
+
+      return {
+        success: true,
+        imported,
+        errors
+      };
+    } catch (error) {
+      console.error('❌ Error importing CSV file:', error);
+      return {
+        success: false,
+        imported: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error during import']
+      };
+    }
   }
 }
 
