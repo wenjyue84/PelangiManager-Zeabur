@@ -312,6 +312,24 @@ router.post("/checkin/:token",
   }
 });
 
+// Delete individual guest token (for cancelling pending check-ins)
+router.delete("/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    
+    const success = await storage.deleteGuestToken(id);
+    
+    if (!success) {
+      return res.status(404).json({ message: "Guest token not found" });
+    }
+    
+    res.json({ message: "Guest token cancelled successfully" });
+  } catch (error: any) {
+    console.error("Error cancelling guest token:", error);
+    res.status(500).json({ message: "Failed to cancel guest token" });
+  }
+});
+
 // Delete expired tokens (cleanup endpoint)
 router.delete("/cleanup", authenticateToken, async (req: any, res) => {
   try {

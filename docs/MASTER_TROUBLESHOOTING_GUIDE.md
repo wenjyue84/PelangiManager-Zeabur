@@ -2045,3 +2045,85 @@ if (process.env.PRIVATE_OBJECT_DIR) {
 - **Next Review:** When new issues arise
 
 *This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
+
+---
+
+### **020 - "Failed to Cancel Pending Check-in" Error (SOLVED)**
+
+**Date Solved:** January 2025  
+**Symptoms:**
+- Error: "Failed to cancel pending check-in" when clicking Cancel button on pending check-in guests
+- Occurs in Dashboard > Current Guest table for guests with "Pending Check-in" status
+- Frontend shows error toast but no specific error details
+- Cancel button appears but doesn't function properly
+
+**Root Cause:**
+- **Missing Server Endpoint**: The DELETE endpoint `/api/guest-tokens/:id` was not implemented in the server routes
+- **Frontend-Backend Mismatch**: Frontend calls `DELETE /api/guest-tokens/${tokenId}` but server doesn't have this route
+- **Storage Method Exists**: The `deleteGuestToken(id)` method was implemented in storage but not exposed via API
+- **Route Registration Gap**: Guest token routes were missing the individual deletion endpoint
+
+**Solution Implemented:**
+1. **Added Missing DELETE Endpoint** in `server/routes/guest-tokens.ts`:
+   ```typescript
+   // Delete individual guest token (for cancelling pending check-ins)
+   router.delete("/:id", authenticateToken, async (req: any, res) => {
+     try {
+       const { id } = req.params;
+       
+       const success = await storage.deleteGuestToken(id);
+       
+       if (!success) {
+         return res.status(404).json({ message: "Guest token not found" });
+       }
+       
+       res.json({ message: "Guest token cancelled successfully" });
+     } catch (error: any) {
+       console.error("Error cancelling guest token:", error);
+       res.status(500).json({ message: "Failed to cancel guest token" });
+     }
+   });
+   ```
+
+2. **Endpoint Features**:
+   - ✅ **Authentication Required**: Uses `authenticateToken` middleware
+   - ✅ **Proper Error Handling**: Returns 404 if token not found, 500 for server errors
+   - ✅ **Success Response**: Returns confirmation message when token is cancelled
+   - ✅ **Logging**: Logs errors for debugging purposes
+
+**Technical Details:**
+- **Route Pattern**: `DELETE /api/guest-tokens/:id` where `:id` is the guest token UUID
+- **Authentication**: Requires valid user session (admin/staff only)
+- **Storage Integration**: Calls existing `storage.deleteGuestToken(id)` method
+- **Response Format**: JSON with success/error messages and appropriate HTTP status codes
+
+**Files Modified:**
+- `server/routes/guest-tokens.ts` - Added DELETE endpoint for individual guest tokens
+
+**Testing & Verification:**
+1. **Navigate to Dashboard** > Current Guest table
+2. **Find Pending Check-in guest** (orange status with "P" icon)
+3. **Click Cancel button** - should now work without errors
+4. **Success message**: "Pending check-in cancelled successfully" toast should appear
+5. **Guest removed**: Pending check-in should disappear from the table
+
+**Prevention:**
+- **Route Completeness**: Ensure all CRUD operations have corresponding API endpoints
+- **Frontend-Backend Sync**: Verify that frontend API calls match implemented server routes
+- **Testing**: Test all UI actions to ensure they have working backend endpoints
+- **Error Handling**: Implement proper error handling for missing endpoints
+
+**Related Issues:**
+- **Problem #003**: Problem Deletion Shows Success But Doesn't Delete (similar missing DELETE endpoint)
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Route Registration**: Always verify that modular routes are properly registered
+
+**Success Pattern:**
+- ✅ **Identify missing endpoint**: Frontend calls non-existent API route
+- ✅ **Check storage methods**: Verify that required storage methods exist
+- ✅ **Add missing route**: Implement the missing API endpoint
+- ✅ **Test functionality**: Verify that the UI action now works correctly
+
+---
+
+## 🚨 **EMERGENCY RECOVERY PROCEDURE**
