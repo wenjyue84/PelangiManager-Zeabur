@@ -40,6 +40,31 @@ npm run dev
 
 ## 🔧 **ISSUE DATABASE - SOLVED PROBLEMS**
 
+### **020 - Missing Build Artifacts "ENOENT: dist/public/index.html" Error (SOLVED)**
+
+**Date Solved:** August 23, 2025  
+**Symptoms:**
+- Browser shows "ENOENT: no such file or directory, stat 'C:\Users\Jyue\Desktop\PelangiManager\dist\public\index.html'"
+- Application cannot load on localhost:5000 despite server running
+- Missing build artifacts prevent static file serving
+
+**Root Cause:**
+- Application expects built static files in `dist/public/` directory
+- Build process not run after development changes
+- Production routes looking for assets that don't exist
+
+**Solution Applied:**
+1. **Port Cleanup:** `npx kill-port 5000`
+2. **Clean Artifacts:** `rm -rf dist`  
+3. **Build Application:** `npm run build` (creates dist/public/index.html)
+4. **Start Server:** `npm run dev`
+
+**Result:** ✅ **SOLVED** - Application loads successfully on localhost:5000
+
+**Key Learning:** Always run `npm run build` when static file errors occur. Build artifacts are required for proper application serving.
+
+---
+
 ### **019 - CLAUDE.md Restructuring Multiple Attempts Finally Succeeded (SOLVED)**
 
 **Date Solved:** January 2025  

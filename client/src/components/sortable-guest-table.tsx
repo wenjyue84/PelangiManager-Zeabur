@@ -19,9 +19,10 @@ import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import GuestDetailsModal from "./guest-details-modal";
 import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
-import CapsuleChangeDialog from "./CapsuleChangeDialog";
+
 import type { Guest, GuestToken, PaginatedResponse } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -38,6 +39,7 @@ import { SwipeableGuestRow } from "@/components/guest-table/SwipeableGuestRow";
 import { SwipeableGuestCard } from "@/components/guest-table/SwipeableGuestCard";
 import { DesktopRow } from "@/components/guest-table/DesktopRow";
 import { getGuestBalance, isGuestPaid } from "@/lib/guest";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 type SortField = 'name' | 'capsuleNumber' | 'checkinTime' | 'expectedCheckoutDate';
 type SortOrder = 'asc' | 'desc';
@@ -62,7 +64,6 @@ export default function SortableGuestTable() {
   const [undoGuest, setUndoGuest] = useState<Guest | null>(null);
   const [showUndoConfirmation, setShowUndoConfirmation] = useState(false);
   const [capsuleChangeGuest, setCapsuleChangeGuest] = useState<Guest | null>(null);
-  const [isCapsuleChangeOpen, setIsCapsuleChangeOpen] = useState(false);
   const [showAllCapsules, setShowAllCapsules] = useState(false);
   const { toast } = useToast();
 
@@ -120,6 +121,20 @@ export default function SortableGuestTable() {
   }>>({
     queryKey: ["/api/capsules"],
     enabled: showAllCapsules,
+    // Uses smart config: nearRealtime (30s stale, 60s refetch)
+  });
+
+  // Get available capsules for switching
+  const { data: availableCapsules = [] } = useVisibilityQuery<Array<{
+    id: string;
+    number: string;
+    section: string;
+    isAvailable: boolean;
+    cleaningStatus: string;
+    toRent: boolean;
+    position: string | null;
+  }>>({
+    queryKey: ["/api/capsules/available"],
     // Uses smart config: nearRealtime (30s stale, 60s refetch)
   });
   
@@ -352,9 +367,7 @@ export default function SortableGuestTable() {
       const filteredData = previousGuests.data.filter(guest => guest.id !== guestId);
       const updatedGuests = {
         ...previousGuests,
-        data: filteredData,
-        // Update total count if present in paginated response
-        total: previousGuests.total ? Math.max(previousGuests.total - 1, 0) : filteredData.length
+        data: filteredData
       };
       queryClient.setQueryData(["/api/guests/checked-in"], updatedGuests);
       
@@ -612,13 +625,142 @@ export default function SortableGuestTable() {
   };
 
   const handleExtend = (guest: Guest) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to extend guest stays",
+        variant: "destructive",
+      });
+      // Redirect to login with return URL
+      const currentPath = window.location.pathname;
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      return;
+    }
+    
     setExtendGuest(guest);
     setIsExtendOpen(true);
   };
 
-  const handleCapsuleChange = (guest: Guest) => {
-    setCapsuleChangeGuest(guest);
-    setIsCapsuleChangeOpen(true);
+  const handleCapsuleChange = async (guest: Guest, newCapsuleNumber: string) => {
+    if (newCapsuleNumber === guest.capsuleNumber) {
+      return; // No change needed
+    }
+
+    // Check authentication first
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to change capsule assignments",
+        variant: "destructive",
+      });
+      // Redirect to login with return URL
+      const currentPath = window.location.pathname;
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/guests/${guest.id}/capsule`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          capsuleNumber: newCapsuleNumber,
+          reason: 'Capsule change from dashboard'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: "Capsule Changed",
+        description: `${guest.name} moved to capsule ${newCapsuleNumber}`,
+      });
+
+      // Refresh the guest list
+      queryClient.refetchQueries({ queryKey: ["/api/guests/checked-in"] });
+      queryClient.refetchQueries({ queryKey: ["/api/capsules/available"] });
+      queryClient.refetchQueries({ queryKey: ["/api/occupancy"] });
+    } catch (error) {
+      console.error('Error changing capsule:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to change capsule. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Simple capsule selector component
+  const CapsuleSelector = ({ guest }: { guest: Guest }) => {
+    const currentCapsule = guest.capsuleNumber;
+
+    // If not authenticated, show a simple display with login prompt
+    if (!isAuthenticated) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">{currentCapsule}</span>
+          <button
+            onClick={() => {
+              toast({
+                title: "Authentication Required",
+                description: "Please login to change capsule assignments",
+                variant: "destructive",
+              });
+              const currentPath = window.location.pathname;
+              window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+            }}
+            className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+            title="Click to login and change capsule"
+          >
+            Change
+          </button>
+        </div>
+      );
+    }
+
+    // Create options: current capsule + available capsules
+    const capsuleOptions = [
+      { number: currentCapsule, isCurrent: true },
+      ...availableCapsules
+        .filter(c => c.number !== currentCapsule && c.toRent)
+        .map(c => ({ number: c.number, isCurrent: false }))
+    ].sort((a, b) => {
+      // Sort numerically by capsule number
+      const aNum = parseInt(a.number.replace('C', ''));
+      const bNum = parseInt(b.number.replace('C', ''));
+      return aNum - bNum;
+    });
+
+    return (
+      <Select
+        value={currentCapsule}
+        onValueChange={(newCapsule) => handleCapsuleChange(guest, newCapsule)}
+      >
+        <SelectTrigger className="w-16 h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {capsuleOptions.map((option) => (
+            <SelectItem
+              key={option.number}
+              value={option.number}
+              className={option.isCurrent ? "font-medium bg-blue-50" : ""}
+            >
+              {option.number}
+              {option.isCurrent && " (current)"}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
   };
 
   const handleCloseModal = () => {
@@ -938,15 +1080,7 @@ export default function SortableGuestTable() {
                       >
                         {/* Accommodation column - sticky first column */}
                         <td className="px-2 py-3 whitespace-nowrap sticky left-0 bg-white z-10">
-                          <button
-                            onClick={() => handleCapsuleChange(guest)}
-                            className="hover:opacity-80 transition-opacity cursor-pointer"
-                            title={`Click to change ${guest.name}'s capsule assignment`}
-                          >
-                            <Badge variant="outline" className="bg-blue-600 text-white border-blue-600">
-                              {guest.capsuleNumber}
-                            </Badge>
-                          </button>
+                          <CapsuleSelector guest={guest} />
                         </td>
                         {/* Guest column */}
                         <td className="px-2 py-3 whitespace-nowrap">
@@ -1237,13 +1371,7 @@ export default function SortableGuestTable() {
                     <div className="p-3 flex items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleCapsuleChange(guest)}
-                            className="hover:opacity-80 transition-opacity cursor-pointer"
-                            title={`Click to change ${guest.name}'s capsule assignment`}
-                          >
-                            <Badge variant="outline" className="bg-blue-600 text-white border-blue-600">{guest.capsuleNumber}</Badge>
-                          </button>
+                          <CapsuleSelector guest={guest} />
                           <button
                             onClick={() => handleGuestClick(guest)}
                             className={`font-medium hover:underline focus:outline-none ${!isGuestPaid(guest) ? 'text-red-600' : ''}`}
@@ -1432,29 +1560,21 @@ export default function SortableGuestTable() {
 
       {/* Undo Checkout Confirmation Dialog */}
       {undoGuest && (
-        <CheckoutConfirmationDialog
+        <ConfirmationDialog
           open={showUndoConfirmation}
           onOpenChange={setShowUndoConfirmation}
           onConfirm={confirmUndo}
-          guestName={undoGuest.name}
-          capsuleNumber={undoGuest.capsuleNumber}
-          isLoading={undoCheckoutMutation.isPending}
           title="Undo Checkout"
-          message="Are you sure you want to undo check-out for capsule {capsuleNumber} {guestName}?"
+          description={`Are you sure you want to undo check-out for capsule ${undoGuest.capsuleNumber} ${undoGuest.name}?`}
           confirmText="Undo"
-          variant="default"
+          cancelText="Cancel"
+          variant="info"
+          icon={<Undo2 className="h-6 w-6 text-blue-600" />}
+          isLoading={undoCheckoutMutation.isPending}
         />
       )}
 
-      {/* Capsule Change Dialog */}
-      <CapsuleChangeDialog
-        guest={capsuleChangeGuest}
-        isOpen={isCapsuleChangeOpen}
-        onClose={() => {
-          setIsCapsuleChangeOpen(false);
-          setCapsuleChangeGuest(null);
-        }}
-      />
+
     </Card>
   );
 }

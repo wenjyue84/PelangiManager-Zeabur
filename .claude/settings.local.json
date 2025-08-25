@@ -54,7 +54,8 @@
       "Bash(Gemini:*)",
       "Bash(title \"Add Photo Display to Guest Details\")",
       "Bash(powershell:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(claude-code --output-style personal-assistant)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

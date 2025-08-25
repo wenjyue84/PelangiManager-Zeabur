@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { getDefaultCollector } from "@/components/check-in/utils";
 import { getGuestBalance } from "@/lib/guest";
 import { Calendar, CalendarCheck, CalendarPlus, CheckCircle, CreditCard, DollarSign, User as UserIcon, Wallet } from "lucide-react";
+import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 
 interface ExtendStayDialogProps {
   guest: Guest | null;
@@ -58,31 +59,89 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!guest) return;
-      const existingPaid = parseFloat(guest.paymentAmount || "0") || 0;
-      const priceNum = parseFloat(price || "0") || 0;
-      const paidNowNum = parseFloat(paidNow || "0") || 0;
-      const existingOutstanding = getGuestBalance(guest) || 0;
-      const newOutstanding = Math.max(existingOutstanding + priceNum - paidNowNum, 0);
+      if (!guest) {
+        throw new Error("No guest selected for extension");
+      }
 
-      // Merge notes: strip old outstanding marker if present
-      const baseNotes = (guest.notes || "").replace(/Outstanding balance: RM\d+(\.\d{1,2})?/i, "").trim();
-      const mergedNotes = newOutstanding > 0
-        ? (baseNotes ? `${baseNotes}. ` : "") + `Outstanding balance: RM${newOutstanding.toFixed(2)}`
-        : (baseNotes || null);
+      try {
+        const existingPaid = parseFloat(guest.paymentAmount || "0") || 0;
+        const priceNum = parseFloat(price || "0") || 0;
+        const paidNowNum = parseFloat(paidNow || "0") || 0;
+        const existingOutstanding = getGuestBalance(guest) || 0;
+        const newOutstanding = Math.max(existingOutstanding + priceNum - paidNowNum, 0);
 
-      const updates: Partial<Guest> = {
-        expectedCheckoutDate: computedNewCheckout,
-        // Increase cumulative paid amount when recording a new payment
-        ...(paidNow !== "" ? { paymentAmount: (existingPaid + paidNowNum).toFixed(2) } : {}),
-        // Auto-set paid flag based on computed outstanding unless user overrides later
-        isPaid: newOutstanding === 0,
-        paymentMethod: paymentMethod as any,
-        ...(collector ? { paymentCollector: collector } : {}),
-        ...(mergedNotes !== undefined ? { notes: mergedNotes as any } : {}),
-      };
-      const res = await apiRequest("PATCH", `/api/guests/${guest.id}`, updates);
-      return res.json();
+        // Merge notes: strip old outstanding marker if present
+        const baseNotes = (guest.notes || "").replace(/Outstanding balance: RM\d+(\.\d{1,2})?/i, "").trim();
+        const mergedNotes = newOutstanding > 0
+          ? (baseNotes ? `${baseNotes}. ` : "") + `Outstanding balance: RM${newOutstanding.toFixed(2)}`
+          : baseNotes || ""; // Ensure it's always a string, never null
+
+        const updates: Partial<Guest> = {
+          id: guest.id, // Include the guest ID
+          expectedCheckoutDate: computedNewCheckout,
+          // Increase cumulative paid amount when recording a new payment
+          ...(paidNow !== "" ? { paymentAmount: (existingPaid + paidNowNum).toFixed(2) } : {}),
+          // Auto-set paid flag based on computed outstanding unless user overrides later
+          isPaid: newOutstanding === 0,
+          paymentMethod: paymentMethod as any,
+          ...(collector ? { paymentCollector: collector } : {}),
+          notes: mergedNotes, // Always set notes to a string
+        };
+
+        console.log('Sending PATCH request to extend stay:', {
+          endpoint: `/api/guests/${guest.id}`,
+          updates,
+          guestId: guest.id
+        });
+
+        const res = await apiRequest("PATCH", `/api/guests/${guest.id}`, updates);
+        
+        if (!res.ok) {
+          let errorText = await res.text();
+          let errorDetails = "";
+          
+          try {
+            // Try to parse as JSON for better error details
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.message) {
+              errorText = errorJson.message;
+            }
+            if (errorJson.details && Array.isArray(errorJson.details)) {
+              errorDetails = errorJson.details.map((detail: any) => 
+                `• ${detail.field}: ${detail.message}`
+              ).join('\n');
+            }
+          } catch {
+            // If not JSON, use the raw text
+          }
+          
+          console.error('Server responded with error:', {
+            status: res.status,
+            statusText: res.statusText,
+            response: errorText,
+            details: errorDetails
+          });
+          
+          // Create a more informative error message
+          let errorMessage = `HTTP ${res.status}: ${errorText}`;
+          if (errorDetails) {
+            errorMessage += `\n\nValidation Errors:\n${errorDetails}`;
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error('Error in extend stay mutation:', error);
+        
+        // Re-throw with more context
+        if (error instanceof Error) {
+          throw new Error(`Extend stay failed: ${error.message}`);
+        } else {
+          throw new Error(`Extend stay failed: ${String(error)}`);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guests/checked-in"] });
@@ -97,19 +156,102 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
       setPaymentMethod("cash");
       setCollector("");
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to extend stay", variant: "destructive" });
+    onError: (error) => {
+      const detailedError = extractDetailedError(error);
+      const errorToast = createErrorToast(detailedError);
+      
+      // Show the main error toast
+      toast({
+        title: errorToast.title,
+        description: errorToast.description,
+        variant: errorToast.variant
+      });
+      
+      // Log detailed debug info to console for developers
+      if (errorToast.debugDetails) {
+        console.error('Extend Stay Error Details:', errorToast.debugDetails);
+        console.error('Full Error Object:', error);
+      }
     }
   });
 
   const submit = () => {
-    if (!guest) return;
+    if (!guest) {
+      toast({ 
+        title: "Error", 
+        description: "No guest selected for extension", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate guest object has required fields
+    if (!guest.id) {
+      toast({ 
+        title: "Error", 
+        description: "Guest ID is missing. Please refresh the page and try again.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!price || parseFloat(price) <= 0) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please enter a valid amount for new charges (must be greater than RM 0.00)", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (!days || days <= 0) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please select a valid duration (must be at least 1 day)", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (!computedNewCheckout) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Unable to calculate new checkout date. Please check the duration and current checkout date.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Log the data being sent for debugging
+    console.log('Extending stay with data:', {
+      guestId: guest.id,
+      guestName: guest.name,
+      capsuleNumber: guest.capsuleNumber,
+      currentCheckout: guest.expectedCheckoutDate,
+      newCheckout: computedNewCheckout,
+      days,
+      price,
+      paidNow,
+      paymentMethod,
+      collector,
+      guestObject: guest // Log the full guest object for debugging
+    });
+
     mutation.mutate();
   };
+
+  // Auto-sync paidNow with price when price changes
+  useEffect(() => {
+    if (price) {
+      setPaidNow(price);
+    }
+  }, [price]);
 
   useEffect(() => {
     if (open) {
       setCollector(getDefaultCollector(user));
+      setPaidNow(""); // Reset to allow auto-sync
     }
   }, [open, user]);
 
@@ -133,66 +275,89 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3 items-end">
-            <div className="col-span-2">
+            {/* Duration Section - Redesigned */}
+            <div className="space-y-3">
               <Label className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" /> Duration
               </Label>
-              <div className="flex gap-2 mt-1">
-                <Select onValueChange={(v) => setDays(parseInt(v))}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Preset" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {presetOptions.map(opt => (
-                      <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              
+              {/* Preset Duration Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {presetOptions.map(opt => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    variant={days === opt.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDays(opt.value)}
+                    className="min-w-[80px]"
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+              
+              {/* Custom Duration Input */}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="custom-days" className="text-sm text-gray-600 min-w-[60px]">
+                  Custom:
+                </Label>
                 <Input
+                  id="custom-days"
                   type="number"
                   min={1}
-                  value={Number.isFinite(days) ? String(days) : ''}
-                  onChange={(e) => setDays(Math.max(1, parseInt(e.target.value || '1')))}
-                  placeholder="Days"
+                  max={365}
+                  value={days}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setDays(Math.max(1, Math.min(365, value)));
+                  }}
                   className="w-24"
+                  placeholder="Days"
                 />
+                <span className="text-sm text-gray-500">days</span>
               </div>
             </div>
-            <div>
-              <Label className="flex items-center gap-1">
-                <CalendarCheck className="h-4 w-4" /> New checkout
-              </Label>
-              <div className="mt-2 text-sm font-medium">{computedNewCheckout || '—'}</div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4" /> New charges (RM)
+            {/* New Checkout Display */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <Label className="flex items-center gap-1 text-blue-800">
+                <CalendarCheck className="h-4 w-4" /> New checkout date
               </Label>
-              <Input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="e.g. 45.00"
-                inputMode="decimal"
-                className="mt-1"
-              />
+              <div className="mt-1 text-lg font-semibold text-blue-900">
+                {computedNewCheckout || '—'}
+              </div>
             </div>
-            <div>
-              <Label className="flex items-center gap-1">
-                <Wallet className="h-4 w-4" /> Paid now (RM)
-              </Label>
-              <Input
-                value={paidNow}
-                onChange={(e) => setPaidNow(e.target.value)}
-                placeholder="e.g. 45.00"
-                inputMode="decimal"
-                className="mt-1"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="flex items-center gap-1">
+                  <DollarSign className="h-4 w-4" /> New charges (RM)
+                </Label>
+                <Input
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="e.g. 45.00"
+                  inputMode="decimal"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="flex items-center gap-1">
+                  <Wallet className="h-4 w-4" /> Paid now (RM)
+                </Label>
+                <Input
+                  value={paidNow}
+                  onChange={(e) => setPaidNow(e.target.value)}
+                  placeholder="e.g. 45.00"
+                  inputMode="decimal"
+                  className="mt-1"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  {paidNow === price ? "✓ Auto-synced with charges" : "Can be overridden"}
+                </div>
+              </div>
             </div>
-          </div>
 
           {guest && (
             <div className="rounded-md border p-3 bg-gray-50 text-sm">
