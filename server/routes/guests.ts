@@ -388,4 +388,54 @@ router.post("/undo-recent-checkout", authenticateToken, asyncRouteHandler(async 
   sendSuccessResponse(res, { guest: updated }, "Checkout undone successfully");
 }));
 
+// Simple capsule change for guests
+router.patch("/:id/capsule",
+  securityValidationMiddleware,
+  authenticateToken,
+  async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { capsuleNumber, reason } = req.body;
+
+    if (!capsuleNumber) {
+      return res.status(400).json({ message: "Capsule number is required" });
+    }
+
+    // Get the guest
+    const guest = await storage.getGuest(id);
+    if (!guest) {
+      return res.status(404).json({ message: "Guest not found" });
+    }
+
+    // Check if new capsule is available
+    const availableCapsules = await storage.getAvailableCapsules();
+    const isAvailable = availableCapsules.some(c => c.number === capsuleNumber);
+
+    if (!isAvailable && guest.capsuleNumber !== capsuleNumber) {
+      return res.status(400).json({ message: `Capsule ${capsuleNumber} is not available` });
+    }
+
+    // Update guest's capsule
+    const updatedGuest = await storage.updateGuest(id, {
+      capsuleNumber: capsuleNumber
+    });
+
+    if (!updatedGuest) {
+      return res.status(400).json({ message: "Failed to update guest capsule" });
+    }
+
+    res.json({
+      success: true,
+      message: `Guest moved to capsule ${capsuleNumber}`,
+      guest: updatedGuest
+    });
+
+  } catch (error: any) {
+    console.error("Error changing guest capsule:", error);
+    res.status(500).json({
+      message: error.message || "Failed to change capsule"
+    });
+  }
+});
+
 export default router;

@@ -29,8 +29,8 @@ export class DatabaseErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     // Check if this is a database-related error
-    const isDatabaseError = this.isDatabaseError(error);
-    
+    const isDatabaseError = DatabaseErrorBoundary.isDatabaseError(error);
+
     return {
       hasError: true,
       error,

@@ -44,7 +44,7 @@ router.get("/available", async (_req, res) => {
 });
 
 // Get all available capsules with assignment eligibility info (for admin check-in UI)
-router.get("/available-with-status", async (_req, res) => {
+router.get("/available-with-status", authenticateToken, async (_req, res) => {
   try {
     const checkedInGuests = await storage.getCheckedInGuests();
     const occupiedCapsules = new Set(checkedInGuests.data.map(guest => guest.capsuleNumber));
