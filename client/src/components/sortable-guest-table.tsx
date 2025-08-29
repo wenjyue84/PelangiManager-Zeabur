@@ -809,44 +809,38 @@ export default function SortableGuestTable() {
     // Create WhatsApp-friendly format
     let whatsappText = "🏨 *PELANGI CAPSULE STATUS* 🏨\n\n";
     
-    // Group capsules by section and handle special cases
-    const sections = ['back', 'middle', 'front'];
+    // Handle FRONT SECTION (capsules 11-24)
+    whatsappText += '📍 *FRONT SECTION* 📍\n';
+    const frontSectionCapsules = allCapsules.filter(capsule => {
+      const num = parseInt(capsule.number.replace('C', ''));
+      return num >= 11 && num <= 24;
+    }).sort((a, b) => {
+      const aNum = parseInt(a.number.replace('C', ''));
+      const bNum = parseInt(b.number.replace('C', ''));
+      return aNum - bNum;
+    });
     
-    sections.forEach(section => {
-      const sectionCapsules = allCapsules
-        .filter(capsule => capsule.section === section)
-        .sort((a, b) => {
-          const aNum = parseInt(a.number.replace('C', ''));
-          const bNum = parseInt(b.number.replace('C', ''));
-          return aNum - bNum;
-        });
+    frontSectionCapsules.forEach(capsule => {
+      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
       
-      if (sectionCapsules.length > 0) {
-        whatsappText += `📍 *${section.toUpperCase()} SECTION* 📍\n`;
+      if (guest) {
+        // Guest is checked in
+        const isPaid = isGuestPaid(guest);
+        const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
+        const paymentStatus = isPaid ? '✅' : '❌';
         
-        sectionCapsules.forEach(capsule => {
-          const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
-          
-          if (guest) {
-            // Guest is checked in
-            const isPaid = isGuestPaid(guest);
-            const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
-            const paymentStatus = isPaid ? '✅' : '❌';
-            
-            // Check for outstanding balance
-            const balance = getGuestBalance(guest);
-            const outstandingText = balance > 0 ? ` (Outstanding RM${balance})` : '';
-            
-            whatsappText += `${capsule.number.replace('C', '')}) ${guest.name} ${paymentStatus}${checkoutDate}${outstandingText}\n`;
-          } else {
-            // Empty capsule
-            whatsappText += `${capsule.number.replace('C', '')})\n`;
-          }
-        });
+        // Check for outstanding balance
+        const balance = getGuestBalance(guest);
+        const outstandingText = balance > 0 ? ` (Outstanding RM${balance})` : '';
         
-        whatsappText += '\n';
+        whatsappText += `${capsule.number.replace('C', '')}) ${guest.name} ${paymentStatus}${checkoutDate}${outstandingText}\n`;
+      } else {
+        // Empty capsule
+        whatsappText += `${capsule.number.replace('C', '')})\n`;
       }
     });
+    
+    whatsappText += '\n';
     
     // Handle special sections - Living Room (capsules 25, 26)
     whatsappText += '🏠 *LIVING ROOM* 🏠\n';
