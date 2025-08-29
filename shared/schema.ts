@@ -1015,7 +1015,6 @@ export const paymentAmountSchema = z.string()
 
 // Update guest schema for editing - only validate fields that are actually being updated
 export const updateGuestSchema = z.object({
-  id: z.string().min(1, "Guest ID is required"),
   name: z.string()
     .min(2, "Please enter the guest's full name (at least 2 characters)")
     .max(100, "Guest name too long. Please use 100 characters or fewer")
@@ -1048,7 +1047,12 @@ export const updateGuestSchema = z.object({
     .max(500, "Notes too long. Please use 500 characters or fewer to describe any special requirements")
     .transform(val => val?.trim() || "")
     .optional(),
-  status: z.enum(["vip", "blacklisted"]).optional(),
+  status: z.string()
+    .transform(val => val === "" ? undefined : val)
+    .optional()
+    .refine(val => val === undefined || ["vip", "blacklisted"].includes(val), {
+      message: "Status must be either 'vip' or 'blacklisted'"
+    }),
   expectedCheckoutDate: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected checkout date must be in YYYY-MM-DD format")
     .refine(val => {
@@ -1070,7 +1074,12 @@ export const updateGuestSchema = z.object({
       return date <= maxDate;
     }, "Check-in date cannot be more than 1 year in the future")
     .optional(),
-  gender: z.enum(["male", "female", "other", "prefer-not-to-say"]).optional(),
+  gender: z.string()
+    .transform(val => val?.toLowerCase())
+    .optional()
+    .refine(val => !val || ["male", "female", "other", "prefer-not-to-say"].includes(val), {
+      message: "Gender must be 'male', 'female', 'other', or 'prefer-not-to-say'"
+    }),
   nationality: z.string()
     .transform(val => val?.trim())
     .refine(val => !val || (val.length >= 2 && val.length <= 50 && /^[a-zA-Z\s-]+$/.test(val)), "Nationality must be 2-50 characters and contain only letters, spaces, and hyphens")

@@ -11,14 +11,17 @@ export function validateData(
   source: 'body' | 'query' | 'params' = 'body'
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
+    console.log('Validation middleware - validating', source, 'data:', req[source]);
     try {
       const dataToValidate = req[source];
       const validatedData = schema.parse(dataToValidate);
+      console.log('Validation middleware - validation successful:', validatedData);
       
       // Replace the original data with validated and sanitized data
       req[source] = validatedData;
       next();
     } catch (error) {
+      console.error('Validation middleware - validation failed:', error);
       if (error instanceof z.ZodError) {
         const friendlyErrors = error.errors.map(err => {
           const field = err.path.join('.');
@@ -44,6 +47,7 @@ export function validateData(
           };
         });
         
+        console.log('Validation middleware - returning validation errors:', friendlyErrors);
         return res.status(400).json({
           message: "Please fix the following issues:",
           errors: friendlyErrors,
@@ -198,7 +202,13 @@ export const validators = {
       /^\+86\d{11}$/, // China
       /^\+1\d{10}$/, // US/Canada
       /^\+44\d{10}$/, // UK
-      /^\+\d{7,15}$/ // General international format
+      /^\+\d{7,15}$/, // General international format
+      /^60\d{8,10}$/, // Malaysia without +
+      /^65\d{8}$/, // Singapore without +
+      /^86\d{11}$/, // China without +
+      /^1\d{10}$/, // US/Canada without +
+      /^44\d{10}$/, // UK without +
+      /^\d{7,15}$/ // General format without +
     ];
     
     return patterns.some(pattern => pattern.test(cleaned));
@@ -321,6 +331,8 @@ export const securityValidation = {
  * Validation middleware for common security checks
  */
 export const securityValidationMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  console.log('Security validation middleware - checking request');
+  
   const checkInput = (obj: any, path: string = ''): Response | undefined => {
     for (const key in obj) {
       if (typeof obj[key] === 'string') {
@@ -331,6 +343,7 @@ export const securityValidationMiddleware = (req: Request, res: Response, next: 
         }
         
         if (securityValidation.hasSQLInjection(obj[key])) {
+          console.log('Security validation - SQL injection detected in:', currentPath);
           return res.status(400).json({
             message: "Security Issue Detected",
             error: `The ${currentPath} field contains potentially harmful characters. Please remove any SQL-related keywords and special characters.`,
@@ -340,6 +353,7 @@ export const securityValidationMiddleware = (req: Request, res: Response, next: 
         }
         
         if (securityValidation.hasXSSAttempt(obj[key])) {
+          console.log('Security validation - XSS attempt detected in:', currentPath);
           return res.status(400).json({
             message: "Security Issue Detected",
             error: `The ${currentPath} field contains potentially harmful code. Please remove any HTML tags, scripts, or javascript code.`,
@@ -359,20 +373,24 @@ export const securityValidationMiddleware = (req: Request, res: Response, next: 
   
   // Check all input sources
   if (req.body && typeof req.body === 'object') {
+    console.log('Security validation - checking body:', req.body);
     const result = checkInput(req.body);
     if (result) return result;
   }
   
   if (req.query && typeof req.query === 'object') {
+    console.log('Security validation - checking query:', req.query);
     const result = checkInput(req.query);
     if (result) return result;
   }
   
   if (req.params && typeof req.params === 'object') {
+    console.log('Security validation - checking params:', req.params);
     const result = checkInput(req.params);
     if (result) return result;
   }
   
+  console.log('Security validation - passed, calling next()');
   next();
 };
 

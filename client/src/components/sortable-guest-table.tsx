@@ -124,6 +124,25 @@ export default function SortableGuestTable() {
     // Uses smart config: nearRealtime (30s stale, 60s refetch)
   });
 
+  // Get all capsules for WhatsApp export (always enabled)
+  const { data: allCapsulesForExport } = useVisibilityQuery<Array<{
+    id: string;
+    number: string;
+    section: string;
+    isAvailable: boolean;
+    cleaningStatus: string;
+    toRent: boolean;
+    lastCleanedAt: string | null;
+    lastCleanedBy: string | null;
+    color: string | null;
+    purchaseDate: string | null;
+    position: string | null;
+    remark: string | null;
+  }>>({
+    queryKey: ["/api/capsules"],
+    // Uses smart config: nearRealtime (30s stale, 60s refetch)
+  });
+
   // Get available capsules for switching
   const { data: availableCapsules = [] } = useVisibilityQuery<Array<{
     id: string;
@@ -139,6 +158,7 @@ export default function SortableGuestTable() {
   });
   
   const allCapsules = allCapsulesResponse || [];
+  const exportCapsules = allCapsulesForExport || [];
 
   // Filters
   const [filters, setFilters] = useState({
@@ -811,7 +831,7 @@ export default function SortableGuestTable() {
     
     // Handle FRONT SECTION (capsules 11-24)
     whatsappText += '📍 *FRONT SECTION* 📍\n';
-    const frontSectionCapsules = allCapsules.filter(capsule => {
+    const frontSectionCapsules = exportCapsules.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 11 && num <= 24;
     }).sort((a, b) => {
@@ -844,7 +864,7 @@ export default function SortableGuestTable() {
     
     // Handle special sections - Living Room (capsules 25, 26)
     whatsappText += '🏠 *LIVING ROOM* 🏠\n';
-    const livingRoomCapsules = allCapsules.filter(capsule => {
+    const livingRoomCapsules = exportCapsules.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num === 25 || num === 26;
     }).sort((a, b) => {
@@ -869,7 +889,7 @@ export default function SortableGuestTable() {
     
     // Handle special sections - Room (capsules 1-6)
     whatsappText += '\n🛏️ *ROOM* 🛏️\n';
-    const roomCapsules = allCapsules.filter(capsule => {
+    const roomCapsules = exportCapsules.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 1 && num <= 6;
     }).sort((a, b) => {
@@ -918,7 +938,7 @@ export default function SortableGuestTable() {
         variant: "default",
       });
     });
-  }, [allCapsules, guests, toast]);
+  }, [exportCapsules, guests, toast]);
 
   if (isLoading) {
     return (
@@ -1072,18 +1092,18 @@ export default function SortableGuestTable() {
                           Empty capsules will be shown with red background
                         </p>
                       )}
-                      {showAllCapsules && (
-                        <div className="pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleWhatsAppExport}
-                            className="w-full text-xs"
-                          >
-                            📱 Export to WhatsApp
-                          </Button>
-                        </div>
-                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleWhatsAppExport}
+                        className="w-full text-xs"
+                      >
+                        📱 Export to WhatsApp
+                      </Button>
                     </div>
                   </div>
                   <div className="flex justify-between pt-2">

@@ -33,8 +33,15 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
   const updateGuestMutation = useMutation({
     mutationFn: async (updates: Partial<Guest>) => {
       if (!guest) return;
-      const response = await apiRequest("PATCH", `/api/guests/${guest.id}`, updates);
-      return response.json();
+      console.log('Making API request to update guest:', { guestId: guest.id, updates });
+      try {
+        const response = await apiRequest("PATCH", `/api/guests/${guest.id}`, updates);
+        console.log('API response received:', response);
+        return response.json();
+      } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guests/checked-in"] });
@@ -45,10 +52,30 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
         description: "Guest information updated successfully",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Guest update error:', error);
+      
+      // Show more specific error messages
+      let errorMessage = "Failed to update guest information";
+      
+      if (error?.message) {
+        if (error.message.includes('400:')) {
+          try {
+            const errorData = JSON.parse(error.message.split('400: ')[1]);
+            if (errorData.errors && Array.isArray(errorData.errors)) {
+              errorMessage = errorData.errors[0]?.message || errorMessage;
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch {
+            // Fallback to generic message
+          }
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update guest information",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -74,6 +101,7 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
   };
 
   const handleSave = () => {
+    console.log('Saving guest data:', editData);
     updateGuestMutation.mutate(editData);
   };
 

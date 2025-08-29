@@ -135,6 +135,10 @@ router.get("/checkout-today", asyncRouteHandler(async (_req: any, res: any) => {
 
 // Update guest information
 router.patch("/:id", 
+  (req, res, next) => {
+    console.log('Guest update route - request received:', { method: req.method, url: req.url, body: req.body });
+    next();
+  },
   securityValidationMiddleware,
   authenticateToken,
   validateData(updateGuestSchema, 'body'),
@@ -142,20 +146,35 @@ router.patch("/:id",
     const { id } = req.params;
     const updates = req.body;
     
+    console.log('Guest update request:', { id, updates });
+    
     // Validate updates
-    if (updates.email && updates.email !== "" && !validators.isValidEmailDomain) {
-      return res.status(400).json({ message: "Invalid email domain" });
+    if (updates.email && updates.email !== "") {
+      console.log('Validating email:', updates.email);
+      const isValidDomain = await validators.isValidEmailDomain(updates.email);
+      console.log('Email domain validation result:', isValidDomain);
+      if (!isValidDomain) {
+        return res.status(400).json({ message: "Invalid email domain" });
+      }
     }
     
-    if (updates.phoneNumber && !validators.isValidInternationalPhone(updates.phoneNumber)) {
-      return res.status(400).json({ message: "Invalid phone number format" });
+    if (updates.phoneNumber) {
+      console.log('Validating phone number:', updates.phoneNumber);
+      const isValidPhone = validators.isValidInternationalPhone(updates.phoneNumber);
+      console.log('Phone validation result:', isValidPhone);
+      if (!isValidPhone) {
+        return res.status(400).json({ message: "Invalid phone number format" });
+      }
     }
     
+    console.log('All validations passed, updating guest...');
     const guest = await storage.updateGuest(id, updates);
     if (!guest) {
+      console.log('Guest not found for ID:', id);
       return res.status(404).json({ message: "Guest not found" });
     }
 
+    console.log('Guest updated successfully:', guest.id);
     res.json(guest);
   }));
 

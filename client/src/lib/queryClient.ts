@@ -24,6 +24,8 @@ export async function apiRequest(
     ...(data ? { "Content-Type": "application/json" } : {})
   };
   
+  console.log('API Request:', { method, url, headers, data });
+  
   const res = await fetch(url, {
     method,
     headers,
@@ -31,6 +33,8 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  console.log('API Response status:', res.status, res.statusText);
+  
   await throwIfResNotOk(res);
   return res;
 }
