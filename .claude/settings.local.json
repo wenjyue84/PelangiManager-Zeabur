@@ -59,7 +59,8 @@
       "Bash(start http://localhost:5000)",
       "Bash(start http://localhost:5000/check-in)",
       "Bash(dir:*)",
-      "Bash(del \"C:\\Users\\Jyue\\desktop\\projects\\pelangimanager\\.claude\\agents\\~$st-runner.md\")"
+      "Bash(del \"C:\\Users\\Jyue\\desktop\\projects\\pelangimanager\\.claude\\agents\\~$st-runner.md\")",
+      "Bash(claude-code doctor)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

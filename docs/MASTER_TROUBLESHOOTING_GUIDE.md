@@ -10955,3 +10955,120 @@ curl "http://localhost:5000/api/guest-tokens/{token}?successPage=true"
 # Monitor server logs for validation and submission success
 # Watch for: "Check-in completed successfully" and "isSuccessPageAccess: true"
 ```
+
+---
+
+### **022 - Manual Build Required After Every Frontend Change (SOLVED)**
+
+**Date Solved:** August 30, 2025  
+**Symptoms:**
+- Frontend changes (React components, UI modifications) don't appear in browser automatically
+- Must run `npm run build` manually after every code change to see updates
+- Development workflow requires constant manual rebuilding
+- No true hot reload functionality despite using Vite
+
+**Root Cause:**
+- **Single Development Server**: Only running backend server (`tsx watch`) in development mode
+- **Missing Frontend Dev Server**: Vite development server not running to provide hot reload
+- **Build Artifacts Dependency**: Application serving from compiled `dist/` directory instead of live source code
+- **Manual Build Workflow**: Developer forced to rebuild manually after every change
+
+**Complete Solution Implemented:**
+
+1. **Added Concurrently Dependency**:
+   ```json
+   // package.json - Added to devDependencies
+   "concurrently": "^8.2.2"
+   ```
+
+2. **Updated Development Scripts**:
+   ```json
+   // package.json - New concurrent development setup
+   {
+     "dev": "concurrently \"npm run dev:server\" \"npm run dev:frontend\" --names \"server,frontend\" --prefix-colors \"blue,green\"",
+     "dev:server": "cross-env NODE_ENV=development tsx watch --clear-screen=false server/index.ts",
+     "dev:frontend": "vite --port 3001",
+     "dev:clean": "npx kill-port 5000 && npx kill-port 3001 && npm run dev"
+   }
+   ```
+
+3. **Updated Vite Configuration**:
+   ```typescript
+   // vite.config.ts - Added dev server and proxy configuration
+   server: {
+     port: 3001,
+     proxy: {
+       '/api': {
+         target: 'http://localhost:5000',
+         changeOrigin: true
+       },
+       '/objects': {
+         target: 'http://localhost:5000',
+         changeOrigin: true
+       }
+     },
+     fs: {
+       strict: true,
+       deny: ["**/.*"],
+     },
+   }
+   ```
+
+**New Development Architecture:**
+- **Frontend Server**: `http://localhost:3001` - Vite dev server with instant hot reload
+- **Backend Server**: `http://localhost:5000` - Express server with auto-restart on changes
+- **Smart Proxy**: API calls from frontend automatically routed to backend
+- **Concurrent Execution**: Both servers run simultaneously with colored output
+
+**Benefits Achieved:**
+- ✅ **True Hot Reload**: React changes reflect instantly in browser
+- ✅ **Server Auto-Restart**: Backend changes restart server automatically  
+- ✅ **Seamless API Communication**: Proxy handles all API requests transparently
+- ✅ **Enhanced Developer Experience**: No more manual build commands needed
+- ✅ **Color-Coded Logs**: Easy distinction between server and frontend output
+
+**Files Modified:**
+- `package.json` - Added concurrently dependency and updated scripts
+- `vite.config.ts` - Added development server configuration with proxy
+- Build workflow - No longer requires manual `npm run build` for development
+
+**Usage Instructions:**
+```bash
+# Start true hot reload development (single command)
+npm run dev
+
+# Access application at:
+# Frontend: http://localhost:3001 (main development URL)
+# Backend API: http://localhost:5000 (automatic proxy)
+
+# Clean restart if needed:
+npm run dev:clean
+```
+
+**Success Verification:**
+- ✅ Both servers start with colored output labels
+- ✅ Frontend accessible on port 3001 with instant hot reload
+- ✅ Backend accessible on port 5000 with auto-restart
+- ✅ API calls seamlessly proxied between servers
+- ✅ React component changes reflect immediately without manual build
+
+**Prevention:**
+- **Use concurrent development servers** for modern web applications
+- **Configure proper proxy setup** for API communication
+- **Run both frontend and backend** in watch mode simultaneously
+- **Avoid build artifacts dependency** during development
+
+**Key Learning:**
+This solution transforms the development experience from manual build workflows to modern hot reload development, matching industry standards for React/Express applications. The Cursor Agent's analysis was correct - the issue was running only the server in watch mode without the frontend development server.
+
+**Related Issues:**
+- **Problem #007**: Frontend Changes Not Reflecting Due to Build Artifacts
+- **Problem #010**: Missing Build Artifacts ENOENT Error
+- **Problem #014**: Checkbox Not Visible After Code Changes
+
+**Success Pattern:**
+- ✅ **Identified root cause**: Missing frontend dev server
+- ✅ **Implemented concurrent servers**: Both frontend and backend in development mode  
+- ✅ **Configured smart proxy**: Seamless API communication
+- ✅ **Achieved true hot reload**: Instant reflection of changes
+- ✅ **Enhanced developer experience**: Modern development workflow

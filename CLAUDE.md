@@ -98,23 +98,38 @@ C:\Users\Jyue\Desktop\PelangiManager\
 
 ## 🚨 Critical Troubleshooting Patterns
 
-### Frontend Changes Not Reflecting - Build Artifacts Issue
-**CRITICAL REMINDER:** When frontend changes don't appear in the UI, this is almost always a build artifacts issue.
+### ✅ TRUE HOT RELOAD IMPLEMENTED (August 30, 2025)
+**NEW DEVELOPMENT WORKFLOW:** No more manual builds needed during development!
 
-**Solution (Always Remember):**
-1. **Stop server** (Ctrl+C or `taskkill /F /IM node.exe`)
-2. **Clean build artifacts** (`Remove-Item -Recurse -Force dist`)
-3. **Rebuild application** (`npm run build`)
-4. **Start fresh server** (`npm run dev`)
+**Current Setup:**
+- **Frontend**: `http://localhost:3001` (Vite dev server with instant hot reload)
+- **Backend**: `http://localhost:5000` (Express with auto-restart)  
+- **Single Command**: `npm run dev` starts both servers concurrently
+- **Smart Proxy**: API calls automatically routed to backend
 
-### Port Conflicts (Critical Prevention Pattern)
+**Benefits:**
+- ✅ React changes reflect instantly in browser
+- ✅ Backend changes auto-restart server
+- ✅ No more `npm run build` needed for development
+- ✅ Modern development experience matching industry standards
+
+### Legacy Issue: Frontend Changes Not Reflecting - Build Artifacts Issue
+**NOTE:** This issue is now largely resolved with hot reload setup, but may still occur in edge cases.
+
+**If Hot Reload Fails (Rare Cases):**
+1. **Clean restart** (`npm run dev:clean`)
+2. **Check both ports** (3001 for frontend, 5000 for backend)
+3. **Fallback to manual build** if needed:
+   - Stop server → Clean dist → `npm run build` → `npm run dev`
+
+### Port Conflicts (Enhanced Prevention Pattern)  
 **Prevention-First Approach:**
 ```bash
-# Step 1: Always kill existing processes first
-pkill -f "tsx watch" || true
-npx kill-port 5000
+# Clean restart with both ports
+npm run dev:clean
 
-# Step 2: Then start development server
+# Manual cleanup if needed
+npx kill-port 5000 && npx kill-port 3001
 npm run dev
 ```
 
