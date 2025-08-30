@@ -56,7 +56,10 @@
       "Bash(powershell:*)",
       "Bash(echo:*)",
       "Bash(claude-code --output-style personal-assistant)",
-      "Bash(start http://localhost:5000)"
+      "Bash(start http://localhost:5000)",
+      "Bash(start http://localhost:5000/check-in)",
+      "Bash(dir:*)",
+      "Bash(del \"C:\\Users\\Jyue\\desktop\\projects\\pelangimanager\\.claude\\agents\\~$st-runner.md\")"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

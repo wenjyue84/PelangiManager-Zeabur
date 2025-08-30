@@ -89,6 +89,25 @@ router.post("/",
   try {
     const validatedData = req.body;
     
+    // Enhanced logging for Create Link debugging
+    console.log('🎯 [Guest Token Creation] Request received from client');
+    console.log('🎯 [Guest Token Creation] User:', req.user?.email || 'Unknown');
+    console.log('🎯 [Guest Token Creation] Request data:', {
+      autoAssign: validatedData.autoAssign,
+      capsuleNumber: validatedData.capsuleNumber,
+      guestName: validatedData.guestName ? `"${validatedData.guestName}"` : 'Not provided',
+      hasPhoneNumber: !!validatedData.phoneNumber,
+      hasEmail: !!validatedData.email,
+      expectedCheckoutDate: validatedData.expectedCheckoutDate,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (validatedData.autoAssign) {
+      console.log('🤖 [Guest Token Creation] Auto-assign mode requested');
+    } else {
+      console.log('🎯 [Guest Token Creation] Specific capsule requested:', validatedData.capsuleNumber);
+    }
+    
     // Determine capsule assignment
     let assignedCapsule: string | null = null;
     
@@ -204,6 +223,18 @@ router.post("/",
     
     const link = `${baseUrl}/guest-checkin?token=${token}`;
     
+    // Success logging for Create Link debugging
+    console.log('✅ [Guest Token Creation] Token created successfully');
+    console.log('✅ [Guest Token Creation] Response data:', {
+      tokenId: createdToken.token.substring(0, 8) + '...',
+      link: link,
+      capsuleNumber: assignedCapsule,
+      guestName: createdToken.guestName || 'None',
+      expiresAt: createdToken.expiresAt,
+      timestamp: new Date().toISOString()
+    });
+    console.log('🚀 [Guest Token Creation] Sending response to client...');
+    
     res.json({
       token: createdToken.token,
       link,
@@ -213,8 +244,26 @@ router.post("/",
     });
     
   } catch (error: any) {
-    console.error("Error creating guest token:", error);
-    res.status(400).json({ message: error.message || "Failed to create guest token" });
+    // Enhanced error logging for Create Link debugging
+    console.error("❌ [Guest Token Creation] Error occurred during token creation");
+    console.error("❌ [Guest Token Creation] Error details:", {
+      message: error.message,
+      stack: error.stack?.split('\n')[0], // Just first line of stack
+      code: error.code,
+      timestamp: new Date().toISOString(),
+      requestData: {
+        autoAssign: req.body?.autoAssign,
+        capsuleNumber: req.body?.capsuleNumber,
+        hasGuestName: !!req.body?.guestName
+      }
+    });
+    console.error("❌ [Guest Token Creation] Full error object:", error);
+    
+    res.status(400).json({ 
+      message: error.message || "Failed to create guest token",
+      details: "Check server logs for more information",
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

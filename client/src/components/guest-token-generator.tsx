@@ -70,13 +70,56 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
     expiresAt: string;
   } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
   const { toast } = useToast();
-
-  // Monitor dialog state changes
+  
+  // Add debug mode toggle for troubleshooting
   useEffect(() => {
-    console.log('Dialog state changed to:', isDialogOpen);
-    console.log('Environment:', isReplit ? 'Replit' : 'Local');
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') === 'true') {
+      setDebugMode(true);
+      console.log('🔧 [GuestTokenGenerator] Debug mode enabled');
+    }
+  }, []);
+
+  // Enhanced dialog state monitoring with debugging
+  useEffect(() => {
+    console.log('🔍 [GuestTokenGenerator] Dialog state changed to:', isDialogOpen);
+    console.log('🔍 [GuestTokenGenerator] Environment:', isReplit ? 'Replit' : 'Local');
+    console.log('🔍 [GuestTokenGenerator] Component render time:', new Date().toISOString());
+    
+    if (isDialogOpen) {
+      console.log('✅ [GuestTokenGenerator] Dialog opened successfully');
+    } else {
+      console.log('❌ [GuestTokenGenerator] Dialog closed or failed to open');
+    }
   }, [isDialogOpen, isReplit]);
+  
+  // Add click handler debugging
+  const handleCreateLinkClick = () => {
+    try {
+      console.log('🖱️ [GuestTokenGenerator] Create Link button clicked at:', new Date().toISOString());
+      console.log('🖱️ [GuestTokenGenerator] Current dialog state before click:', isDialogOpen);
+      
+      // Force dialog to open
+      setIsDialogOpen(true);
+      console.log('✅ [GuestTokenGenerator] Dialog state set to true');
+      
+      // Verify after state change
+      setTimeout(() => {
+        console.log('🔍 [GuestTokenGenerator] Dialog state after 100ms:', isDialogOpen);
+      }, 100);
+      
+    } catch (error) {
+      console.error('❌ [GuestTokenGenerator] Error in Create Link click handler:', error);
+      toast({
+        title: "Dialog Error",
+        description: "Failed to open Create Link dialog. Check browser console for details.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
 
   const { data: availableCapsules = [], isLoading: capsulesLoading } = useQuery<Capsule[]>({
     queryKey: ["/api/capsules/available"],
@@ -280,28 +323,52 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
           </TooltipContent>
         </Tooltip>
       
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4" />
-                  Create Link
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Create custom check-in link with specific options</p>
-              </TooltipContent>
-            </Tooltip>
-          </DialogTrigger>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          console.log('🔄 [GuestTokenGenerator] Dialog onOpenChange called with:', open);
+          setIsDialogOpen(open);
+        }}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={handleCreateLinkClick}
+              >
+                <Link2 className="h-4 w-4" />
+                Create Link
+                {debugMode && (
+                  <span className="ml-1 px-1 py-0.5 bg-red-500 text-white text-xs rounded">
+                    DEBUG
+                  </span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Create custom check-in link with specific options</p>
+            </TooltipContent>
+          </Tooltip>
         <DialogContent className="w-full max-w-sm sm:max-w-md mx-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-orange-600" />
             Create Guest Check-in Link
+            {debugMode && (
+              <span className="ml-2 px-2 py-1 bg-green-500 text-white text-xs rounded">
+                DIALOG RENDERED ✅
+              </span>
+            )}
           </DialogTitle>
           <DialogDescription>
             Generate a link that guests can use to complete their own check-in process
+            {debugMode && (
+              <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm">
+                <strong>🔧 Debug Info:</strong><br/>
+                Dialog State: {isDialogOpen ? 'OPEN' : 'CLOSED'}<br/>
+                Time: {new Date().toLocaleTimeString()}<br/>
+                Environment: {isReplit ? 'Replit' : 'Local'}
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
 
