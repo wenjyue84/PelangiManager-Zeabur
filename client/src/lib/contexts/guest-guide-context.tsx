@@ -16,6 +16,11 @@ import {
   validateGuestGuideContent,
   PreviewDevice
 } from '@/lib/types/guest-guide';
+import { 
+  safeParseStoredSettings, 
+  mapApiToGuestGuideSettings,
+  debugLog 
+} from '@/lib/utils/guest-guide-utils';
 import { toast } from '@/hooks/use-toast';
 
 // Action types for state management
@@ -131,68 +136,58 @@ export const GuestGuideProvider: React.FC<GuestGuideProviderProps> = ({ children
     refetchOnWindowFocus: false
   });
 
-  // Load initial settings on mount
+  // Load initial settings on mount - immediate loading for better synchronization
   useEffect(() => {
     const loadInitialSettings = () => {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
       try {
-        // Try to load from localStorage first
+        // Try to load from localStorage first (for immediate loading)
         const storedSettings = localStorage.getItem(STORAGE_KEY);
         if (storedSettings) {
-          const parsed = JSON.parse(storedSettings);
-          dispatch({ type: 'SET_SETTINGS', payload: parsed });
-          return;
+          const parsed = safeParseStoredSettings(storedSettings);
+          if (parsed) {
+            debugLog('Context', 'Loaded from localStorage', parsed);
+            dispatch({ type: 'SET_SETTINGS', payload: parsed });
+            return;
+          } else {
+            debugLog('Context', 'Invalid localStorage data, removing corrupted data');
+            localStorage.removeItem(STORAGE_KEY);
+          }
         }
 
-        // Fallback to API settings if available
+        // If no localStorage, try API settings
         if (apiSettings && !apiLoading) {
-          const mappedSettings: GuestGuideSettings = {
-            content: {
-              intro: apiSettings.guideIntro || DEFAULT_GUEST_GUIDE_SETTINGS.content.intro,
-              address: apiSettings.guideAddress || DEFAULT_GUEST_GUIDE_SETTINGS.content.address,
-              wifiName: apiSettings.guideWifiName || DEFAULT_GUEST_GUIDE_SETTINGS.content.wifiName,
-              wifiPassword: apiSettings.guideWifiPassword || DEFAULT_GUEST_GUIDE_SETTINGS.content.wifiPassword,
-              checkin: apiSettings.guideCheckin || DEFAULT_GUEST_GUIDE_SETTINGS.content.checkin,
-              other: apiSettings.guideOther || DEFAULT_GUEST_GUIDE_SETTINGS.content.other,
-              faq: apiSettings.guideFaq || DEFAULT_GUEST_GUIDE_SETTINGS.content.faq,
-              importantReminders: apiSettings.guideImportantReminders || DEFAULT_GUEST_GUIDE_SETTINGS.content.importantReminders,
-              hostelPhotosUrl: apiSettings.guideHostelPhotosUrl || DEFAULT_GUEST_GUIDE_SETTINGS.content.hostelPhotosUrl,
-              googleMapsUrl: apiSettings.guideGoogleMapsUrl || DEFAULT_GUEST_GUIDE_SETTINGS.content.googleMapsUrl,
-              checkinVideoUrl: apiSettings.guideCheckinVideoUrl || DEFAULT_GUEST_GUIDE_SETTINGS.content.checkinVideoUrl,
-              checkinTime: apiSettings.guideCheckinTime || DEFAULT_GUEST_GUIDE_SETTINGS.content.checkinTime,
-              checkoutTime: apiSettings.guideCheckoutTime || DEFAULT_GUEST_GUIDE_SETTINGS.content.checkoutTime,
-              doorPassword: apiSettings.guideDoorPassword || DEFAULT_GUEST_GUIDE_SETTINGS.content.doorPassword
-            },
-            visibility: {
-              showIntro: apiSettings.guideShowIntro ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showIntro,
-              showAddress: apiSettings.guideShowAddress ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showAddress,
-              showWifi: apiSettings.guideShowWifi ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showWifi,
-              showCheckin: apiSettings.guideShowCheckin ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showCheckin,
-              showOther: apiSettings.guideShowOther ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showOther,
-              showFaq: apiSettings.guideShowFaq ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showFaq,
-              showCapsuleIssues: apiSettings.guideShowCapsuleIssues ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showCapsuleIssues,
-              showTimeAccess: apiSettings.guideShowTimeAccess ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showTimeAccess,
-              showHostelPhotos: apiSettings.guideShowHostelPhotos ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showHostelPhotos,
-              showGoogleMaps: apiSettings.guideShowGoogleMaps ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showGoogleMaps,
-              showCheckinVideo: apiSettings.guideShowCheckinVideo ?? DEFAULT_GUEST_GUIDE_SETTINGS.visibility.showCheckinVideo
-            },
-            lastModified: new Date(),
-            version: '1.0.0',
-            isActive: true
-          };
+          const mappedSettings = mapApiToGuestGuideSettings(apiSettings);
+          debugLog('Context', 'Loaded from API settings', mappedSettings);
           dispatch({ type: 'SET_SETTINGS', payload: mappedSettings });
           return;
         }
 
-        // Final fallback to default settings
-        dispatch({ type: 'SET_SETTINGS', payload: DEFAULT_GUEST_GUIDE_SETTINGS });
+        // Final fallback to default settings if nothing else available
+        if (!apiLoading) {
+          debugLog('Context', 'Using default settings');
+          dispatch({ type: 'SET_SETTINGS', payload: DEFAULT_GUEST_GUIDE_SETTINGS });
+        }
       } catch (error) {
-        console.error('Error loading guest guide settings:', error);
+        console.error('[GuestGuideContext] Error loading settings:', error);
         dispatch({ type: 'SET_ERROR', payload: 'Failed to load settings' });
         dispatch({ type: 'SET_SETTINGS', payload: DEFAULT_GUEST_GUIDE_SETTINGS });
       }
     };
 
+    // Load immediately on mount
     loadInitialSettings();
+  }, []);
+
+  // Separate effect for API settings updates
+  useEffect(() => {
+    if (apiSettings && !localStorage.getItem(STORAGE_KEY)) {
+      // Only update from API if no localStorage exists
+      const mappedSettings = mapApiToGuestGuideSettings(apiSettings);
+      debugLog('Context', 'Updated from API settings (no localStorage)', mappedSettings);
+      dispatch({ type: 'SET_SETTINGS', payload: mappedSettings });
+    }
   }, [apiSettings, apiLoading]);
 
   // Set API loading state
@@ -207,7 +202,7 @@ export const GuestGuideProvider: React.FC<GuestGuideProviderProps> = ({ children
     }
   }, [apiError]);
 
-  // Auto-save to localStorage with debouncing
+  // Auto-save to localStorage with debouncing and corruption recovery
   useEffect(() => {
     if (state.isDirty) {
       const timeoutId = setTimeout(() => {
@@ -215,11 +210,23 @@ export const GuestGuideProvider: React.FC<GuestGuideProviderProps> = ({ children
           // Create backup before saving
           const currentStored = localStorage.getItem(STORAGE_KEY);
           if (currentStored) {
-            localStorage.setItem(BACKUP_STORAGE_KEY, currentStored);
+            try {
+              // Validate current stored data before backing it up
+              const parsed = JSON.parse(currentStored);
+              if (parsed && typeof parsed === 'object') {
+                localStorage.setItem(BACKUP_STORAGE_KEY, currentStored);
+              }
+            } catch (backupError) {
+              debugLog('Context', 'Corrupted data found, not backing up', backupError);
+            }
           }
           
+          // Validate settings before saving
+          const settingsToSave = JSON.stringify(state.settings);
+          JSON.parse(settingsToSave); // Test if it can be parsed back
+          
           // Save current settings
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.settings));
+          localStorage.setItem(STORAGE_KEY, settingsToSave);
           
           toast({
             title: 'Settings Auto-saved',
@@ -228,9 +235,26 @@ export const GuestGuideProvider: React.FC<GuestGuideProviderProps> = ({ children
           });
         } catch (error) {
           console.error('Error saving settings:', error);
+          
+          // Try to recover from backup
+          const backupSettings = localStorage.getItem(BACKUP_STORAGE_KEY);
+          if (backupSettings) {
+            const parsedBackup = safeParseStoredSettings(backupSettings);
+            if (parsedBackup) {
+              debugLog('Context', 'Recovered from backup due to save error');
+              toast({
+                title: 'Recovery Mode',
+                description: 'Restored from backup due to save error',
+                variant: 'default'
+              });
+              dispatch({ type: 'SET_SETTINGS', payload: parsedBackup });
+              return;
+            }
+          }
+          
           toast({
             title: 'Save Error',
-            description: 'Failed to save settings locally',
+            description: 'Failed to save settings. Changes may be lost.',
             variant: 'destructive'
           });
         }
@@ -308,8 +332,13 @@ export const GuestGuideProvider: React.FC<GuestGuideProviderProps> = ({ children
     try {
       const storedSettings = localStorage.getItem(STORAGE_KEY);
       if (storedSettings) {
-        const parsed = JSON.parse(storedSettings);
-        dispatch({ type: 'SET_SETTINGS', payload: parsed });
+        const parsed = safeParseStoredSettings(storedSettings);
+        if (parsed) {
+          dispatch({ type: 'SET_SETTINGS', payload: parsed });
+        } else {
+          debugLog('Context', 'Invalid stored settings during reset, using default');
+          dispatch({ type: 'RESET_SETTINGS' });
+        }
       } else {
         dispatch({ type: 'RESET_SETTINGS' });
       }

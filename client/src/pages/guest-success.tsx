@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle } from "lucide-react";
 import { GuestGuideProvider, useGuestGuide } from "@/lib/contexts/guest-guide-context";
+import { getContentWithFallback } from "@/lib/utils/guest-guide-utils";
 import GuestSuccessPageTemplate from "@/components/guest-success/GuestSuccessPageTemplate";
 
 // Lazy load the success screen component
@@ -40,10 +41,10 @@ const EnhancedGuestSuccessPage: React.FC<{
     const guestName = guestInfo?.name || 'Guest';
     const capsule = guestInfo?.capsuleNumber || '';
     const contentToUse = useContextSettings ? contextSettings.content : settings;
-    const checkinTime = contentToUse?.checkinTime || contentToUse?.guideCheckinTime || "3:00 PM";
-    const checkoutTime = contentToUse?.checkoutTime || contentToUse?.guideCheckoutTime || "12:00 PM";
-    const doorPassword = contentToUse?.doorPassword || contentToUse?.guideDoorPassword || "1270#";
-    const address = contentToUse?.address || contentToUse?.guideAddress || '26A, Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia';
+    const checkinTime = getContentWithFallback(contentToUse, 'checkinTime', '3:00 PM');
+    const checkoutTime = getContentWithFallback(contentToUse, 'checkoutTime', '12:00 PM');
+    const doorPassword = getContentWithFallback(contentToUse, 'doorPassword', '1270#');
+    const address = getContentWithFallback(contentToUse, 'address', '26A, Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia');
 
     const shareText = `🏨 Pelangi Capsule Hostel - My Stay Information
 
