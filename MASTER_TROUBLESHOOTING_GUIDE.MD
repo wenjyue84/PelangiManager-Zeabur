@@ -1803,3 +1803,227 @@ npm run dev                    # Start development server
 - WhatsApp format optimized for hostel staff communication patterns
 - Data availability pattern can be applied to other export features
 - Build cache awareness documented for future development
+
+---
+
+## Self Check-in Form "Network Connection Error" Fix (August 29, 2025)
+
+### Problem Description
+The self check-in form was showing "Erro Please chekc your internet connection and try again" error message instead of saving successfully. After form submission, users expected to be redirected to a success page with Print, PDF, and Email buttons (similar to the admin check-in form), but instead received network error messages.
+
+### Root Cause Analysis
+**Dual Issue: Route Mismatch + Success Page Token Validation**
+
+1. **Primary Issue - Route Mismatch**: Frontend was posting to wrong API endpoint
+   - Frontend: `POST /api/guest-checkin/${token}`
+   - Backend Expected: `POST /api/guest-checkin/checkin/${token}`
+   - Result: 404 Not Found errors causing "network connection" messages
+
+2. **Secondary Issue - Success Page Access**: After fixing route, form saved successfully but success page showed "invalid or expired link"
+   - Used tokens (after successful submission) couldn't access success page
+   - Success page required token validation but used tokens were rejected
+   - Two API calls made: one with `?successPage=true` (worked) and one without (failed)
+
+3. **Tertiary Issue - Storage Method Error**: During enhanced token validation implementation
+   - `TypeError: storage.getGuestTokenByToken is not a function`
+   - Incorrect method name used instead of storage interface method
+
+### Error Symptoms
+- Form submission shows "Erro Please chekc your internet connection and try again"
+- Form appears to fail to save despite correct validation
+- No redirection to success page after "successful" submission
+- Server logs show 404 errors for guest check-in endpoint
+- Success page shows "invalid or expired link" message
+- Guest data not appearing in Dashboard after submission
+
+### Solution Implementation
+
+#### Step 1: Fix Primary Route Mismatch
+**File**: `client/src/pages/guest-checkin.tsx` (Line 361)
+
+**Before (Problematic)**:
+```javascript
+const response = await fetch(`/api/guest-checkin/${token}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(submitData)
+});
+```
+
+**After (Fixed)**:
+```javascript
+const response = await fetch(`/api/guest-checkin/checkin/${token}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(submitData)
+});
+```
+
+#### Step 2: Enhanced Token Validation for Success Page Access
+**File**: `server/routes/guest-tokens.ts` (Lines 254-300)
+
+**Added comprehensive used token handling**:
+```javascript
+// Handle used tokens for success page access
+if (guestToken.isUsed) {
+  try {
+    const guests = await storage.getAllGuests({ page: 1, limit: 1000 });
+    const guestRecord = guests.data.find(guest => 
+      guest.name === guestToken.guestName || 
+      guest.phoneNumber === guestToken.phoneNumber ||
+      guest.capsuleNumber === guestToken.capsuleNumber
+    );
+    
+    if (guestRecord && successPage) {
+      return res.json({
+        ...guestToken,
+        isSuccessPageAccess: true,
+        guestData: {
+          id: guestRecord.id,
+          name: guestRecord.name,
+          capsuleNumber: guestRecord.capsuleNumber,
+          phoneNumber: guestRecord.phoneNumber,
+          email: guestRecord.email,
+          checkinTime: guestRecord.checkinTime,
+          expectedCheckoutDate: guestRecord.expectedCheckoutDate,
+          paymentAmount: guestRecord.paymentAmount || "0",
+          paymentMethod: guestRecord.paymentMethod,
+          notes: guestRecord.notes,
+          isPaid: guestRecord.isPaid || false
+        }
+      });
+    }
+  } catch (guestFetchError) {
+    console.error('Error fetching guest for used token:', guestFetchError);
+    return res.status(500).json({ 
+      message: 'Unable to retrieve guest information for success page',
+      details: 'The check-in was completed but guest details cannot be loaded for display'
+    });
+  }
+}
+```
+
+#### Step 3: Fix Storage Method Call Error
+**File**: `server/routes/guest-tokens.ts` (Line 258)
+
+**Before (Incorrect)**:
+```javascript
+const guests = await storage.getGuestTokenByToken({ page: 1, limit: 1000 });
+```
+
+**After (Fixed)**:
+```javascript
+const guests = await storage.getAllGuests({ page: 1, limit: 1000 });
+```
+
+### Resolution Confirmation
+
+#### Testing Process
+1. **Created Test Token**: Used admin API to generate valid guest token
+   ```json
+   {
+     "token": "1aeda3c5-b556-4375-a28e-13871d866a5d",
+     "link": "http://localhost:5000/guest-checkin?token=...",
+     "capsuleNumber": "C2",
+     "guestName": "Test User"
+   }
+   ```
+
+2. **Successful Form Submission**: 
+   ```json
+   {
+     "success": true,
+     "guest": {
+       "nameAsInDocument": "Test User",
+       "capsuleNumber": "C2",
+       "checkinTime": "2025-08-29T23:52:07.000Z",
+       "id": "d4a818a9-6131-4133-a70f-ed173d71ee43"
+     },
+     "message": "Check-in completed successfully"
+   }
+   ```
+
+3. **Success Page Access Confirmed**:
+   ```json
+   {
+     "isSuccessPageAccess": true,
+     "guestData": {
+       "id": "d4a818a9-6131-4133-a70f-ed173d71ee43",
+       "name": "Test User",
+       "capsuleNumber": "C2",
+       "paymentAmount": "0",
+       "isPaid": false
+     }
+   }
+   ```
+
+#### Success Indicators
+✅ **Form Saves Successfully**: Guest data appears in Dashboard immediately  
+✅ **No Network Errors**: "connection problem" messages eliminated  
+✅ **Success Page Redirection**: Proper redirect to `/guest-success?token={token}`  
+✅ **Success Page Content**: Full guest details with Print, PDF, Email buttons  
+✅ **Token Validation**: Used tokens properly validated for success page access  
+✅ **API Endpoint Matching**: Frontend/backend route alignment confirmed
+
+### Key Technical Insights
+
+#### Route Naming Consistency
+- **Frontend POST Route**: Must match exact backend route definition
+- **nested API Structure**: `/api/guest-checkin/checkin/{token}` vs `/api/guest-checkin/{token}`
+- **404 vs Network Error**: Route mismatches appear as connection problems to users
+
+#### Success Page Token Lifecycle
+- **Fresh Tokens**: Allow form access and submission
+- **Used Tokens**: Still needed for success page display
+- **Enhanced Validation**: Support both form submission and success page scenarios
+- **Data Enrichment**: Success page needs complete guest information
+
+#### Storage Interface Consistency
+- **Method Naming**: Always verify storage interface method names
+- **Error Detection**: `TypeError: storage.methodName is not a function` indicates interface mismatch
+- **IDE Integration**: Use auto-complete to prevent method name errors
+
+### User Experience Impact
+**Before Fix**: Frustrating "network connection" errors despite valid internet connection  
+**After Fix**: Seamless form submission with proper success page display including print/PDF/email functionality
+
+**User Flow Now Working**:
+1. User receives guest check-in link via WhatsApp/email
+2. User fills out complete self check-in form
+3. Form submits successfully with proper validation
+4. User redirected to success page with full guest details
+5. User can print, save as PDF, or email their check-in receipt
+6. Guest appears in admin Dashboard for staff management
+
+### Prevention Measures
+1. **Route Verification**: Always verify frontend API calls match backend route definitions exactly
+2. **Token Lifecycle Management**: Design token validation to handle both active and used token scenarios  
+3. **Storage Interface Compliance**: Use auto-complete and verify all storage method calls against interface
+4. **End-to-End Testing**: Test complete user flow including success page display
+5. **Error Message Clarity**: Distinguish between network issues and API endpoint problems
+6. **Guest Data Validation**: Ensure success page has access to complete guest information
+
+### Related Files Modified
+- `client/src/pages/guest-checkin.tsx:361` - Fixed route mismatch from `/api/guest-checkin/${token}` to `/api/guest-checkin/checkin/${token}`
+- `server/routes/guest-tokens.ts:254-300` - Enhanced token validation logic for success page access to used tokens
+- `server/routes/guest-tokens.ts:258` - Fixed storage method call from `getGuestTokenByToken` to `getAllGuests`
+
+### Debugging Commands
+```bash
+# Test guest token creation
+curl -X POST http://localhost:5000/api/guest-tokens \
+  -H "Authorization: Bearer {admin-token}" \
+  -H "Content-Type: application/json" \
+  -d '{"guestName":"Test User","autoAssign":true,"expectedCheckoutDate":"2025-08-30"}'
+
+# Test form submission to corrected endpoint  
+curl -X POST "http://localhost:5000/api/guest-checkin/checkin/{token}" \
+  -H "Content-Type: application/json" \
+  -d '{"nameAsInDocument":"Test User","phoneNumber":"1234567890","gender":"male","nationality":"Malaysian","checkInDate":"2025-08-30","checkOutDate":"2025-08-31","paymentMethod":"cash"}'
+
+# Test success page token access
+curl "http://localhost:5000/api/guest-tokens/{token}?successPage=true"
+
+# Monitor server logs for validation and submission success
+# Watch for: "Check-in completed successfully" and "isSuccessPageAccess: true"
+```
