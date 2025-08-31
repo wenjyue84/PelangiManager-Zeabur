@@ -1,8 +1,9 @@
 // Pelangi Capsule Hostel Service Worker
 // Handles PWA functionality and push notifications
 
-const CACHE_NAME = 'pelangi-hostel-v1';
-const RUNTIME_CACHE = 'runtime-cache-v1';
+// Version: 2024.11.31.1 - Force update with timestamp
+const CACHE_NAME = 'pelangi-hostel-v3-' + Date.now();
+const RUNTIME_CACHE = 'runtime-cache-v3';
 
 // Assets to precache
 const STATIC_CACHE_URLS = [
@@ -23,7 +24,15 @@ self.addEventListener('install', (event) => {
         console.log('SW: Caching static assets');
         return cache.addAll(STATIC_CACHE_URLS);
       })
-      .then(() => self.skipWaiting()) // Activate immediately
+      .then(() => {
+        console.log('SW: Static assets cached successfully');
+        return self.skipWaiting(); // Activate immediately
+      })
+      .catch((error) => {
+        console.error('SW: Install failed:', error.message);
+        // Don't prevent installation, just log the error
+        return self.skipWaiting();
+      })
   );
 });
 
@@ -31,16 +40,33 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('SW: Activate event');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
+    caches.keys()
+      .then((cacheNames) => {
+        const deletePromises = cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
             console.log('SW: Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
+            return caches.delete(cacheName)
+              .catch((error) => {
+                console.warn('SW: Failed to delete cache', cacheName, ':', error.message);
+                // Continue with other cache deletions
+                return false;
+              });
           }
-        })
-      );
-    }).then(() => self.clients.claim()) // Take control immediately
+          return Promise.resolve(true);
+        });
+        
+        return Promise.all(deletePromises);
+      })
+      .then((results) => {
+        const deletedCount = results.filter(r => r === true || r === undefined).length;
+        console.log('SW: Cache cleanup completed, processed', deletedCount, 'caches');
+        return self.clients.claim(); // Take control immediately
+      })
+      .catch((error) => {
+        console.error('SW: Activate failed:', error.message);
+        // Still try to claim clients even if cleanup failed
+        return self.clients.claim();
+      })
   );
 });
 
@@ -57,15 +83,47 @@ self.addEventListener('fetch', (event) => {
           // Cache successful API responses for short term
           if (response.ok) {
             const responseClone = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
+            caches.open(RUNTIME_CACHE)
+              .then((cache) => {
+                return cache.put(request, responseClone);
+              })
+              .catch((cacheError) => {
+                console.warn('SW: Failed to cache API response:', cacheError.message);
+                // Continue without caching - not critical
+              });
           }
           return response;
         })
-        .catch(() => {
+        .catch((networkError) => {
+          console.log('SW: API network failed, trying cache:', networkError.message);
           // Fallback to cache on network failure
-          return caches.match(request);
+          return caches.match(request)
+            .then((cachedResponse) => {
+              if (cachedResponse) {
+                console.log('SW: Serving API from cache');
+                return cachedResponse;
+              }
+              // No cache available, return error response
+              return new Response(
+                JSON.stringify({ message: 'Service temporarily unavailable' }), 
+                {
+                  status: 503,
+                  statusText: 'Service Unavailable',
+                  headers: { 'Content-Type': 'application/json' }
+                }
+              );
+            })
+            .catch((cacheError) => {
+              console.error('SW: Cache lookup failed:', cacheError.message);
+              return new Response(
+                JSON.stringify({ message: 'Service temporarily unavailable' }), 
+                {
+                  status: 503,
+                  statusText: 'Service Unavailable',
+                  headers: { 'Content-Type': 'application/json' }
+                }
+              );
+            });
         })
     );
     return;
@@ -75,9 +133,32 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .catch(() => {
+        .catch((networkError) => {
+          console.log('SW: Navigation network failed, trying cache fallback:', networkError.message);
           // Fallback to cached root for navigation
-          return caches.match('/');
+          return caches.match('/')
+            .then((cachedResponse) => {
+              if (cachedResponse) {
+                console.log('SW: Serving navigation from cache');
+                return cachedResponse;
+              }
+              // No cached fallback available
+              return new Response(
+                `<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>Offline</h1><p>Please check your connection and try again.</p></body></html>`,
+                {
+                  headers: { 'Content-Type': 'text/html' }
+                }
+              );
+            })
+            .catch((cacheError) => {
+              console.error('SW: Navigation cache fallback failed:', cacheError.message);
+              return new Response(
+                `<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>Offline</h1><p>Please check your connection and try again.</p></body></html>`,
+                {
+                  headers: { 'Content-Type': 'text/html' }
+                }
+              );
+            });
         })
     );
     return;
@@ -88,18 +169,55 @@ self.addEventListener('fetch', (event) => {
     caches.match(request)
       .then((cachedResponse) => {
         if (cachedResponse) {
+          console.log('SW: Serving from cache:', request.url);
           return cachedResponse;
         }
-        return fetch(request).then((response) => {
-          // Cache successful responses
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        });
+        
+        console.log('SW: Not in cache, fetching:', request.url);
+        return fetch(request)
+          .then((response) => {
+            // Cache successful responses
+            if (response.ok) {
+              const responseClone = response.clone();
+              caches.open(RUNTIME_CACHE)
+                .then((cache) => {
+                  return cache.put(request, responseClone);
+                })
+                .catch((cacheError) => {
+                  console.warn('SW: Failed to cache response for', request.url, ':', cacheError.message);
+                  // Continue without caching - not critical
+                });
+            }
+            return response;
+          })
+          .catch((networkError) => {
+            console.error('SW: Network request failed for', request.url, ':', networkError.message);
+            // Return a generic offline response for failed requests
+            return new Response(
+              'Offline - Content not available',
+              {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: { 'Content-Type': 'text/plain' }
+              }
+            );
+          });
+      })
+      .catch((cacheError) => {
+        console.error('SW: Cache lookup failed for', request.url, ':', cacheError.message);
+        // If cache lookup fails, try network directly
+        return fetch(request)
+          .catch((networkError) => {
+            console.error('SW: Both cache and network failed for', request.url, ':', networkError.message);
+            return new Response(
+              'Service temporarily unavailable',
+              {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: { 'Content-Type': 'text/plain' }
+              }
+            );
+          });
       })
   );
 });

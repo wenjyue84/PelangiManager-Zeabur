@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { NATIONALITIES } from "@/lib/nationalities";
+import { pushNotificationManager } from "@/lib/pushNotifications";
 
 import type { Guest, PaginatedResponse } from "@shared/schema";
 import { isGuestPaid } from "@/lib/guest";
@@ -288,6 +289,28 @@ export default function CheckOut() {
       // Find the guest to get capsule number
       const guest = guests.find(g => g.id === guestId);
       
+      // Show push notification for check-out
+      if (guest) {
+        pushNotificationManager.showLocalNotification(
+          "Guest Check-Out",
+          {
+            body: `${guest.name} has checked out from ${labels.capsule} ${guest.capsuleNumber}`,
+            icon: "/icon-192.png",
+            badge: "/icon-192.png",
+            tag: `checkout-${guestId}`,
+            requireInteraction: false,
+            data: {
+              type: "checkout",
+              guestId: guestId,
+              guestName: guest.name,
+              capsuleNumber: guest.capsuleNumber
+            }
+          }
+        ).catch(error => {
+          console.log("Could not show notification:", error);
+        });
+      }
+      
       toast({
         title: "Success",
         description: (
@@ -351,6 +374,25 @@ export default function CheckOut() {
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
       queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
+      
+      // Show push notification for bulk check-out
+      pushNotificationManager.showLocalNotification(
+        "Bulk Check-Out Complete",
+        {
+          body: `${data.count || 'All'} guests have been checked out`,
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+          tag: `bulk-checkout-${Date.now()}`,
+          requireInteraction: false,
+          data: {
+            type: "bulk-checkout",
+            count: data.count
+          }
+        }
+      ).catch(error => {
+        console.log("Could not show notification:", error);
+      });
+      
       toast({ 
         title: "Success", 
         description: data.message || `Successfully checked out ${data.count} guests` 

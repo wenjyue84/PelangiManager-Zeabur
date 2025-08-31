@@ -21,6 +21,7 @@ import GuestTokenGenerator from "@/components/guest-token-generator";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import CheckinConfirmation from "@/components/guest-checkin/CheckinConfirmation";
+import { pushNotificationManager } from "@/lib/pushNotifications";
 import { NATIONALITIES } from "@/lib/nationalities";
 import { getHolidayLabel, hasPublicHoliday } from "@/lib/holidays";
 import GuestSuccessPageTemplate from "@/components/guest-success/GuestSuccessPageTemplate";
@@ -251,6 +252,28 @@ export default function CheckIn() {
       setAssignedCapsuleNumber(result.capsuleNumber || checkedInGuest?.capsuleNumber || null);
       setShowSuccessPage(true);
       setCompleted(true);
+      
+      // Show push notification for check-in
+      const guestName = result.name || "Guest";
+      const capsuleNumber = result.capsuleNumber || "Unknown";
+      pushNotificationManager.showLocalNotification(
+        "New Guest Check-In",
+        {
+          body: `${guestName} has checked into ${labels.capsule} ${capsuleNumber}`,
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+          tag: `checkin-${result.id}`,
+          requireInteraction: false,
+          data: {
+            type: "checkin",
+            guestId: result.id,
+            guestName: guestName,
+            capsuleNumber: capsuleNumber
+          }
+        }
+      ).catch(error => {
+        console.log("Could not show notification:", error);
+      });
       
       toast({
         title: "Success",

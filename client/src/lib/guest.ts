@@ -13,14 +13,8 @@ export function getGuestBalance(guest: Guest): number {
     return Number(oldMatch[1]);
   }
   
-  // If no balance found in notes, calculate from payment fields
-  const totalAmount = guest.paymentAmount ? parseFloat(guest.paymentAmount) || 0 : 0;
-  if (totalAmount > 0 && !guest.isPaid) {
-    // Assume there's still an outstanding balance if payment amount exists but not marked as paid
-    // This is a rough estimation for existing data
-    return Math.max(0, totalAmount * 0.2); // Assume 20% might be outstanding for existing data
-  }
-  
+  // If no balance found in notes and guest is not paid, return 0
+  // Don't assume any outstanding balance unless explicitly specified in notes
   return 0;
 }
 

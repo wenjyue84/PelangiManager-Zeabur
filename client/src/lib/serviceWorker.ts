@@ -61,7 +61,9 @@ class ServiceWorkerManagerImpl implements ServiceWorkerManager {
     }
 
     try {
-      this.wb = new Workbox('/sw.js');
+      // Add timestamp to force update
+      const swUrl = `/sw.js?t=${Date.now()}`;
+      this.wb = new Workbox(swUrl);
       this.state.wb = this.wb;
       
       // Set up event listeners
