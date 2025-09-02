@@ -1,5 +1,6 @@
 import { Express } from "express";
 import authRoutes from "./auth";
+import userRoutes from "./users";
 import guestRoutes from "./guests";
 import guestTokenRoutes from "./guest-tokens";
 import capsuleRoutes from "./capsules";
@@ -17,6 +18,9 @@ import environmentRoutes from "./environment";
 export function registerRoutes(app: Express) {
   // Register auth routes
   app.use("/api/auth", authRoutes);
+  
+  // Register user routes
+  app.use("/api/users", userRoutes);
   
   // Register guest routes
   app.use("/api/guests", guestRoutes);

@@ -142,44 +142,30 @@ export const validators = {
   } => {
     const issues: string[] = [];
     
-    if (password.length < 8) {
-      issues.push("Password must be at least 8 characters long");
+    if (password.length < 6) {
+      issues.push("Password must be at least 6 characters long");
     }
     
-    if (!/[a-z]/.test(password)) {
-      issues.push("Password must contain at least one lowercase letter");
-    }
-    
-    if (!/[A-Z]/.test(password)) {
-      issues.push("Password must contain at least one uppercase letter");
+    // Simple requirements - just need letters and numbers
+    if (!/[a-zA-Z]/.test(password)) {
+      issues.push("Password must contain at least one letter");
     }
     
     if (!/\d/.test(password)) {
       issues.push("Password must contain at least one number");
     }
     
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-      issues.push("Password must contain at least one special character");
-    }
-    
-    if (/(.)\1{2,}/.test(password)) {
-      issues.push("Password cannot contain more than 2 consecutive identical characters");
-    }
-    
-    // Check for common weak patterns
-    const commonPatterns = [
-      /123456/,
-      /abcdef/,
-      /password/i,
-      /qwerty/i,
-      /admin/i
+    // Check for extremely weak patterns only
+    const veryWeakPasswords = [
+      '123456',
+      'password',
+      '000000',
+      '111111',
+      'qwerty'
     ];
     
-    for (const pattern of commonPatterns) {
-      if (pattern.test(password)) {
-        issues.push("Password contains a common weak pattern");
-        break;
-      }
+    if (veryWeakPasswords.includes(password.toLowerCase())) {
+      issues.push("Password is too common. Please choose a different password");
     }
     
     return {
