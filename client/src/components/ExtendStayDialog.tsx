@@ -309,8 +309,23 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
                   max={365}
                   value={days}
                   onChange={(e) => {
-                    const value = parseInt(e.target.value) || 1;
-                    setDays(Math.max(1, Math.min(365, value)));
+                    const value = e.target.value;
+                    if (value === '') {
+                      setDays(1);
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue)) {
+                        setDays(Math.max(1, Math.min(365, numValue)));
+                      }
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.target.select();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    }
                   }}
                   className="w-24"
                   placeholder="Days"

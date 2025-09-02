@@ -150,7 +150,25 @@ export default function GuestExtendDialog({
                   type="number"
                   min={1}
                   value={Number.isFinite(days) ? String(days) : ''}
-                  onChange={(e) => setDays(Math.max(1, parseInt(e.target.value || '1')))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setDays(1);
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue)) {
+                        setDays(Math.max(1, Math.min(365, numValue)));
+                      }
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.target.select();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    }
+                  }}
                   placeholder="Days"
                   className="w-24"
                 />
