@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link2, Copy, Clock, MapPin, Users } from "lucide-react";
+import { CopyToClipboard } from "react-copy-to-clipboard";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
@@ -94,6 +95,16 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       console.log('❌ [GuestTokenGenerator] Dialog closed or failed to open');
     }
   }, [isDialogOpen, isReplit]);
+
+  // Auto-trigger copy when instant link is generated
+  useEffect(() => {
+    if (instantLink && copyButtonRef.current) {
+      // Small delay to ensure the CopyToClipboard component is rendered
+      setTimeout(() => {
+        copyButtonRef.current?.click();
+      }, 100);
+    }
+  }, [instantLink]);
   
   // Add click handler debugging
   const handleCreateLinkClick = () => {
@@ -186,6 +197,10 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
     },
   });
 
+  // State to store the instant link for copying
+  const [instantLink, setInstantLink] = useState<string>("");
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+
   const instantCreateMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/guest-tokens", {
@@ -193,24 +208,11 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       });
       return response.json();
     },
-    onSuccess: async (data) => {
-      try {
-        await navigator.clipboard.writeText(data.link);
-        toast({
-          title: "Instant link copied",
-          description: data.capsuleNumber
-            ? `${labels.singular} ${data.capsuleNumber} link copied to clipboard`
-            : `Link copied to clipboard. ${labels.singular} will be auto-assigned`,
-        });
-      } catch (error) {
-        toast({
-          title: "Instant link created",
-          description: data.capsuleNumber
-            ? `${labels.singular} ${data.capsuleNumber} link created. Copy manually if needed.`
-            : `Link created. ${labels.singular} will be auto-assigned. Copy manually if needed.`,
-        });
-      }
+    onSuccess: (data) => {
+      // Store the link for CopyToClipboard component
+      setInstantLink(data.link);
       onTokenCreated?.();
+      // Note: Success message will be shown by CopyToClipboard onCopy callback
     },
     onError: (error: any) => {
       const detailedError = extractDetailedError(error);
@@ -283,7 +285,29 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
   };
 
   const handleInstantCreate = () => {
+    // Clear any previous link first
+    setInstantLink("");
     instantCreateMutation.mutate();
+  };
+
+  const handleInstantCopy = (text: string, result: boolean) => {
+    if (result) {
+      toast({
+        title: "Instant link copied!",
+        description: "Check-in link copied to clipboard. You can also find this link in the Dashboard page if needed.",
+      });
+    } else {
+      toast({
+        title: "Instant link created",
+        description: "Couldn't copy automatically. Please go to the Dashboard page to copy the link manually.",
+        variant: "destructive",
+      });
+    }
+    
+    // Clear the link after copy attempt so next click creates a new one
+    setTimeout(() => {
+      setInstantLink("");
+    }, 1000);
   };
 
   const copyToClipboard = async (text: string) => {
@@ -322,6 +346,17 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
             <p>Quickly create a check-in link with auto-assigned capsule</p>
           </TooltipContent>
         </Tooltip>
+
+        {/* Hidden copy button that gets triggered automatically */}
+        {instantLink && (
+          <CopyToClipboard text={instantLink} onCopy={handleInstantCopy}>
+            <button 
+              ref={copyButtonRef}
+              style={{ display: 'none' }}
+              aria-hidden="true"
+            />
+          </CopyToClipboard>
+        )}
       
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           console.log('🔄 [GuestTokenGenerator] Dialog onOpenChange called with:', open);
