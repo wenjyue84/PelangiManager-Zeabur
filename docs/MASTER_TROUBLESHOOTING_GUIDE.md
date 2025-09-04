@@ -1987,14 +1987,112 @@ export function getPWAConfig() {
 
 **Document Control:**
 - **Maintained By:** Development Team
-- **Last Updated:** August 21, 2025
+- **Last Updated:** September 2025
 - **Next Review:** When new issues arise
 
 *This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
 
 ---
 
-### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+### **020 - Port Configuration Outside Required Range (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Backend server running on port 5000, outside user's required 3000-3100 range
+**Symptoms:** 
+- Development server using port 5000 for backend
+- User requirement to use only ports in 3000-3100 range
+- All services need to run within specified port range
+
+**Root Cause:**
+- Legacy configuration had backend on port 5000
+- Package.json scripts and vite.config.ts proxy pointed to port 5000
+
+**Solution:**
+1. Updated package.json scripts to use PORT=3005:
+   - `dev:server`, `dev:memory`, `start`, `dev:clean`, `port:clean`
+2. Updated vite.config.ts proxy configuration:
+   - Changed from `localhost:5000` to `localhost:3005`
+3. Frontend remains on port 3000
+
+**Files Modified:**
+- `package.json` - Updated all server scripts to use PORT=3005
+- `vite.config.ts` - Updated proxy target to localhost:3005
+
+---
+
+### **021 - Vite Runtime Error Overlay Intrusive Popup (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Vite HMR runtime error overlay showing intrusive popup when switching capsules
+**Symptoms:** 
+- "[plugin:runtime-error-plugin] (unknown runtime error)" popup appears
+- Popup blocks UI interaction when switching capsules in dashboard
+- Actual functionality works but overlay is disruptive
+
+**Root Cause:**
+- Vite's runtime error overlay plugin overly sensitive to HMR events
+- Plugin shows overlay for non-critical runtime events
+
+**Solution:**
+Disabled the runtime error overlay in vite.config.ts:
+```javascript
+server: {
+  port: 3000,
+  hmr: {
+    overlay: false // Disable runtime error overlay
+  }
+}
+```
+
+**Key Learning:**
+- Runtime error overlay can be too aggressive for development
+- Console errors still available for debugging
+- Disabling overlay improves development experience
+
+---
+
+### **022 - 401 Authentication Errors Cluttering Console (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Expected 401 errors for unauthenticated requests appearing in console
+**Symptoms:** 
+- Console showing 401 errors for `/api/auth/me` and `/api/settings`
+- Errors appear on every page load when not authenticated
+- These are expected errors but create console noise
+
+**Root Cause:**
+- Application checking authentication status on mount
+- No silent fallback handling for expected 401 responses
+
+**Solution:**
+1. **auth-provider.tsx** - Added silent error handling:
+   ```typescript
+   if (response.ok) {
+     // Handle success
+   } else {
+     // Token is invalid (401 is expected), clear stored credentials silently
+     removeStoredToken();
+   }
+   ```
+
+2. **queryClient.ts** - Added early return for 401 errors:
+   ```typescript
+   const handleQueryError = (error: unknown) => {
+     // Silently handle expected 401 errors for auth-related endpoints
+     if (error instanceof Error && error.message.includes('401:')) {
+       return; // Don't log or show toasts
+     }
+   }
+   ```
+
+**Key Learning:**
+- Distinguish between expected and unexpected errors
+- Silent handling for authentication checks improves UX
+- Proper fallback patterns reduce console noise
+
+---
+
+### **023 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
 
 **Date Solved:** January 2025  
 **Symptoms:**
@@ -3751,14 +3849,112 @@ export function getPWAConfig() {
 
 **Document Control:**
 - **Maintained By:** Development Team
-- **Last Updated:** August 21, 2025
+- **Last Updated:** September 2025
 - **Next Review:** When new issues arise
 
 *This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
 
 ---
 
-### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+### **020 - Port Configuration Outside Required Range (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Backend server running on port 5000, outside user's required 3000-3100 range
+**Symptoms:** 
+- Development server using port 5000 for backend
+- User requirement to use only ports in 3000-3100 range
+- All services need to run within specified port range
+
+**Root Cause:**
+- Legacy configuration had backend on port 5000
+- Package.json scripts and vite.config.ts proxy pointed to port 5000
+
+**Solution:**
+1. Updated package.json scripts to use PORT=3005:
+   - `dev:server`, `dev:memory`, `start`, `dev:clean`, `port:clean`
+2. Updated vite.config.ts proxy configuration:
+   - Changed from `localhost:5000` to `localhost:3005`
+3. Frontend remains on port 3000
+
+**Files Modified:**
+- `package.json` - Updated all server scripts to use PORT=3005
+- `vite.config.ts` - Updated proxy target to localhost:3005
+
+---
+
+### **021 - Vite Runtime Error Overlay Intrusive Popup (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Vite HMR runtime error overlay showing intrusive popup when switching capsules
+**Symptoms:** 
+- "[plugin:runtime-error-plugin] (unknown runtime error)" popup appears
+- Popup blocks UI interaction when switching capsules in dashboard
+- Actual functionality works but overlay is disruptive
+
+**Root Cause:**
+- Vite's runtime error overlay plugin overly sensitive to HMR events
+- Plugin shows overlay for non-critical runtime events
+
+**Solution:**
+Disabled the runtime error overlay in vite.config.ts:
+```javascript
+server: {
+  port: 3000,
+  hmr: {
+    overlay: false // Disable runtime error overlay
+  }
+}
+```
+
+**Key Learning:**
+- Runtime error overlay can be too aggressive for development
+- Console errors still available for debugging
+- Disabling overlay improves development experience
+
+---
+
+### **022 - 401 Authentication Errors Cluttering Console (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Expected 401 errors for unauthenticated requests appearing in console
+**Symptoms:** 
+- Console showing 401 errors for `/api/auth/me` and `/api/settings`
+- Errors appear on every page load when not authenticated
+- These are expected errors but create console noise
+
+**Root Cause:**
+- Application checking authentication status on mount
+- No silent fallback handling for expected 401 responses
+
+**Solution:**
+1. **auth-provider.tsx** - Added silent error handling:
+   ```typescript
+   if (response.ok) {
+     // Handle success
+   } else {
+     // Token is invalid (401 is expected), clear stored credentials silently
+     removeStoredToken();
+   }
+   ```
+
+2. **queryClient.ts** - Added early return for 401 errors:
+   ```typescript
+   const handleQueryError = (error: unknown) => {
+     // Silently handle expected 401 errors for auth-related endpoints
+     if (error instanceof Error && error.message.includes('401:')) {
+       return; // Don't log or show toasts
+     }
+   }
+   ```
+
+**Key Learning:**
+- Distinguish between expected and unexpected errors
+- Silent handling for authentication checks improves UX
+- Proper fallback patterns reduce console noise
+
+---
+
+### **023 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
 
 **Date Solved:** January 2025  
 **Symptoms:**
@@ -5515,14 +5711,112 @@ export function getPWAConfig() {
 
 **Document Control:**
 - **Maintained By:** Development Team
-- **Last Updated:** August 21, 2025
+- **Last Updated:** September 2025
 - **Next Review:** When new issues arise
 
 *This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
 
 ---
 
-### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+### **020 - Port Configuration Outside Required Range (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Backend server running on port 5000, outside user's required 3000-3100 range
+**Symptoms:** 
+- Development server using port 5000 for backend
+- User requirement to use only ports in 3000-3100 range
+- All services need to run within specified port range
+
+**Root Cause:**
+- Legacy configuration had backend on port 5000
+- Package.json scripts and vite.config.ts proxy pointed to port 5000
+
+**Solution:**
+1. Updated package.json scripts to use PORT=3005:
+   - `dev:server`, `dev:memory`, `start`, `dev:clean`, `port:clean`
+2. Updated vite.config.ts proxy configuration:
+   - Changed from `localhost:5000` to `localhost:3005`
+3. Frontend remains on port 3000
+
+**Files Modified:**
+- `package.json` - Updated all server scripts to use PORT=3005
+- `vite.config.ts` - Updated proxy target to localhost:3005
+
+---
+
+### **021 - Vite Runtime Error Overlay Intrusive Popup (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Vite HMR runtime error overlay showing intrusive popup when switching capsules
+**Symptoms:** 
+- "[plugin:runtime-error-plugin] (unknown runtime error)" popup appears
+- Popup blocks UI interaction when switching capsules in dashboard
+- Actual functionality works but overlay is disruptive
+
+**Root Cause:**
+- Vite's runtime error overlay plugin overly sensitive to HMR events
+- Plugin shows overlay for non-critical runtime events
+
+**Solution:**
+Disabled the runtime error overlay in vite.config.ts:
+```javascript
+server: {
+  port: 3000,
+  hmr: {
+    overlay: false // Disable runtime error overlay
+  }
+}
+```
+
+**Key Learning:**
+- Runtime error overlay can be too aggressive for development
+- Console errors still available for debugging
+- Disabling overlay improves development experience
+
+---
+
+### **022 - 401 Authentication Errors Cluttering Console (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Expected 401 errors for unauthenticated requests appearing in console
+**Symptoms:** 
+- Console showing 401 errors for `/api/auth/me` and `/api/settings`
+- Errors appear on every page load when not authenticated
+- These are expected errors but create console noise
+
+**Root Cause:**
+- Application checking authentication status on mount
+- No silent fallback handling for expected 401 responses
+
+**Solution:**
+1. **auth-provider.tsx** - Added silent error handling:
+   ```typescript
+   if (response.ok) {
+     // Handle success
+   } else {
+     // Token is invalid (401 is expected), clear stored credentials silently
+     removeStoredToken();
+   }
+   ```
+
+2. **queryClient.ts** - Added early return for 401 errors:
+   ```typescript
+   const handleQueryError = (error: unknown) => {
+     // Silently handle expected 401 errors for auth-related endpoints
+     if (error instanceof Error && error.message.includes('401:')) {
+       return; // Don't log or show toasts
+     }
+   }
+   ```
+
+**Key Learning:**
+- Distinguish between expected and unexpected errors
+- Silent handling for authentication checks improves UX
+- Proper fallback patterns reduce console noise
+
+---
+
+### **023 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
 
 **Date Solved:** January 2025  
 **Symptoms:**
@@ -7279,14 +7573,112 @@ export function getPWAConfig() {
 
 **Document Control:**
 - **Maintained By:** Development Team
-- **Last Updated:** August 21, 2025
+- **Last Updated:** September 2025
 - **Next Review:** When new issues arise
 
 *This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
 
 ---
 
-### **020 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
+### **020 - Port Configuration Outside Required Range (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Backend server running on port 5000, outside user's required 3000-3100 range
+**Symptoms:** 
+- Development server using port 5000 for backend
+- User requirement to use only ports in 3000-3100 range
+- All services need to run within specified port range
+
+**Root Cause:**
+- Legacy configuration had backend on port 5000
+- Package.json scripts and vite.config.ts proxy pointed to port 5000
+
+**Solution:**
+1. Updated package.json scripts to use PORT=3005:
+   - `dev:server`, `dev:memory`, `start`, `dev:clean`, `port:clean`
+2. Updated vite.config.ts proxy configuration:
+   - Changed from `localhost:5000` to `localhost:3005`
+3. Frontend remains on port 3000
+
+**Files Modified:**
+- `package.json` - Updated all server scripts to use PORT=3005
+- `vite.config.ts` - Updated proxy target to localhost:3005
+
+---
+
+### **021 - Vite Runtime Error Overlay Intrusive Popup (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Vite HMR runtime error overlay showing intrusive popup when switching capsules
+**Symptoms:** 
+- "[plugin:runtime-error-plugin] (unknown runtime error)" popup appears
+- Popup blocks UI interaction when switching capsules in dashboard
+- Actual functionality works but overlay is disruptive
+
+**Root Cause:**
+- Vite's runtime error overlay plugin overly sensitive to HMR events
+- Plugin shows overlay for non-critical runtime events
+
+**Solution:**
+Disabled the runtime error overlay in vite.config.ts:
+```javascript
+server: {
+  port: 3000,
+  hmr: {
+    overlay: false // Disable runtime error overlay
+  }
+}
+```
+
+**Key Learning:**
+- Runtime error overlay can be too aggressive for development
+- Console errors still available for debugging
+- Disabling overlay improves development experience
+
+---
+
+### **022 - 401 Authentication Errors Cluttering Console (SOLVED)**
+
+**Date Solved:** September 2025
+**Issue:** Expected 401 errors for unauthenticated requests appearing in console
+**Symptoms:** 
+- Console showing 401 errors for `/api/auth/me` and `/api/settings`
+- Errors appear on every page load when not authenticated
+- These are expected errors but create console noise
+
+**Root Cause:**
+- Application checking authentication status on mount
+- No silent fallback handling for expected 401 responses
+
+**Solution:**
+1. **auth-provider.tsx** - Added silent error handling:
+   ```typescript
+   if (response.ok) {
+     // Handle success
+   } else {
+     // Token is invalid (401 is expected), clear stored credentials silently
+     removeStoredToken();
+   }
+   ```
+
+2. **queryClient.ts** - Added early return for 401 errors:
+   ```typescript
+   const handleQueryError = (error: unknown) => {
+     // Silently handle expected 401 errors for auth-related endpoints
+     if (error instanceof Error && error.message.includes('401:')) {
+       return; // Don't log or show toasts
+     }
+   }
+   ```
+
+**Key Learning:**
+- Distinguish between expected and unexpected errors
+- Silent handling for authentication checks improves UX
+- Proper fallback patterns reduce console noise
+
+---
+
+### **023 - Guest Check-in Cancellation Failure & Instant Create Fetch Error (SOLVED)**
 
 **Date Solved:** January 2025  
 **Symptoms:**
