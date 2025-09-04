@@ -74,6 +74,10 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
   const [debugMode, setDebugMode] = useState(false);
   const { toast } = useToast();
   
+  // State to store the instant link for copying
+  const [instantLink, setInstantLink] = useState<string>("");
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+  
   // Add debug mode toggle for troubleshooting
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -196,10 +200,6 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
       });
     },
   });
-
-  // State to store the instant link for copying
-  const [instantLink, setInstantLink] = useState<string>("");
-  const copyButtonRef = useRef<HTMLButtonElement>(null);
 
   const instantCreateMutation = useMutation({
     mutationFn: async () => {
