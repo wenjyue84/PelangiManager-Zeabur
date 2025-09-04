@@ -41,11 +41,12 @@ export default function AuthProvider({ children }: AuthProviderProps) {
             setUser(data.user);
             setToken(storedToken);
           } else {
-            // Token is invalid, clear stored credentials
+            // Token is invalid (401 is expected for expired tokens), clear stored credentials silently
             removeStoredToken();
           }
         } catch (error) {
-          // Network error or server issue, clear stored credentials
+          // Network error or server issue, clear stored credentials silently
+          // This is expected behavior when not authenticated, so we don't log errors
           removeStoredToken();
         }
       }

@@ -86,6 +86,12 @@ focusManager.setEventListener((handleFocus) => {
 
 // Global error handler for queries
 const handleQueryError = (error: unknown) => {
+  // Silently handle expected 401 errors for auth-related endpoints
+  if (error instanceof Error && error.message.includes('401:')) {
+    // Don't log or show toasts for expected 401 errors on auth endpoints
+    return;
+  }
+  
   console.error('Query error:', error);
   
   if (error instanceof Error && error.message) {

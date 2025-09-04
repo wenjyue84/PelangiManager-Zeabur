@@ -165,6 +165,9 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    hmr: {
+      overlay: false // Disable runtime error overlay
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3005',
