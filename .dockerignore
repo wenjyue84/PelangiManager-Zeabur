@@ -1,0 +1,58 @@
+# Ignore files and directories for Docker build
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# Development files
+**/.vscode
+**/.idea
+**/.DS_Store
+**/Thumbs.db
+
+# Build artifacts (will be created during build)
+dist/
+build/
+
+# Test files
+test/
+tests/
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+coverage/
+
+# Documentation
+*.md
+docs/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Logs
+logs/
+*.log
+
+# Archive and backup files
+archive/
+*.tar
+*.zip
+*.gz
+
+# Temporary files
+tmp/
+temp/
+.tmp/
