@@ -17,6 +17,7 @@ import { type CapsuleProblem } from "@shared/schema";
 export default function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast, labels }: any) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<CapsuleProblem | null>(null);
   const [concise, setConcise] = useState(false);
 
@@ -32,6 +33,14 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
     defaultValues: {
       resolvedBy: "Staff",
       notes: "",
+    },
+  });
+
+  const editProblemForm = useForm({
+    defaultValues: {
+      capsuleNumber: "",
+      description: "",
+      reportedBy: "",
     },
   });
 
@@ -57,13 +66,36 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
     },
   });
 
+  const updateProblemMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PUT", `/api/problems/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
+      setEditDialogOpen(false);
+      setSelectedProblem(null);
+      editProblemForm.reset();
+      toast({
+        title: "Problem Updated",
+        description: "The maintenance record has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update problem",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resolveProblemMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       await apiRequest("PATCH", `/api/problems/${id}/resolve`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
-      setEditDialogOpen(false);
+      setResolveDialogOpen(false);
       setSelectedProblem(null);
       resolveProblemForm.reset();
       toast({
@@ -102,7 +134,18 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
 
   const handleEditProblem = (problem: CapsuleProblem) => {
     setSelectedProblem(problem);
+    // Pre-populate the edit form with current problem data
+    editProblemForm.reset({
+      capsuleNumber: problem.capsuleNumber,
+      description: problem.description,
+      reportedBy: problem.reportedBy || "Staff",
+    });
     setEditDialogOpen(true);
+  };
+
+  const handleResolveProblem = (problem: CapsuleProblem) => {
+    setSelectedProblem(problem);
+    setResolveDialogOpen(true);
   };
 
   const activeProblem = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => !p.isResolved) : [];
@@ -198,12 +241,15 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
                             <td className="px-4 py-2">{problem.reportedBy}</td>
                             <td className="px-4 py-2">{new Date(problem.reportedAt).toLocaleDateString()}</td>
                             <td className="px-4 py-2">
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleEditProblem(problem)}>
-                                  <Edit className="h-4 w-4" />
+                              <div className="flex items-center gap-1">
+                                <Button size="sm" variant="outline" onClick={() => handleEditProblem(problem)} title="Edit Details">
+                                  <Edit className="h-3 w-3" />
                                 </Button>
-                                <Button size="sm" variant="destructive" onClick={() => deleteProblemMutation.mutate(problem.id)}>
-                                  <Trash2 className="h-4 w-4" />
+                                <Button size="sm" variant="default" onClick={() => handleResolveProblem(problem)} title="Mark Resolved" className="bg-green-600 hover:bg-green-700 text-white">
+                                  ✓
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => deleteProblemMutation.mutate(problem.id)} title="Delete">
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </td>
@@ -223,10 +269,13 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
                               <Badge variant="destructive">Active Problem</Badge>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={() => handleEditProblem(problem)}>
+                              <Button size="sm" variant="outline" onClick={() => handleEditProblem(problem)} title="Edit Details">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="destructive" onClick={() => deleteProblemMutation.mutate(problem.id)}>
+                              <Button size="sm" variant="default" onClick={() => handleResolveProblem(problem)} title="Mark Resolved" className="bg-green-600 hover:bg-green-700 text-white">
+                                ✓
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => deleteProblemMutation.mutate(problem.id)} title="Delete">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -273,7 +322,52 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
         </CardContent>
       </Card>
 
+      {/* Edit Problem Details Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Maintenance Record - {selectedProblem?.capsuleNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedProblem && (
+            <form onSubmit={editProblemForm.handleSubmit((data) => updateProblemMutation.mutate({ id: selectedProblem.id, data }))} className="space-y-4">
+              <div>
+                <Label htmlFor="capsuleNumber">{labels.singular} Number</Label>
+                <Select value={editProblemForm.watch("capsuleNumber")} onValueChange={(value) => editProblemForm.setValue("capsuleNumber", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${labels.singular.toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.isArray(capsules) && capsules.map((capsule) => (
+                      <SelectItem key={capsule.number} value={capsule.number}>
+                        {capsule.number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="description">Problem Description</Label>
+                <Textarea {...editProblemForm.register("description", { required: true })} placeholder="Describe the problem..." className="min-h-20" />
+              </div>
+              <div>
+                <Label htmlFor="reportedBy">Reported By</Label>
+                <Input {...editProblemForm.register("reportedBy", { required: true })} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setSelectedProblem(null); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateProblemMutation.isPending}>
+                  {updateProblemMutation.isPending ? "Updating..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Resolve Problem Dialog */}
+      <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resolve Problem - {selectedProblem?.capsuleNumber}</DialogTitle>
@@ -294,7 +388,7 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
                   <Textarea {...resolveProblemForm.register("notes")} placeholder="Describe what was done to fix the problem..." className="min-h-20" />
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setSelectedProblem(null); }}>
+                  <Button type="button" variant="outline" onClick={() => { setResolveDialogOpen(false); setSelectedProblem(null); }}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={resolveProblemMutation.isPending}>

@@ -82,6 +82,49 @@ router.patch("/:id/resolve", authenticateToken, async (req: any, res) => {
   }
 });
 
+// Update problem details
+router.put("/:id", 
+  securityValidationMiddleware,
+  authenticateToken, 
+  validateData(createCapsuleProblemSchema, 'body'),
+  async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = req.body;
+    
+    // Check if the problem exists
+    const existingProblems = await storage.getAllProblems({ page: 1, limit: 1000 });
+    const existingProblem = existingProblems.data.find(p => p.id === id);
+    
+    if (!existingProblem) {
+      return res.status(404).json({ message: "Problem not found" });
+    }
+    
+    // If capsule number is being changed, check for active problems on the new capsule
+    if (validatedData.capsuleNumber !== existingProblem.capsuleNumber) {
+      const newCapsuleProblems = await storage.getCapsuleProblems(validatedData.capsuleNumber);
+      const hasActiveProblem = newCapsuleProblems.some(p => !p.isResolved && p.id !== id);
+      
+      if (hasActiveProblem) {
+        return res.status(400).json({ 
+          message: "The target capsule already has an active problem. Please resolve it first." 
+        });
+      }
+    }
+    
+    const updatedProblem = await storage.updateProblem(id, validatedData);
+    
+    if (!updatedProblem) {
+      return res.status(404).json({ message: "Problem not found" });
+    }
+    
+    res.json(updatedProblem);
+  } catch (error: any) {
+    console.error("Error updating problem:", error);
+    res.status(400).json({ message: error.message || "Failed to update problem" });
+  }
+});
+
 // Delete problem
 router.delete("/:id", authenticateToken, async (req: any, res) => {
   try {

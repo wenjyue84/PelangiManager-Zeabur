@@ -630,6 +630,28 @@ export class MemStorage implements IStorage {
     return this.paginate(allProblems, pagination);
   }
 
+  async updateProblem(problemId: string, updates: Partial<InsertCapsuleProblem>): Promise<CapsuleProblem | undefined> {
+    const problem = this.capsuleProblems.get(problemId);
+    if (problem) {
+      // Update the problem with the new data, preserving existing fields
+      const updatedProblem = {
+        ...problem,
+        ...updates,
+        // Keep original timestamps and resolved status
+        id: problem.id,
+        reportedAt: problem.reportedAt,
+        isResolved: problem.isResolved,
+        resolvedBy: problem.resolvedBy,
+        resolvedAt: problem.resolvedAt,
+        notes: problem.notes
+      };
+      
+      this.capsuleProblems.set(problemId, updatedProblem);
+      return updatedProblem;
+    }
+    return undefined;
+  }
+
   async resolveProblem(problemId: string, resolvedBy: string, notes?: string): Promise<CapsuleProblem | undefined> {
     const problem = this.capsuleProblems.get(problemId);
     if (problem) {

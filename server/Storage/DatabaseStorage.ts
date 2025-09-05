@@ -351,6 +351,11 @@ export class DatabaseStorage implements IStorage {
     return this.paginate(allProblems, pagination);
   }
 
+  async updateProblem(problemId: string, updates: Partial<InsertCapsuleProblem>): Promise<CapsuleProblem | undefined> {
+    const result = await this.db.update(capsuleProblems).set(updates).where(eq(capsuleProblems.id, problemId)).returning();
+    return result[0];
+  }
+
   async resolveProblem(problemId: string, resolvedBy: string, notes?: string): Promise<CapsuleProblem | undefined> {
     const result = await this.db.update(capsuleProblems).set({
       isResolved: true,

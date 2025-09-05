@@ -50,6 +50,7 @@ export interface IStorage {
   getCapsuleProblems(capsuleNumber: string): Promise<CapsuleProblem[]>;
   getActiveProblems(pagination?: PaginationParams): Promise<PaginatedResponse<CapsuleProblem>>;
   getAllProblems(pagination?: PaginationParams): Promise<PaginatedResponse<CapsuleProblem>>;
+  updateProblem(problemId: string, updates: Partial<InsertCapsuleProblem>): Promise<CapsuleProblem | undefined>;
   resolveProblem(problemId: string, resolvedBy: string, notes?: string): Promise<CapsuleProblem | undefined>;
   deleteProblem(problemId: string): Promise<boolean>;
 
