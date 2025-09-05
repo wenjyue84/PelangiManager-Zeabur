@@ -1,5 +1,8 @@
-# Simplified Dockerfile for AWS Elastic Beanstalk
+# Test Dockerfile for AWS deployment verification
 FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Set working directory
 WORKDIR /app
@@ -7,29 +10,24 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci
+# Install only production dependencies
+RUN npm ci --only=production
 
-# Copy source code
-COPY . .
+# Copy source code and built files
+COPY dist ./dist
+COPY server/test-server.js ./
 
-# Build the application
-RUN npm run build
-
-# Remove dev dependencies to reduce image size
-RUN npm ci --only=production && npm cache clean --force
-
-# Create non-root user for security
+# Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodeuser -u 1001
 RUN chown -R nodeuser:nodejs /app
 USER nodeuser
 
-# Expose port 8080 (required by Elastic Beanstalk)
+# Expose port 8080
 EXPOSE 8080
 
-# Health check
+# Simple health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8080/ || exit 1
+  CMD curl -f http://localhost:8080/api/database/config || exit 1
 
-# Start the application with better error handling
-CMD ["sh", "-c", "NODE_ENV=production PORT=8080 npm run start:aws 2>&1 | tee /tmp/app.log"]
+# Start the test server
+CMD ["node", "test-server.js"]
