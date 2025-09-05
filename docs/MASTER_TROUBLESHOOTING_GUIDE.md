@@ -12034,3 +12034,244 @@ const existingToken = await storage.getGuestTokenById(tokenId); // ✅ tokenId m
 > "u solved it , save to @docs\MASTER_TROUBLESHOOTING_GUIDE.md"
 
 This resolution demonstrates the importance of proper parameter type matching and complete storage interface implementation when adding new features that interact with existing database lookup methods.
+---
+
+### **022 - Replit Deployment Port Configuration Error (SOLVED)**
+
+**Date Solved:** September 2025  
+**Symptoms:**
+- Replit deployment fails with "application failed to open a port in time" error
+- Log shows `cross-env NODE_ENV=production PORT=3005 node dist/index.js`
+- Server runs on port 3005 instead of expected port 5000
+- Application hangs at startup in Replit environment
+
+**Root Cause:**
+- **PORT Override Issue**: Production start command was inheriting `PORT=3005` from development scripts
+- **Replit Port Configuration**: Replit expects applications to run on port 5000 for proper communication
+- **Development vs Production**: The `dev:build` command used `dev:memory` which forced port 3005
+- **Deployment Command Mismatch**: `.replit` file used `dev:build` instead of production-ready command
+
+**Solution Implemented:**
+
+1. **Fixed Production Start Command** in `package.json`:
+   ```json
+   // BEFORE: Inherited PORT from environment
+   "start": "cross-env NODE_ENV=production node dist/index.js"
+   
+   // AFTER: Explicitly set PORT=5000
+   "start": "cross-env NODE_ENV=production PORT=5000 node dist/index.js"
+   ```
+
+2. **Updated Replit Configuration** in `.replit`:
+   ```ini
+   # BEFORE: Used development command that forces port 3005
+   run = "npm run dev:build"
+   
+   # AFTER: Use development command that defaults to port 5000
+   run = "npm run dev:replit"
+   ```
+
+3. **Port Configuration Verification**:
+   - Server code defaults to port 5000: `const port = parseInt(process.env.PORT || '5000', 10);`
+   - Replit's port forwarding configured for port 5000 → external port 80
+   - Environment variable `PORT = "5000"` set in `.replit` file
+
+**Technical Details:**
+- **Root Problem**: The `dev:memory` script explicitly set `PORT=3005`
+- **Replit Expectation**: Applications must open port 5000 within timeout period
+- **Solution Focus**: Ensure production commands use port 5000, not development port 3005
+
+**Files Modified:**
+- `package.json` - Added explicit `PORT=5000` to start command
+- `.replit` - Changed run command from `dev:build` to `dev:replit`
+
+**Prevention:**
+- **Always use port 5000** for Replit deployments
+- **Avoid dev commands** that override PORT in production environments  
+- **Test deployment** locally before pushing to Replit
+- **Monitor deployment logs** for port configuration messages
+
+**Verification Steps:**
+1. **Check deployment logs** show: `[express] serving on port 5000`
+2. **Test application** loads successfully in Replit environment
+3. **Verify port forwarding** from external port 80 to local port 5000
+
+**Related Issues:**
+- **Problem #005**: "Your app is starting" - Application Hangs at Startup (similar root cause)
+- **Problem #013**: Replit ENOENT: Missing Build Artifacts (Replit deployment issues)
+
+**Success Pattern:**
+- ✅ **Production commands must explicitly set PORT=5000**
+- ✅ **Development and production environments require different port strategies**
+- ✅ **Replit expects consistent port 5000 configuration**
+- ✅ **Monitor deployment logs for port confirmation**
+
+---
+
+**Document Control:**
+- **Maintained By:** Development Team
+- **Last Updated:** September 2025
+- **Next Review:** When new issues arise
+
+*This master guide consolidates all troubleshooting knowledge for quick problem resolution.*
+
+## Additional Content from Root File
+
+# Master Troubleshooting Guide
+
+## Common Issues and Solutions
+
+### Issue: "Your app is starting" - Application Hangs at Startup
+
+**Symptom:** 
+- The Replit browser shows "Your app is starting" indefinitely
+- Application appears stuck and won't load
+
+**Root Cause:** 
+- The server is running on the wrong port (typically port 3005 instead of port 5000)
+- Replit expects applications to run on port 5000 for proper frontend-backend communication
+- The workflow is running `dev:build` which uses `dev:memory` command that sets `PORT=3005`
+
+**Diagnosis Steps:**
+1. Check the workflow console logs for the port number:
+   ```
+   [express] serving on port 3005  ← WRONG PORT
+   [express] serving on port 5000  ← CORRECT PORT
+   ```
+
+2. Test the server port directly:
+   ```bash
+   curl http://localhost:5000/api/database/config  # Should work
+   curl http://localhost:3005/api/database/config  # May work but wrong for Replit
+   ```
+
+**Solution:**
+
+**Method 1: Quick Fix (Temporary)**
+1. Stop all server processes:
+   ```bash
+   pkill -f "tsx\|cross-env"
+   ```
+
+2. Start server on correct port (5000):
+   ```bash
+   NODE_ENV=development npx tsx watch --clear-screen=false server/index.ts &
+   ```
+
+3. Verify the server is running on port 5000:
+   ```bash
+   curl http://localhost:5000/api/database/config
+   ```
+
+**Method 2: Permanent Fix (Recommended)**
+1. Create a new script that runs on port 5000:
+   ```javascript
+   // start-replit.js
+   const { spawn } = require('child_process');
+   
+   // Build first
+   const buildProcess = spawn('npm', ['run', 'build'], { stdio: 'inherit' });
+   buildProcess.on('close', (code) => {
+     if (code !== 0) process.exit(1);
+     
+     // Start server on default port 5000 (no PORT override)
+     const serverProcess = spawn('npx', ['tsx', 'watch', '--clear-screen=false', 'server/index.ts'], {
+       stdio: 'inherit',
+       env: { ...process.env, NODE_ENV: 'development' }
+     });
+   });
+   ```
+
+2. Update the workflow command to use `node start-replit.js`
+
+**Prevention:**
+- Always ensure server runs on port 5000 for Replit environments
+- The server code defaults to port 5000: `const port = parseInt(process.env.PORT || '5000', 10);`
+- Avoid using commands that override PORT to 3005 in Replit
+
+**Verification:**
+1. Check workflow logs show: `[express] serving on port 5000`
+2. Test API endpoint: `curl http://localhost:5000/api/database/config`
+3. Application should load normally in browser
+
+---
+
+### Issue: "Failed to cancel pending check-in" - Authentication Error
+
+**Symptom:**
+- Error when trying to cancel guest tokens
+- User sees "Failed to cancel pending check-in" message
+
+**Root Cause:**
+- User is accessing dashboard in unauthenticated mode (emergency access feature)
+- Cancel operations require authentication but user is not logged in
+
+**Solution:**
+1. The error handling automatically redirects to login page
+2. User should log in with admin credentials (admin/admin123)
+3. After login, cancel operations will work properly
+
+**Technical Details:**
+- Dashboard allows unauthenticated viewing for emergency access
+- Modification operations (cancel, create, update) require authentication
+- Enhanced error handling detects 401 responses and provides clear messaging
+
+---
+
+### Issue: Frontend Crashes with "Cannot read properties of undefined"
+
+**Symptom:**
+- Application crashes with error boundary showing
+- Error message about undefined properties in error handling
+
+**Root Cause:**
+- Undefined error objects being passed to error boundary methods
+- Missing null safety checks in error handling code
+
+**Solution:**
+- Fixed with comprehensive null safety checks in error boundaries
+- Added safe defaults throughout error handling methods
+- Enhanced both DatabaseErrorBoundary and GlobalErrorBoundary
+
+---
+
+## Quick Reference Commands
+
+**Check server status:**
+```bash
+ps aux | grep tsx
+curl http://localhost:5000/api/database/config
+```
+
+**Restart server on correct port:**
+```bash
+pkill -f "tsx\|cross-env"
+NODE_ENV=development npx tsx watch --clear-screen=false server/index.ts &
+```
+
+**View server logs:**
+```bash
+tail -f server.log
+```
+
+**Test authentication:**
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin","password":"admin123"}'
+```
+
+## Environment Information
+
+**Expected Server Configuration:**
+- Port: 5000 (default)
+- Environment: development
+- Database: PostgreSQL (configured via DATABASE_URL)
+- Frontend: Served via Vite middleware in development
+
+**Default User Accounts:**
+- Admin: admin / admin123
+- Staff: Jay / Jay123, Le / Le123, Alston / Alston123
+
+---
+*Last Updated: January 2025*
