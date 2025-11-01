@@ -34,6 +34,7 @@ export default function GuestExtendDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [days, setDays] = useState<number>(1);
+  const [daysInput, setDaysInput] = useState<string>("1");
   const [price, setPrice] = useState<string>("");
   const [paidNow, setPaidNow] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
@@ -91,6 +92,7 @@ export default function GuestExtendDialog({
       onSuccess(); // Refresh the success page data
       // Reset form
       setDays(1);
+      setDaysInput("1");
       setPrice("");
       setPaidNow("");
       setPaymentMethod("cash");
@@ -136,7 +138,11 @@ export default function GuestExtendDialog({
                 <Calendar className="h-4 w-4" /> Duration
               </Label>
               <div className="flex gap-2 mt-1">
-                <Select onValueChange={(v) => setDays(parseInt(v))}>
+                <Select onValueChange={(v) => {
+                  const numValue = parseInt(v);
+                  setDays(numValue);
+                  setDaysInput(String(numValue));
+                }}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Preset" />
                   </SelectTrigger>
@@ -149,16 +155,27 @@ export default function GuestExtendDialog({
                 <Input
                   type="number"
                   min={1}
-                  value={Number.isFinite(days) ? String(days) : ''}
+                  value={daysInput}
                   onChange={(e) => {
                     const value = e.target.value;
+                    setDaysInput(value);
+                    
                     if (value === '') {
+                      // Allow empty input temporarily
+                      return;
+                    }
+                    
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue >= 1) {
+                      setDays(Math.min(365, numValue));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || parseInt(value) < 1 || isNaN(parseInt(value))) {
+                      // Reset to minimum if empty or invalid
                       setDays(1);
-                    } else {
-                      const numValue = parseInt(value);
-                      if (!isNaN(numValue)) {
-                        setDays(Math.max(1, Math.min(365, numValue)));
-                      }
+                      setDaysInput("1");
                     }
                   }}
                   onFocus={(e) => {
