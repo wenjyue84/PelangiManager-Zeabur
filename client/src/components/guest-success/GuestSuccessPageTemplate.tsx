@@ -82,19 +82,19 @@ export default function GuestSuccessPageTemplate({
   // Use content from props for preview, or settings for actual page
   const effectiveContent = {
     intro: content.intro || settings?.guideIntro || '',
-    address: content.address || settings?.guideAddress || '',
-    wifiName: content.wifiName || settings?.guideWifiName || '',
-    wifiPassword: content.wifiPassword || settings?.guideWifiPassword || '',
+    address: content.address || settings?.guideAddress || '26a jalan perang taman pelangi 80400 johor bahru',
+    wifiName: content.wifiName || settings?.guideWifiName || 'pelangi capsule',
+    wifiPassword: content.wifiPassword || settings?.guideWifiPassword || 'ilovestaycapsule',
     checkin: content.checkin || settings?.guideCheckin || '',
     other: content.other || settings?.guideOther || '',
     faq: content.faq || settings?.guideFaq || '',
     importantReminders: content.importantReminders || settings?.guideImportantReminders || '',
-    hostelPhotosUrl: content.hostelPhotosUrl || settings?.guideHostelPhotosUrl || '',
-    googleMapsUrl: content.googleMapsUrl || settings?.guideGoogleMapsUrl || '',
-    checkinVideoUrl: content.checkinVideoUrl || settings?.guideCheckinVideoUrl || '',
-    checkinTime: content.checkinTime || settings?.guideCheckinTime || '3:00 PM',
+    hostelPhotosUrl: content.hostelPhotosUrl || settings?.guideHostelPhotosUrl || 'https://photos.app.goo.gl/NLJARWwjuLy5wdGn7',
+    googleMapsUrl: content.googleMapsUrl || settings?.guideGoogleMapsUrl || 'https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb',
+    checkinVideoUrl: content.checkinVideoUrl || settings?.guideCheckinVideoUrl || 'https://youtube.com/shorts/6Ux11oBZaQQ?feature=share',
+    checkinTime: content.checkinTime || settings?.guideCheckinTime || '2:00 PM',
     checkoutTime: content.checkoutTime || settings?.guideCheckoutTime || '12:00 PM',
-    doorPassword: content.doorPassword || settings?.guideDoorPassword || '1270#'
+    doorPassword: content.doorPassword || settings?.guideDoorPassword || '0830#'
   };
 
   // Use visibility from props for preview, or default true for actual page
@@ -148,15 +148,15 @@ export default function GuestSuccessPageTemplate({
               {/* Essential Information Grid */}
               <div className="grid grid-cols-1 gap-4 text-sm">
                 {/* Address Section */}
-                {effectiveVisibility.showAddress && streetAddress && (
-                  <div className="bg-white/70 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-gray-800 mb-1">Address</div>
-                        <div className="text-gray-700 text-xs leading-relaxed">
-                          {streetAddress}
-                        </div>
+                {effectiveVisibility.showAddress && (effectiveContent.address || streetAddress) && (
+                  <div className="bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-300 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MapPin className="h-5 w-5 text-orange-600" />
+                      <div className="font-bold text-orange-800 text-base">Address 📍</div>
+                    </div>
+                    <div className="bg-white/80 rounded-md p-3">
+                      <div className="text-gray-800 text-sm font-medium leading-relaxed">
+                        {effectiveContent.address || streetAddress}
                       </div>
                     </div>
                   </div>
@@ -194,20 +194,28 @@ export default function GuestSuccessPageTemplate({
 
                 {/* WiFi Section */}
                 {effectiveVisibility.showWifi && (effectiveContent.wifiName || effectiveContent.wifiPassword) && (
-                  <div className="bg-white/70 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <Wifi className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-gray-800 mb-1">WiFi Access</div>
-                        <div className="text-gray-700 text-xs space-y-1">
-                          {effectiveContent.wifiName && (
-                            <div><span className="font-medium">Network:</span> <span className="font-mono">{effectiveContent.wifiName}</span></div>
-                          )}
-                          {effectiveContent.wifiPassword && (
-                            <div><span className="font-medium">Password:</span> <span className="font-mono">{effectiveContent.wifiPassword}</span></div>
-                          )}
+                  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Wifi className="h-5 w-5 text-blue-600" />
+                      <div className="font-bold text-blue-800 text-base">WiFi 📡</div>
+                    </div>
+                    <div className="space-y-2">
+                      {effectiveContent.wifiName && (
+                        <div className="bg-white/80 rounded-md p-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-700 text-sm">Id:</span>
+                            <span className="font-mono font-bold text-blue-700">{effectiveContent.wifiName}</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
+                      {effectiveContent.wifiPassword && (
+                        <div className="bg-white/80 rounded-md p-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-700 text-sm">Pw:</span>
+                            <span className="font-mono font-bold text-blue-700">{effectiveContent.wifiPassword}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -364,16 +372,82 @@ export default function GuestSuccessPageTemplate({
           )}
 
           {/* Important Reminders */}
-          {effectiveContent.importantReminders && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg mt-6">
-              <h3 className="font-bold text-red-800 mb-2 flex items-center gap-2">
-                <span className="text-red-600">⚠️</span> Important Reminders
-              </h3>
-              <div className="text-sm text-red-700 whitespace-pre-wrap">
-                {effectiveContent.importantReminders}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-orange-300 rounded-xl p-5 mt-6">
+            <h3 className="font-bold text-orange-800 mb-4 text-lg flex items-center gap-2">
+              <span className="text-2xl">🎊</span> Good Day Our Honorable Guest
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="bg-white/70 rounded-lg p-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔑</span>
+                    <span className="font-medium text-gray-800">Check in:</span>
+                    <span className="font-semibold text-orange-600">{effectiveContent.checkinTime}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🗝</span>
+                    <span className="font-medium text-gray-800">Check out:</span>
+                    <span className="font-semibold text-orange-600">{effectiveContent.checkoutTime}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🚪</span>
+                    <span className="font-medium text-gray-800">Door password:</span>
+                    <span className="font-mono font-bold text-lg text-green-600 bg-green-50 px-3 py-1 rounded border-2 border-green-200">
+                      {effectiveContent.doorPassword}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💊</span>
+                    <span className="font-medium text-gray-800">Capsule No:</span>
+                    <span className="font-bold text-lg text-orange-600">{capsuleNumber}</span>
+                  </div>
+                </div>
               </div>
+
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">🛏</span>
+                  <div className="text-sm text-blue-800">
+                    <span className="font-semibold">Capsule Card On The Pillow</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">🚨</span>
+                  <div className="text-sm text-yellow-800">
+                    <span className="font-semibold">Don't leave your card inside capsule and closed the door</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg">
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg">🚭</span>
+                    <div className="text-sm text-red-800">
+                      <span className="font-semibold">Smoking in Area is Prohibited</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg">💸</span>
+                    <div className="text-sm text-red-800">
+                      <span className="font-semibold">Catch by CCTV or complain Penalty RM300</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {effectiveContent.importantReminders && (
+                <div className="bg-white/70 rounded-lg p-3">
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {effectiveContent.importantReminders}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Action Buttons */}
           {(actions.onPrint || actions.onSavePDF || actions.onEmail || actions.onShare || actions.onExtend) && (
