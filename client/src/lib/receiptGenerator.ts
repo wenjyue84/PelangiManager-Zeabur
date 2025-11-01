@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import type { Guest } from '@shared/schema';
+import { isGuestPaid } from '@/lib/guest';
 
 interface ReceiptData {
   guest: Guest;
@@ -93,7 +94,7 @@ export function generateReceipt(data: ReceiptData): void {
   
   doc.setTextColor(primaryColor);
   doc.setFont('helvetica', 'bold');
-  const paymentStatus = guest.isPaid ? 'Paid' : 'Outstanding';
+  const paymentStatus = isGuestPaid(guest) ? 'Paid' : 'Outstanding';
   doc.text(paymentStatus, pageWidth - margin - 80 + statusTextWidth + 5, yPosition);
   
   yPosition += 15;
@@ -186,7 +187,7 @@ export function generateReceipt(data: ReceiptData): void {
   
   yPosition += 8;
   
-  // Check-in and Expected Checkout
+  // Check-in and Checkout/Expected Checkout
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(secondaryColor);
   doc.text('Check-in', margin, yPosition);
@@ -196,13 +197,17 @@ export function generateReceipt(data: ReceiptData): void {
   
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(secondaryColor);
-  doc.text('Expected Checkout', pageWidth / 2 + 10, yPosition);
+  // Show actual checkout if available, otherwise expected checkout
+  const checkoutLabel = guest.checkoutTime ? 'Checkout' : 'Expected Checkout';
+  doc.text(checkoutLabel, pageWidth / 2 + 10, yPosition);
   doc.setTextColor(primaryColor);
   doc.setFont('helvetica', 'bold');
-  const expectedCheckout = guest.expectedCheckoutDate 
-    ? formatDate(new Date(guest.expectedCheckoutDate.toString()))
-    : 'N/A';
-  doc.text(expectedCheckout, pageWidth / 2 + 45, yPosition);
+  const checkoutValue = guest.checkoutTime 
+    ? formatCheckInDateTime(guest.checkoutTime) // Use time-inclusive formatter for actual checkout
+    : (guest.expectedCheckoutDate 
+        ? formatDate(new Date(guest.expectedCheckoutDate.toString())) // Use date-only for expected
+        : 'N/A');
+  doc.text(checkoutValue, pageWidth / 2 + 45, yPosition);
   
   yPosition += 15;
   
