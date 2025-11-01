@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { NationalitySelect } from "@/components/ui/nationality-select";
-import { User, Calendar, MapPin, Phone, Mail, CreditCard, Edit, Save, X, Flag } from "lucide-react";
+import { User, Calendar, MapPin, Phone, Mail, CreditCard, Edit, Save, X, Flag, Printer } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { getGuestBalance, isGuestPaid } from "@/lib/guest";
 import { useToast } from "@/hooks/use-toast";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
+import { generateReceipt } from "@/lib/receiptGenerator";
 import type { Guest } from "@shared/schema";
 
 interface GuestDetailsModalProps {
@@ -562,9 +563,22 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
               <div className="md:col-span-3">
                 <Label>Collected By</Label>
                 <div className="mt-1 text-sm">{guest.paymentCollector || "Not specified"}</div>
+              </div>
+            </div>
+            {/* Print Receipt Button */}
+            <div className="mt-4">
+              <Button
+                onClick={() => generateReceipt({ guest })}
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto"
+                data-testid="button-print-receipt"
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print Receipt
+              </Button>
             </div>
           </div>
-        </div>
 
           <Separator />
 
