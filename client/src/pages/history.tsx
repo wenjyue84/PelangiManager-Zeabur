@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { List, Table as TableIcon, CreditCard } from 'lucide-react';
+import { List, Table as TableIcon, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 // Types
@@ -57,7 +57,8 @@ export default function History() {
   
   
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
 
   
   
@@ -75,10 +76,12 @@ export default function History() {
 
   
   const { data: guestHistoryResponse, isLoading } = useQuery<PaginatedResponse<Guest>>({
-    queryKey: ["/api/guests/history"],
+    queryKey: [`/api/guests/history?page=${page}&limit=${limit}`],
   });
   
   const guestHistory = guestHistoryResponse?.data || [];
+  const totalGuests = guestHistoryResponse?.total || 0;
+  const totalPages = Math.ceil(totalGuests / limit);
 
   // Cleaning history
   const { data: cleanedCapsules = [], isLoading: cleaningLoading } = useQuery<Capsule[]>({
@@ -147,7 +150,9 @@ export default function History() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
             <CardTitle className="text-lg font-semibold text-hostel-text">Guest History</CardTitle>
-            <p className="text-sm text-gray-600">Complete record of all guest check-ins and check-outs</p>
+            <p className="text-sm text-gray-600">
+              {isLoading ? 'Loading...' : `${totalGuests} checked-out guests in total`}
+            </p>
           </div>
           <div className="flex items-center space-x-4 flex-wrap gap-y-2">
             
@@ -329,11 +334,78 @@ export default function History() {
                   return null;
               }
             })()}
+            
+            {/* Pagination Controls */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 mt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium">1-{filteredHistory.length}</span> of <span className="font-medium">{guestHistory.length}</span> records
-                </p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page info and size selector */}
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-gray-600">
+                    Showing <span className="font-medium">{((page - 1) * limit) + 1}-{Math.min(page * limit, totalGuests)}</span> of <span className="font-medium">{totalGuests}</span> guests
+                  </p>
+                  <Select value={limit.toString()} onValueChange={(value) => { setLimit(Number(value)); setPage(1); }}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="500">500</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Page navigation */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center gap-1">
+                    {/* Show page numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={page === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPage(pageNum)}
+                          className="w-10"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </>
