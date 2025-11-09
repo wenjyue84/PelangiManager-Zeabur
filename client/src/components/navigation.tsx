@@ -16,6 +16,14 @@ const navigationItems = [
     tooltip: "View occupancy overview, current guests, and system status"
   },
   { 
+    path: "/history", 
+    label: "History", 
+    icon: Clock, 
+    color: "text-purple-600 bg-purple-50", 
+    requireAuth: true,
+    tooltip: "View past guests and check-out history"
+  },
+  { 
     path: "/check-in", 
     label: "Check In", 
     icon: UserPlus, 
