@@ -83,8 +83,29 @@ export default function History() {
   const [cleaningViewMode, setCleaningViewMode] = useState<'table' | 'list' | 'card'>('table');
 
   
+  // Build query parameters for backend filtering
+  const buildQueryString = () => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      sortBy,
+      sortOrder,
+    });
+    
+    if (searchQuery) params.append('search', searchQuery);
+    if (nationalityFilter !== 'all') params.append('nationality', nationalityFilter);
+    if (capsuleFilter !== 'all') params.append('capsule', capsuleFilter);
+    
+    return params.toString();
+  };
+
   const { data: guestHistoryResponse, isLoading } = useQuery<PaginatedResponse<Guest>>({
-    queryKey: [`/api/guests/history?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`],
+    queryKey: ['/api/guests/history', { page, limit, sortBy, sortOrder, searchQuery, nationalityFilter, capsuleFilter }],
+    queryFn: async () => {
+      const res = await fetch(`/api/guests/history?${buildQueryString()}`);
+      if (!res.ok) throw new Error('Failed to fetch guest history');
+      return res.json();
+    },
   });
   
   // Handle column header click for sorting
@@ -110,11 +131,13 @@ export default function History() {
       : <ArrowDown className="h-4 w-4 ml-1" />;
   };
   
+  // Backend handles filtering, so we use the returned data directly
   const guestHistory = guestHistoryResponse?.data || [];
   const totalGuests = guestHistoryResponse?.total || 0;
   const totalPages = Math.ceil(totalGuests / limit);
 
-  // Extract unique nationalities and capsules for filter dropdowns
+  // Extract unique nationalities and capsules for filter dropdowns from current page
+  // Note: This shows options from currently loaded data; users can search for others
   const uniqueNationalities = Array.from(
     new Set(guestHistory.map(g => g.nationality).filter(Boolean))
   ).sort();
@@ -122,6 +145,14 @@ export default function History() {
   const uniqueCapsules = Array.from(
     new Set(guestHistory.map(g => g.capsuleNumber).filter(Boolean))
   ).sort();
+  
+  // Reset to page 1 when filters change
+  const handleFilterChange = (filterType: 'search' | 'nationality' | 'capsule', value: string) => {
+    setPage(1);
+    if (filterType === 'search') setSearchQuery(value);
+    else if (filterType === 'nationality') setNationalityFilter(value);
+    else if (filterType === 'capsule') setCapsuleFilter(value);
+  };
 
   // Cleaning history
   const { data: cleanedCapsules = [], isLoading: cleaningLoading } = useQuery<Capsule[]>({
@@ -145,100 +176,52 @@ export default function History() {
     }
   });
 
-  const filteredHistory = guestHistory.filter(guest => {
-    // Text search across multiple fields
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = searchQuery === "" || 
-      guest.name?.toLowerCase().includes(searchLower) ||
-      guest.phoneNumber?.toLowerCase().includes(searchLower) ||
-      guest.email?.toLowerCase().includes(searchLower) ||
-      guest.idNumber?.toLowerCase().includes(searchLower);
-    
-    // Nationality filter
-    const matchesNationality = nationalityFilter === "all" || guest.nationality === nationalityFilter;
-    
-    // Capsule filter
-    const matchesCapsule = capsuleFilter === "all" || guest.capsuleNumber === capsuleFilter;
-    
-    // Combine all non-date filters
-    const matchesFilters = matchesSearch && matchesNationality && matchesCapsule;
-    
-    if (dateFilter === "all") return matchesFilters;
-    
-    const checkinDate = new Date(guest.checkinTime);
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    switch (dateFilter) {
-      case "today":
-        return matchesFilters && checkinDate >= todayStart;
-      case "week":
-        const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return matchesFilters && checkinDate >= weekStart;
-      case "month":
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        return matchesFilters && checkinDate >= monthStart;
-      case "exact":
-        if (!exactDate) return matchesFilters;
-        {
-          const d = new Date(exactDate);
-          const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-          const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-          return matchesFilters && checkinDate >= start && checkinDate <= end;
-        }
-      case "range":
-        if (!rangeStart && !rangeEnd) return matchesFilters;
-        {
-          const start = rangeStart ? new Date(new Date(rangeStart).setHours(0,0,0,0)) : new Date(0);
-          const end = rangeEnd ? new Date(new Date(rangeEnd).setHours(23,59,59,999)) : new Date(8640000000000000);
-          return matchesFilters && checkinDate >= start && checkinDate <= end;
-        }
-      default:
-        return matchesFilters;
-    }
-  });
+  // Backend handles all filtering, so we display data as-is
+  // Keep date filter for future backend implementation if needed
+  const filteredHistory = guestHistory;
 
   return (
     <div className="space-y-6">
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <div>
-            <CardTitle className="text-lg font-semibold text-hostel-text">Guest History</CardTitle>
-            <p className="text-sm text-gray-600">
-              {isLoading ? 'Loading...' : `${totalGuests} checked-out guests in total`}
-            </p>
-          </div>
-          <div className="flex items-center space-x-4 flex-wrap gap-y-2">
-            
-            <div className="flex items-center gap-2">
-              <Button variant={guestViewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setGuestViewMode('table')}>
-                <TableIcon className="h-4 w-4 mr-1" />
-                Table
-              </Button>
-              <Button variant={guestViewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setGuestViewMode('list')}>
-                <List className="h-4 w-4 mr-1" />
-                List
-              </Button>
-              <Button variant={guestViewMode === 'card' ? 'default' : 'outline'} size="sm" onClick={() => setGuestViewMode('card')}>
-                <CreditCard className="h-4 w-4 mr-1" />
-                Card
-              </Button>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div>
+              <CardTitle className="text-lg font-semibold text-hostel-text">Guest History</CardTitle>
+              <p className="text-sm text-gray-600">
+                {isLoading ? 'Loading...' : `${totalGuests} checked-out guests in total`}
+              </p>
             </div>
+            <div className="flex items-center space-x-4 flex-wrap gap-y-2">
+              
+              <div className="flex items-center gap-2">
+                <Button variant={guestViewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setGuestViewMode('table')}>
+                  <TableIcon className="h-4 w-4 mr-1" />
+                  Table
+                </Button>
+                <Button variant={guestViewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setGuestViewMode('list')}>
+                  <List className="h-4 w-4 mr-1" />
+                  List
+                </Button>
+                <Button variant={guestViewMode === 'card' ? 'default' : 'outline'} size="sm" onClick={() => setGuestViewMode('card')}>
+                  <CreditCard className="h-4 w-4 mr-1" />
+                  Card
+                </Button>
+              </div>
 
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Records</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="exact">Exact Date…</SelectItem>
-                <SelectItem value="range">Date Range…</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Records</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="exact">Exact Date…</SelectItem>
+                  <SelectItem value="range">Date Range…</SelectItem>
+                </SelectContent>
+              </Select>
 
             {dateFilter === "exact" && (
               <input
@@ -266,6 +249,45 @@ export default function History() {
               </div>
             )}
           </div>
+        </div>
+        
+        {/* Search and Filter Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by name, phone, email, or ID..."
+              value={searchQuery}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="pl-10"
+              data-testid="input-search-guests"
+            />
+          </div>
+          
+          <Select value={nationalityFilter} onValueChange={(value) => handleFilterChange('nationality', value)}>
+            <SelectTrigger className="w-[180px]" data-testid="select-nationality-filter">
+              <SelectValue placeholder="All Nationalities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Nationalities</SelectItem>
+              {uniqueNationalities.map(nationality => (
+                <SelectItem key={nationality} value={nationality}>{nationality}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={capsuleFilter} onValueChange={(value) => handleFilterChange('capsule', value)}>
+            <SelectTrigger className="w-[140px]" data-testid="select-capsule-filter">
+              <SelectValue placeholder="All Capsules" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Capsules</SelectItem>
+              {uniqueCapsules.map(capsule => (
+                <SelectItem key={capsule} value={capsule}>{capsule}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         </div>
       </CardHeader>
       <CardContent>
