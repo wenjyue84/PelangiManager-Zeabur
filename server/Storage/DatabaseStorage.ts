@@ -7,7 +7,7 @@ import { neon } from "@neondatabase/serverless";
 // Removing this causes "Cannot find module 'postgres'" startup errors
 // Last fixed: August 23, 2025 - Major system recovery
 import postgres from "postgres";
-import { eq, ne, and, lte, isNotNull, isNull, count, desc, asc } from "drizzle-orm";
+import { eq, ne, and, lte, isNotNull, isNull, count, desc, asc, or, ilike } from "drizzle-orm";
 import { IStorage } from "./IStorage";
 
 // Database Storage Implementation
@@ -151,7 +151,12 @@ export class DatabaseStorage implements IStorage {
     return this.paginate(checkedInGuests, pagination);
   }
 
-  async getGuestHistory(pagination?: PaginationParams, sortBy: string = 'checkoutTime', sortOrder: 'asc' | 'desc' = 'desc'): Promise<PaginatedResponse<Guest>> {
+  async getGuestHistory(
+    pagination?: PaginationParams, 
+    sortBy: string = 'checkoutTime', 
+    sortOrder: 'asc' | 'desc' = 'desc',
+    filters?: { search?: string; nationality?: string; capsule?: string }
+  ): Promise<PaginatedResponse<Guest>> {
     const orderColumn = sortBy === 'name' ? guests.name :
                        sortBy === 'capsuleNumber' ? guests.capsuleNumber :
                        sortBy === 'checkinTime' ? guests.checkinTime :
@@ -159,8 +164,35 @@ export class DatabaseStorage implements IStorage {
                        guests.checkoutTime;
     
     const orderFn = sortOrder === 'asc' ? asc : desc;
+    
+    // Build where conditions dynamically
+    const conditions = [eq(guests.isCheckedIn, false)];
+    
+    // Add text search across multiple fields (case-insensitive)
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          ilike(guests.name, searchTerm),
+          ilike(guests.phoneNumber, searchTerm),
+          ilike(guests.email, searchTerm),
+          ilike(guests.idNumber, searchTerm)
+        )!
+      );
+    }
+    
+    // Add nationality filter (exact match)
+    if (filters?.nationality) {
+      conditions.push(eq(guests.nationality, filters.nationality));
+    }
+    
+    // Add capsule filter (exact match)
+    if (filters?.capsule) {
+      conditions.push(eq(guests.capsuleNumber, filters.capsule));
+    }
+    
     const guestHistory = await this.db.select().from(guests)
-      .where(eq(guests.isCheckedIn, false))
+      .where(and(...conditions))
       .orderBy(orderFn(orderColumn));
     return this.paginate(guestHistory, pagination);
   }
