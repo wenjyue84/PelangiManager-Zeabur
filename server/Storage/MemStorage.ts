@@ -342,8 +342,39 @@ export class MemStorage implements IStorage {
     return this.paginate(checkedInGuests, pagination);
   }
 
-  async getGuestHistory(pagination?: PaginationParams, sortBy: string = 'checkoutTime', sortOrder: 'asc' | 'desc' = 'desc'): Promise<PaginatedResponse<Guest>> {
-    let guestHistory = Array.from(this.guests.values()).filter(guest => !guest.isCheckedIn);
+  async getGuestHistory(
+    pagination?: PaginationParams, 
+    sortBy: string = 'checkoutTime', 
+    sortOrder: 'asc' | 'desc' = 'desc',
+    filters?: { search?: string; nationality?: string; capsule?: string }
+  ): Promise<PaginatedResponse<Guest>> {
+    let guestHistory = Array.from(this.guests.values()).filter(guest => {
+      // Base condition: must be checked out
+      if (guest.isCheckedIn) return false;
+      
+      // Text search across multiple fields (case-insensitive)
+      if (filters?.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = 
+          guest.name?.toLowerCase().includes(searchLower) ||
+          guest.phoneNumber?.toLowerCase().includes(searchLower) ||
+          guest.email?.toLowerCase().includes(searchLower) ||
+          guest.idNumber?.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+      
+      // Nationality filter (exact match)
+      if (filters?.nationality && guest.nationality !== filters.nationality) {
+        return false;
+      }
+      
+      // Capsule filter (exact match)
+      if (filters?.capsule && guest.capsuleNumber !== filters.capsule) {
+        return false;
+      }
+      
+      return true;
+    });
     
     // Sort the history
     guestHistory.sort((a, b) => {
