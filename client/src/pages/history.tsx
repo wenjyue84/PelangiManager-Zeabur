@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
+import type { PaginatedResponse } from "@shared/schema";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { List, Table as TableIcon, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -33,12 +34,7 @@ interface Capsule {
   lastCleanedBy?: string;
 }
 
-interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-}
+// Using PaginatedResponse from shared schema which has nested pagination object
 
 function formatDuration(checkinTime: string, checkoutTime: string): string {
   const checkin = new Date(checkinTime);
@@ -133,8 +129,8 @@ export default function History() {
   
   // Backend handles filtering, so we use the returned data directly
   const guestHistory = guestHistoryResponse?.data || [];
-  const totalGuests = guestHistoryResponse?.total || 0;
-  const totalPages = Math.ceil(totalGuests / limit);
+  const totalGuests = guestHistoryResponse?.pagination?.total || 0;
+  const totalPages = guestHistoryResponse?.pagination?.totalPages || 0;
 
   // Extract unique nationalities and capsules for filter dropdowns from current page
   // Note: This shows options from currently loaded data; users can search for others

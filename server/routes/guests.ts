@@ -21,6 +21,28 @@ import { handleRouteError, asyncRouteHandler, sendSuccessResponse } from "../lib
 import { getTodayBoundary, isOverdue } from "../lib/dateUtils";
 import { pushNotificationService, createNotificationPayload } from "../lib/pushNotifications.js";
 
+// Validation schema for guest history query parameters
+const guestHistoryQuerySchema = z.object({
+  page: z.string().optional(),
+  limit: z.string().optional(),
+  sortBy: z.enum(['name', 'capsuleNumber', 'checkinTime', 'checkoutTime']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  search: z.string()
+    .max(100, "Search query must not exceed 100 characters")
+    .transform(val => sanitizers.sanitizeString(val))
+    .transform(val => val.trim() || undefined)
+    .optional(),
+  nationality: z.string()
+    .max(60, "Nationality must not exceed 60 characters")
+    .regex(/^[a-zA-Z\s'-]+$/, "Nationality can only contain letters, spaces, hyphens, and apostrophes")
+    .transform(val => val.trim() || undefined)
+    .optional(),
+  capsule: z.string()
+    .max(10, "Capsule number must not exceed 10 characters")
+    .transform(val => val.trim() || undefined)
+    .optional(),
+});
+
 const router = Router();
 
 // Bulk checkout overdue guests
@@ -120,32 +142,37 @@ router.get("/checked-in", asyncRouteHandler(async (req: any, res: any) => {
 }));
 
 // Get guest history
-router.get("/history", asyncRouteHandler(async (req: any, res: any) => {
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 20;
-  const sortBy = req.query.sortBy as string || 'checkoutTime';
-  const sortOrder = req.query.sortOrder as 'asc' | 'desc' || 'desc';
-  
-  // Extract filter parameters
-  const filters = {
-    search: req.query.search as string | undefined,
-    nationality: req.query.nationality as string | undefined,
-    capsule: req.query.capsule as string | undefined,
-  };
-  
-  // Remove undefined values for cleaner passing
-  const cleanFilters = Object.fromEntries(
-    Object.entries(filters).filter(([_, v]) => v !== undefined && v !== '')
-  ) as { search?: string; nationality?: string; capsule?: string } | undefined;
-  
-  const history = await storage.getGuestHistory(
-    { page, limit }, 
-    sortBy, 
-    sortOrder,
-    Object.keys(cleanFilters || {}).length > 0 ? cleanFilters : undefined
-  );
-  res.json(history);
-}));
+router.get("/history", 
+  securityValidationMiddleware, 
+  validateData(guestHistoryQuerySchema, 'query'),
+  asyncRouteHandler(async (req: any, res: any) => {
+    // Query params are now validated and sanitized
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const sortBy = req.query.sortBy as string || 'checkoutTime';
+    const sortOrder = req.query.sortOrder as 'asc' | 'desc' || 'desc';
+    
+    // Extract validated filter parameters (undefined values already handled by schema transforms)
+    const filters = {
+      search: req.query.search,
+      nationality: req.query.nationality,
+      capsule: req.query.capsule,
+    };
+    
+    // Remove undefined values for cleaner passing
+    const cleanFilters = Object.fromEntries(
+      Object.entries(filters).filter(([_, v]) => v !== undefined)
+    ) as { search?: string; nationality?: string; capsule?: string } | undefined;
+    
+    const history = await storage.getGuestHistory(
+      { page, limit }, 
+      sortBy, 
+      sortOrder,
+      Object.keys(cleanFilters || {}).length > 0 ? cleanFilters : undefined
+    );
+    res.json(history);
+  })
+);
 
 // Get guests with checkout today (for daily notifications)
 router.get("/checkout-today", asyncRouteHandler(async (_req: any, res: any) => {

@@ -191,10 +191,43 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(guests.capsuleNumber, filters.capsule));
     }
     
-    const guestHistory = await this.db.select().from(guests)
-      .where(and(...conditions))
-      .orderBy(orderFn(orderColumn));
-    return this.paginate(guestHistory, pagination);
+    // If no pagination params, return all results
+    if (!pagination) {
+      const guestHistory = await this.db.select().from(guests)
+        .where(and(...conditions))
+        .orderBy(orderFn(orderColumn));
+      return this.paginate(guestHistory, pagination);
+    }
+    
+    // SQL-level pagination with count query
+    const page = Math.max(1, pagination.page || 1);
+    const limit = Math.max(1, pagination.limit || 20);
+    const offset = (page - 1) * limit;
+    
+    // Run count and data queries in parallel
+    const [countResult, guestHistory] = await Promise.all([
+      this.db.select({ count: count() }).from(guests).where(and(...conditions)),
+      this.db.select().from(guests)
+        .where(and(...conditions))
+        .orderBy(orderFn(orderColumn))
+        .limit(limit)
+        .offset(offset)
+    ]);
+    
+    const total = countResult[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+    
+    return {
+      data: guestHistory,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore
+      }
+    };
   }
 
   async checkoutGuest(id: string): Promise<Guest | undefined> {
