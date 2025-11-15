@@ -125,7 +125,25 @@ router.get("/history", asyncRouteHandler(async (req: any, res: any) => {
   const limit = parseInt(req.query.limit as string) || 20;
   const sortBy = req.query.sortBy as string || 'checkoutTime';
   const sortOrder = req.query.sortOrder as 'asc' | 'desc' || 'desc';
-  const history = await storage.getGuestHistory({ page, limit }, sortBy, sortOrder);
+  
+  // Extract filter parameters
+  const filters = {
+    search: req.query.search as string | undefined,
+    nationality: req.query.nationality as string | undefined,
+    capsule: req.query.capsule as string | undefined,
+  };
+  
+  // Remove undefined values for cleaner passing
+  const cleanFilters = Object.fromEntries(
+    Object.entries(filters).filter(([_, v]) => v !== undefined && v !== '')
+  ) as { search?: string; nationality?: string; capsule?: string } | undefined;
+  
+  const history = await storage.getGuestHistory(
+    { page, limit }, 
+    sortBy, 
+    sortOrder,
+    Object.keys(cleanFilters || {}).length > 0 ? cleanFilters : undefined
+  );
   res.json(history);
 }));
 
