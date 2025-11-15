@@ -20,6 +20,10 @@ interface Guest {
   capsuleNumber: string;
   checkinTime: string;
   checkoutTime?: string;
+  nationality?: string;
+  phoneNumber?: string;
+  email?: string;
+  idNumber?: string;
 }
 
 interface Capsule {
@@ -57,6 +61,8 @@ export default function History() {
   
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [nationalityFilter, setNationalityFilter] = useState("all");
+  const [capsuleFilter, setCapsuleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState<string>('checkoutTime');
@@ -108,6 +114,15 @@ export default function History() {
   const totalGuests = guestHistoryResponse?.total || 0;
   const totalPages = Math.ceil(totalGuests / limit);
 
+  // Extract unique nationalities and capsules for filter dropdowns
+  const uniqueNationalities = Array.from(
+    new Set(guestHistory.map(g => g.nationality).filter(Boolean))
+  ).sort();
+  
+  const uniqueCapsules = Array.from(
+    new Set(guestHistory.map(g => g.capsuleNumber).filter(Boolean))
+  ).sort();
+
   // Cleaning history
   const { data: cleanedCapsules = [], isLoading: cleaningLoading } = useQuery<Capsule[]>({
     queryKey: ["/api/capsules/cleaning-status/cleaned"],
@@ -131,9 +146,24 @@ export default function History() {
   });
 
   const filteredHistory = guestHistory.filter(guest => {
-    const matchesSearch = guest.name.toLowerCase().includes(searchQuery.toLowerCase());
+    // Text search across multiple fields
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = searchQuery === "" || 
+      guest.name?.toLowerCase().includes(searchLower) ||
+      guest.phoneNumber?.toLowerCase().includes(searchLower) ||
+      guest.email?.toLowerCase().includes(searchLower) ||
+      guest.idNumber?.toLowerCase().includes(searchLower);
     
-    if (dateFilter === "all") return matchesSearch;
+    // Nationality filter
+    const matchesNationality = nationalityFilter === "all" || guest.nationality === nationalityFilter;
+    
+    // Capsule filter
+    const matchesCapsule = capsuleFilter === "all" || guest.capsuleNumber === capsuleFilter;
+    
+    // Combine all non-date filters
+    const matchesFilters = matchesSearch && matchesNationality && matchesCapsule;
+    
+    if (dateFilter === "all") return matchesFilters;
     
     const checkinDate = new Date(guest.checkinTime);
     const today = new Date();
@@ -141,30 +171,30 @@ export default function History() {
     
     switch (dateFilter) {
       case "today":
-        return matchesSearch && checkinDate >= todayStart;
+        return matchesFilters && checkinDate >= todayStart;
       case "week":
         const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return matchesSearch && checkinDate >= weekStart;
+        return matchesFilters && checkinDate >= weekStart;
       case "month":
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        return matchesSearch && checkinDate >= monthStart;
+        return matchesFilters && checkinDate >= monthStart;
       case "exact":
-        if (!exactDate) return matchesSearch;
+        if (!exactDate) return matchesFilters;
         {
           const d = new Date(exactDate);
           const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
           const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-          return matchesSearch && checkinDate >= start && checkinDate <= end;
+          return matchesFilters && checkinDate >= start && checkinDate <= end;
         }
       case "range":
-        if (!rangeStart && !rangeEnd) return matchesSearch;
+        if (!rangeStart && !rangeEnd) return matchesFilters;
         {
           const start = rangeStart ? new Date(new Date(rangeStart).setHours(0,0,0,0)) : new Date(0);
           const end = rangeEnd ? new Date(new Date(rangeEnd).setHours(23,59,59,999)) : new Date(8640000000000000);
-          return matchesSearch && checkinDate >= start && checkinDate <= end;
+          return matchesFilters && checkinDate >= start && checkinDate <= end;
         }
       default:
-        return matchesSearch;
+        return matchesFilters;
     }
   });
 

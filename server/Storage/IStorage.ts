@@ -22,7 +22,12 @@ export interface IStorage {
   getGuest(id: string): Promise<Guest | undefined>;
   getAllGuests(pagination?: PaginationParams): Promise<PaginatedResponse<Guest>>;
   getCheckedInGuests(pagination?: PaginationParams): Promise<PaginatedResponse<Guest>>;
-  getGuestHistory(pagination?: PaginationParams, sortBy?: string, sortOrder?: 'asc' | 'desc'): Promise<PaginatedResponse<Guest>>;
+  getGuestHistory(
+    pagination?: PaginationParams, 
+    sortBy?: string, 
+    sortOrder?: 'asc' | 'desc',
+    filters?: { search?: string; nationality?: string; capsule?: string }
+  ): Promise<PaginatedResponse<Guest>>;
   checkoutGuest(id: string): Promise<Guest | undefined>;
   updateGuest(id: string, updates: Partial<Guest>): Promise<Guest | undefined>;
   getGuestsWithCheckoutToday(): Promise<Guest[]>;
