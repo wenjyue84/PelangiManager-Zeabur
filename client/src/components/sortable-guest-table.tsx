@@ -213,6 +213,27 @@ export default function SortableGuestTable() {
     }
   };
 
+  const extractOutstandingAmount = (guest: Guest): string | null => {
+    if (isGuestPaid(guest)) return null;
+    const balance = getGuestBalance(guest);
+    if (balance > 0) {
+      return `RM${balance.toFixed(2)}`;
+    }
+    return null;
+  };
+
+  const handleToggleOutstandingDisplay = (guestId: string) => {
+    setToggledOutstandingGuests(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(guestId)) {
+        newSet.delete(guestId);
+      } else {
+        newSet.add(guestId);
+      }
+      return newSet;
+    });
+  };
+
   const getGuestStatusInfo = (guest: Guest) => {
     if (guest.status === 'blacklisted') {
       return {
