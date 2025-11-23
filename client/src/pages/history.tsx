@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -49,6 +49,58 @@ function formatDuration(checkinTime: string, checkoutTime: string): string {
 
 function getInitials(name: string): string {
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+}
+
+// Date filtering helper functions
+function isSameDay(date1: Date, date2: Date): boolean {
+  return date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate();
+}
+
+function isToday(dateString: string): boolean {
+  const date = new Date(dateString);
+  const today = new Date();
+  return isSameDay(date, today);
+}
+
+function isThisWeek(dateString: string): boolean {
+  const date = new Date(dateString);
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  
+  return date >= startOfWeek && date <= endOfWeek;
+}
+
+function isThisMonth(dateString: string): boolean {
+  const date = new Date(dateString);
+  const today = new Date();
+  return date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth();
+}
+
+function isInDateRange(dateString: string, start: string, end: string): boolean {
+  if (!start || !end) return true;
+  const date = new Date(dateString);
+  // Parse date inputs in local time by appending time component
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T23:59:59`);
+  return date >= startDate && date <= endDate;
+}
+
+function matchesExactDate(dateString: string, exactDate: string): boolean {
+  if (!exactDate) return true;
+  const date = new Date(dateString);
+  // Parse date input in local time by appending time component
+  const targetStart = new Date(`${exactDate}T00:00:00`);
+  const targetEnd = new Date(`${exactDate}T23:59:59`);
+  return date >= targetStart && date <= targetEnd;
 }
 
 export default function History() {
@@ -172,9 +224,40 @@ export default function History() {
     }
   });
 
-  // Backend handles all filtering, so we display data as-is
-  // Keep date filter for future backend implementation if needed
-  const filteredHistory = guestHistory;
+  // Apply client-side date filtering
+  const filteredHistory = useMemo(() => {
+    if (dateFilter === 'all') return guestHistory;
+    
+    return guestHistory.filter(guest => {
+      const checkinDate = guest.checkinTime;
+      const checkoutDate = guest.checkoutTime;
+      
+      // Check if either check-in or check-out matches the filter
+      switch (dateFilter) {
+        case 'today':
+          return (checkinDate && isToday(checkinDate)) || (checkoutDate && isToday(checkoutDate));
+        
+        case 'week':
+          return (checkinDate && isThisWeek(checkinDate)) || (checkoutDate && isThisWeek(checkoutDate));
+        
+        case 'month':
+          return (checkinDate && isThisMonth(checkinDate)) || (checkoutDate && isThisMonth(checkoutDate));
+        
+        case 'exact':
+          if (!exactDate) return true;
+          return (checkinDate && matchesExactDate(checkinDate, exactDate)) || 
+                 (checkoutDate && matchesExactDate(checkoutDate, exactDate));
+        
+        case 'range':
+          if (!rangeStart || !rangeEnd) return true;
+          return (checkinDate && isInDateRange(checkinDate, rangeStart, rangeEnd)) || 
+                 (checkoutDate && isInDateRange(checkoutDate, rangeStart, rangeEnd));
+        
+        default:
+          return true;
+      }
+    });
+  }, [guestHistory, dateFilter, exactDate, rangeStart, rangeEnd]);
 
   return (
     <div className="space-y-6">
@@ -185,7 +268,9 @@ export default function History() {
             <div>
               <CardTitle className="text-lg font-semibold text-hostel-text">Guest History</CardTitle>
               <p className="text-sm text-gray-600">
-                {isLoading ? 'Loading...' : `${totalGuests} checked-out guests in total`}
+                {isLoading ? 'Loading...' : dateFilter !== 'all' 
+                  ? `${filteredHistory.length} of ${totalGuests} checked-out guests` 
+                  : `${totalGuests} checked-out guests in total`}
               </p>
             </div>
             <div className="flex items-center space-x-4 flex-wrap gap-y-2">
@@ -267,7 +352,7 @@ export default function History() {
             <SelectContent>
               <SelectItem value="all">All Nationalities</SelectItem>
               {uniqueNationalities.map(nationality => (
-                <SelectItem key={nationality} value={nationality}>{nationality}</SelectItem>
+                <SelectItem key={nationality} value={nationality || ''}>{nationality}</SelectItem>
               ))}
             </SelectContent>
           </Select>
