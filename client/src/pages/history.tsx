@@ -232,9 +232,25 @@ export default function History() {
     new Set(guestHistory.map(g => g.nationality).filter(Boolean))
   ).sort();
   
+  // Sort capsules with numeric awareness (C1, C2, ..., C10, C11 not C1, C10, C11, C2)
   const uniqueCapsules = Array.from(
     new Set(guestHistory.map(g => g.capsuleNumber).filter(Boolean))
-  ).sort();
+  ).sort((a, b) => {
+    const matchA = a.match(/([A-Za-z]+)(\d+)/);
+    const matchB = b.match(/([A-Za-z]+)(\d+)/);
+    
+    if (!matchA || !matchB) return a.localeCompare(b);
+    
+    const prefixA = matchA[1];
+    const prefixB = matchB[1];
+    const numA = parseInt(matchA[2], 10);
+    const numB = parseInt(matchB[2], 10);
+    
+    // First sort by prefix alphabetically
+    if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+    // Then sort by number numerically
+    return numA - numB;
+  });
   
   // Reset to page 1 when filters change
   const handleFilterChange = (filterType: 'search' | 'nationality' | 'capsule', value: string) => {
