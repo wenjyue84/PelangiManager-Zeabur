@@ -168,7 +168,8 @@ export default function History() {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
-      sortBy,
+      // Don't send 'duration' to backend - it's not a database column
+      sortBy: sortBy === 'duration' ? 'checkoutTime' : sortBy,
       sortOrder,
     });
     
@@ -180,7 +181,16 @@ export default function History() {
   };
 
   const { data: guestHistoryResponse, isLoading } = useQuery<PaginatedResponse<Guest>>({
-    queryKey: ['/api/guests/history', { page, limit, sortBy, sortOrder, searchQuery, nationalityFilter, capsuleFilter }],
+    // Don't include 'duration' in query key to avoid refetching when sorting by duration
+    queryKey: ['/api/guests/history', { 
+      page, 
+      limit, 
+      sortBy: sortBy === 'duration' ? 'checkoutTime' : sortBy, 
+      sortOrder, 
+      searchQuery, 
+      nationalityFilter, 
+      capsuleFilter 
+    }],
     queryFn: async () => {
       const res = await fetch(`/api/guests/history?${buildQueryString()}`);
       if (!res.ok) throw new Error('Failed to fetch guest history');
@@ -265,7 +275,7 @@ export default function History() {
 
   // Apply client-side date filtering and sorting
   const filteredHistory = useMemo(() => {
-    let result = guestHistory;
+    let result = [...guestHistory]; // Create a copy to avoid mutating original array
     
     // Apply date filter
     if (dateFilter !== 'all') {
