@@ -205,10 +205,10 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
       return;
     }
 
-    if (!days || days <= 0) {
+    if (days === 0 || !Number.isFinite(days)) {
       toast({ 
         title: "Validation Error", 
-        description: "Please select a valid duration (must be at least 1 day)", 
+        description: "Please select a valid duration (cannot be 0 days)", 
         variant: "destructive" 
       });
       return;
@@ -313,8 +313,8 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
                       today.setHours(0, 0, 0, 0);
                       const expectedDate = new Date(guest.expectedCheckoutDate);
                       expectedDate.setHours(0, 0, 0, 0);
-                      const diffDays = Math.ceil((today.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
-                      setDays(Math.max(1, diffDays));
+                      const diffDays = Math.round((today.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+                      setDays(diffDays);
                     }}
                     className="h-8"
                     data-testid="button-today"
@@ -332,8 +332,8 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
                       tomorrow.setHours(0, 0, 0, 0);
                       const expectedDate = new Date(guest.expectedCheckoutDate);
                       expectedDate.setHours(0, 0, 0, 0);
-                      const diffDays = Math.ceil((tomorrow.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
-                      setDays(Math.max(1, diffDays));
+                      const diffDays = Math.round((tomorrow.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+                      setDays(diffDays);
                     }}
                     className="h-8"
                     data-testid="button-tomorrow"
@@ -345,17 +345,17 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
                   <Input
                     id="custom-days"
                     type="number"
-                    min={1}
+                    min={-365}
                     max={365}
                     value={days}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === '') {
-                        setDays(1);
+                      if (value === '' || value === '-') {
+                        setDays(0);
                       } else {
                         const numValue = parseInt(value);
                         if (!isNaN(numValue)) {
-                          setDays(Math.max(1, Math.min(365, numValue)));
+                          setDays(Math.max(-365, Math.min(365, numValue)));
                         }
                       }
                     }}
