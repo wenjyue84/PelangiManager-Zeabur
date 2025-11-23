@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiRequest } from "@/lib/queryClient";
 import type { Guest, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +16,7 @@ import { getDefaultCollector } from "@/components/check-in/utils";
 import { getGuestBalance } from "@/lib/guest";
 import { Calendar, CalendarCheck, CalendarPlus, CheckCircle, CreditCard, DollarSign, User as UserIcon, Wallet } from "lucide-react";
 import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
+import { format } from "date-fns";
 
 interface ExtendStayDialogProps {
   guest: Guest | null;
@@ -367,22 +370,58 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
                         e.currentTarget.blur();
                       }
                     }}
-                    className="w-24"
+                    className={`w-24 ${days < 0 ? 'border-red-300 text-red-900 bg-red-50' : ''}`}
                     placeholder="Days"
                   />
-                  <span className="text-sm text-gray-500">days</span>
+                  <span className={`text-sm ${days < 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>days</span>
                 </div>
               </div>
             </div>
 
-            {/* New Checkout Display */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <Label className="flex items-center gap-1 text-blue-800">
+            {/* New Checkout Date Picker */}
+            <div className={`${days < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'} border rounded-lg p-3`}>
+              <Label className={`flex items-center gap-1 ${days < 0 ? 'text-red-800' : 'text-blue-800'}`}>
                 <CalendarCheck className="h-4 w-4" /> New checkout date
               </Label>
-              <div className="mt-1 text-lg font-semibold text-blue-900">
-                {computedNewCheckout || '—'}
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full mt-2 justify-start text-left font-normal ${
+                      days < 0 
+                        ? 'border-red-300 bg-red-50 text-red-900 hover:bg-red-100' 
+                        : 'bg-white'
+                    }`}
+                  >
+                    <CalendarCheck className="mr-2 h-4 w-4" />
+                    {computedNewCheckout ? format(new Date(computedNewCheckout), "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={computedNewCheckout ? new Date(computedNewCheckout) : undefined}
+                    onSelect={(date) => {
+                      if (!date || !guest?.expectedCheckoutDate) return;
+                      
+                      // Calculate days difference
+                      const selectedDate = new Date(date);
+                      selectedDate.setHours(0, 0, 0, 0);
+                      const expectedDate = new Date(guest.expectedCheckoutDate);
+                      expectedDate.setHours(0, 0, 0, 0);
+                      
+                      const diffDays = Math.round((selectedDate.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+                      setDays(diffDays);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {days < 0 && (
+                <div className="mt-2 text-sm text-red-700 font-medium">
+                  ⚠️ Shortening stay by {Math.abs(days)} day{Math.abs(days) !== 1 ? 's' : ''}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
