@@ -298,39 +298,80 @@ export default function ExtendStayDialog({ guest, open, onOpenChange }: ExtendSt
               </div>
               
               {/* Custom Duration Input */}
-              <div className="flex items-center gap-2">
-                <Label htmlFor="custom-days" className="text-sm text-gray-600 min-w-[60px]">
-                  Custom:
-                </Label>
-                <Input
-                  id="custom-days"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={days}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '') {
-                      setDays(1);
-                    } else {
-                      const numValue = parseInt(value);
-                      if (!isNaN(numValue)) {
-                        setDays(Math.max(1, Math.min(365, numValue)));
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Label htmlFor="custom-days" className="text-sm text-gray-600 min-w-[60px]">
+                    Custom:
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (!guest?.expectedCheckoutDate) return;
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const expectedDate = new Date(guest.expectedCheckoutDate);
+                      expectedDate.setHours(0, 0, 0, 0);
+                      const diffDays = Math.ceil((today.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+                      setDays(Math.max(1, diffDays));
+                    }}
+                    className="h-8"
+                    data-testid="button-today"
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (!guest?.expectedCheckoutDate) return;
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      tomorrow.setHours(0, 0, 0, 0);
+                      const expectedDate = new Date(guest.expectedCheckoutDate);
+                      expectedDate.setHours(0, 0, 0, 0);
+                      const diffDays = Math.ceil((tomorrow.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+                      setDays(Math.max(1, diffDays));
+                    }}
+                    className="h-8"
+                    data-testid="button-tomorrow"
+                  >
+                    Tomorrow
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="custom-days"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={days}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setDays(1);
+                      } else {
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue)) {
+                          setDays(Math.max(1, Math.min(365, numValue)));
+                        }
                       }
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.target.select();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  className="w-24"
-                  placeholder="Days"
-                />
-                <span className="text-sm text-gray-500">days</span>
+                    }}
+                    onFocus={(e) => {
+                      e.target.select();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="w-24"
+                    placeholder="Days"
+                  />
+                  <span className="text-sm text-gray-500">days</span>
+                </div>
               </div>
             </div>
 
