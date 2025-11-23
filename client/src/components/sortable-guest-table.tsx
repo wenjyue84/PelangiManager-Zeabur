@@ -65,6 +65,7 @@ export default function SortableGuestTable() {
   const [showUndoConfirmation, setShowUndoConfirmation] = useState(false);
   const [capsuleChangeGuest, setCapsuleChangeGuest] = useState<Guest | null>(null);
   const [showAllCapsules, setShowAllCapsules] = useState(false);
+  const [toggledOutstandingGuests, setToggledOutstandingGuests] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { isAuthenticated, logout } = useAuth();
 
