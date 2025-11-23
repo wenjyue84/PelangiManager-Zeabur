@@ -1095,10 +1095,13 @@ export const updateGuestSchema = z.object({
     .max(500, "Notes too long. Please use 500 characters or fewer to describe any special requirements")
     .transform(val => val?.trim() || "")
     .optional(),
-  status: z.string()
-    .transform(val => val === "" ? undefined : val)
+  status: z.union([z.string(), z.null()])
+    .transform(val => {
+      if (val === "" || val === null) return null;
+      return val;
+    })
     .optional()
-    .refine(val => val === undefined || ["vip", "blacklisted"].includes(val), {
+    .refine(val => val === null || val === undefined || ["vip", "blacklisted"].includes(val), {
       message: "Status must be either 'vip' or 'blacklisted'"
     }),
   expectedCheckoutDate: z.string()
