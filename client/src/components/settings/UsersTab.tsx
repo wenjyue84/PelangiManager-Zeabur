@@ -357,8 +357,8 @@ export default function UsersTab({ users, isLoading, queryClient, toast, current
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {/* Edit button - Admin only */}
-                      {isAdmin && (
+                      {/* Edit button - Admin can edit anyone, staff can edit themselves */}
+                      {(isAdmin || user.id === currentUser?.id) && (
                         <Button size="sm" variant="outline" onClick={() => handleEditUser(user)} data-testid={`button-edit-user-${user.id}`}>
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -457,23 +457,25 @@ export default function UsersTab({ users, isLoading, queryClient, toast, current
                     </FormItem>
                   )} />
                 </div>
-                <FormField control={editUserForm.control} name="role" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-edit-role">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {isAdmin && (
+                  <FormField control={editUserForm.control} name="role" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-role">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setSelectedUser(null); }}>
                     Cancel
