@@ -374,6 +374,7 @@ export default function SettingsPage() {
             isLoading={usersLoading}
             queryClient={queryClient}
             toast={toast}
+            currentUser={authContext?.user}
           />
         </TabsContent>
 
