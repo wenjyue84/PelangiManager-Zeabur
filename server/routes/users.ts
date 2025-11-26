@@ -7,10 +7,17 @@ import { authenticateToken } from "./middleware/auth";
 
 const router = Router();
 
-// Get all users
-router.get("/", authenticateToken, async (_req, res) => {
+// Get all users - Staff only see themselves, admins see all
+router.get("/", authenticateToken, async (req: any, res) => {
   try {
-    const users = await storage.getAllUsers();
+    const isAdmin = req.user?.role === "admin";
+    let users = await storage.getAllUsers();
+    
+    // Staff users can only see themselves
+    if (!isAdmin) {
+      users = users.filter((u) => u.id === req.user?.id);
+    }
+    
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Failed to get users" });
@@ -84,13 +91,21 @@ router.patch("/:id", authenticateToken, async (req: any, res) => {
       return res.status(403).json({ message: "You can only edit your own account" });
     }
 
-    // Staff users can only update their own password - strictly enforce by filtering
+    // Staff users can only update their own account - allow certain fields
     if (!isAdmin) {
       if (!isOwnAccount) {
         return res.status(403).json({ message: "Staff users cannot edit other users" });
       }
-      // Only allow password field for staff, strip everything else
-      updates = updates.password ? { password: updates.password } : {};
+      // Staff can update: email, username, firstName, lastName, password
+      // Strip: role, googleId, profileImage, createdAt, updatedAt, id
+      const allowedFields = ["email", "username", "firstName", "lastName", "password"];
+      const filtered: any = {};
+      allowedFields.forEach((field) => {
+        if (field in updates) {
+          filtered[field] = updates[field];
+        }
+      });
+      updates = filtered;
     }
 
     // Remove empty password field
@@ -116,6 +131,22 @@ router.patch("/:id", authenticateToken, async (req: any, res) => {
           message: "Password does not meet strength requirements",
           issues: passwordCheck.issues,
         });
+      }
+    }
+
+    // Validate email uniqueness if being updated
+    if (updates.email) {
+      const existingUser = await storage.getUserByEmail(updates.email);
+      if (existingUser && existingUser.id !== id) {
+        return res.status(409).json({ message: "Email is already in use" });
+      }
+    }
+
+    // Validate username uniqueness if being updated
+    if (updates.username) {
+      const existingUser = await storage.getUserByUsername(updates.username);
+      if (existingUser && existingUser.id !== id) {
+        return res.status(409).json({ message: "Username is already in use" });
       }
     }
 
