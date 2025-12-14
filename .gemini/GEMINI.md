@@ -62,3 +62,15 @@ PelangiManager - Capsule Hostel Management System
 ## Operational Guidelines Updates
 
 - **Command Prompt Title:** Remember to use the `title` command to set a meaningful title for the command prompt window, reflecting the current task, to avoid confusion when multiple windows are open.
+
+---
+
+## ⚠️ Port Configuration (IMPORTANT)
+
+**Always use `localhost:4000` for PelangiManager.**
+
+- ✅ **Use:** `localhost:4000`
+- ❌ **Do NOT use:** `localhost:3000` (reserved for another app)
+- ❌ **Do NOT use:** `localhost:5000` (reserved for another app)
+
+When running the development server, ensure it starts on port 4000. If the default port is different, configure it accordingly before starting.
