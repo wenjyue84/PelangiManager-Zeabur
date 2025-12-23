@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, Plus, Edit, Trash2, ArrowUpDown } from "lucide-react";
+import { Wrench, Plus, Edit, Trash2, ArrowUpDown, Share2 } from "lucide-react";
 import { type CapsuleProblem } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 type SortField = "capsule" | "date" | "reportedBy";
 type SortDirection = "asc" | "desc";
@@ -192,6 +193,64 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
     return sortDirection === "asc" ? " ↑" : " ↓";
   };
 
+  const exportToWhatsApp = () => {
+    const activeProblemsForExport = sortProblems(
+      Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => !p.isResolved) : [],
+      "capsule",
+      "asc"
+    );
+    
+    if (activeProblemsForExport.length === 0) {
+      toast({
+        title: "No Issues to Export",
+        description: "There are no active maintenance issues to export.",
+      });
+      return;
+    }
+    
+    const today = new Date().toLocaleDateString("en-GB", { 
+      day: "2-digit", 
+      month: "short", 
+      year: "numeric" 
+    });
+    
+    let message = `🔧 *${labels.singular} Maintenance Issues*\n`;
+    message += `📅 ${today}\n`;
+    message += `━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    activeProblemsForExport.forEach((problem: CapsuleProblem, index: number) => {
+      const reportedDate = new Date(problem.reportedAt).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short"
+      });
+      
+      message += `${index + 1}. *${problem.capsuleNumber}*\n`;
+      message += `   📝 ${problem.description}\n`;
+      message += `   👤 ${problem.reportedBy} | 📅 ${reportedDate}\n\n`;
+    });
+    
+    message += `━━━━━━━━━━━━━━━━━━\n`;
+    message += `Total: ${activeProblemsForExport.length} active issue${activeProblemsForExport.length > 1 ? 's' : ''}`;
+    
+    navigator.clipboard.writeText(message).then(() => {
+      toast({
+        title: "Copied to Clipboard",
+        description: "Maintenance issues copied. You can now paste in WhatsApp.",
+      });
+    }).catch(() => {
+      const textArea = document.createElement("textarea");
+      textArea.value = message;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      toast({
+        title: "Copied to Clipboard",
+        description: "Maintenance issues copied. You can now paste in WhatsApp.",
+      });
+    });
+  };
+
   const activeProblemsRaw = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => !p.isResolved) : [];
   const resolvedProblemsRaw = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => p.isResolved) : [];
   
@@ -257,6 +316,16 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
                 </Dialog>
                 <Button variant={concise ? "default" : "outline"} size="sm" onClick={() => setConcise(!concise)}>
                   {concise ? "Details View" : "Concise View"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportToWhatsApp}
+                  data-testid="export-whatsapp"
+                  className="flex items-center gap-1"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Export
                 </Button>
               </div>
             </div>
