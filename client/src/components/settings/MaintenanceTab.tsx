@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
@@ -11,8 +11,36 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, Plus, Edit, Trash2 } from "lucide-react";
+import { Wrench, Plus, Edit, Trash2, ArrowUpDown } from "lucide-react";
 import { type CapsuleProblem } from "@shared/schema";
+
+type SortField = "capsule" | "date" | "reportedBy";
+type SortDirection = "asc" | "desc";
+
+function extractCapsuleNumber(capsuleNumber: string): number {
+  const match = capsuleNumber.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 0;
+}
+
+function sortProblems(problems: CapsuleProblem[], sortField: SortField, sortDirection: SortDirection): CapsuleProblem[] {
+  return [...problems].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortField) {
+      case "capsule":
+        comparison = extractCapsuleNumber(a.capsuleNumber) - extractCapsuleNumber(b.capsuleNumber);
+        break;
+      case "date":
+        comparison = new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime();
+        break;
+      case "reportedBy":
+        comparison = (a.reportedBy || "").localeCompare(b.reportedBy || "");
+        break;
+    }
+    
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+}
 
 export default function MaintenanceTab({ problems, capsules, isLoading, queryClient, toast, labels }: any) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -20,6 +48,8 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<CapsuleProblem | null>(null);
   const [concise, setConcise] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("capsule");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const createProblemForm = useForm({
     defaultValues: {
@@ -148,67 +178,119 @@ export default function MaintenanceTab({ problems, capsules, isLoading, queryCli
     setResolveDialogOpen(true);
   };
 
-  const activeProblem = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => !p.isResolved) : [];
-  const resolvedProblems = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => p.isResolved) : [];
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const getSortIndicator = (field: SortField) => {
+    if (sortField !== field) return "";
+    return sortDirection === "asc" ? " ↑" : " ↓";
+  };
+
+  const activeProblemsRaw = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => !p.isResolved) : [];
+  const resolvedProblemsRaw = Array.isArray(problems) ? problems.filter((p: CapsuleProblem) => p.isResolved) : [];
+  
+  const activeProblem = useMemo(() => sortProblems(activeProblemsRaw, sortField, sortDirection), [activeProblemsRaw, sortField, sortDirection]);
+  const resolvedProblems = useMemo(() => sortProblems(resolvedProblemsRaw, sortField, sortDirection), [resolvedProblemsRaw, sortField, sortDirection]);
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-orange-600" />
-              {labels.singular} Maintenance
-            </CardTitle>
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Report Problem
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-orange-600" />
+                {labels.singular} Maintenance
+              </CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Report Problem
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Report {labels.singular} Problem</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={createProblemForm.handleSubmit((data) => createProblemMutation.mutate(data))} className="space-y-4">
+                      <div>
+                        <Label htmlFor="capsuleNumber">{labels.singular} Number</Label>
+                        <Select value={createProblemForm.watch("capsuleNumber")} onValueChange={(value) => createProblemForm.setValue("capsuleNumber", value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${labels.singular.toLowerCase()}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.isArray(capsules) && capsules.map((capsule) => (
+                              <SelectItem key={capsule.number} value={capsule.number}>
+                                {capsule.number}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="description">Problem Description</Label>
+                        <Textarea {...createProblemForm.register("description", { required: true })} placeholder="Describe the problem (e.g., no light, keycard not working, door cannot open...)" className="min-h-20" />
+                      </div>
+                      <div>
+                        <Label htmlFor="reportedBy">Reported By</Label>
+                        <Input {...createProblemForm.register("reportedBy", { required: true })} />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={createProblemMutation.isPending}>
+                          {createProblemMutation.isPending ? "Reporting..." : "Report Problem"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                <Button variant={concise ? "default" : "outline"} size="sm" onClick={() => setConcise(!concise)}>
+                  {concise ? "Details View" : "Concise View"}
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Report {labels.singular} Problem</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={createProblemForm.handleSubmit((data) => createProblemMutation.mutate(data))} className="space-y-4">
-                  <div>
-                    <Label htmlFor="capsuleNumber">{labels.singular} Number</Label>
-                    <Select value={createProblemForm.watch("capsuleNumber")} onValueChange={(value) => createProblemForm.setValue("capsuleNumber", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select ${labels.singular.toLowerCase()}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(capsules) && capsules.map((capsule) => (
-                          <SelectItem key={capsule.number} value={capsule.number}>
-                            {capsule.number}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Problem Description</Label>
-                    <Textarea {...createProblemForm.register("description", { required: true })} placeholder="Describe the problem (e.g., no light, keycard not working, door cannot open...)" className="min-h-20" />
-                  </div>
-                  <div>
-                    <Label htmlFor="reportedBy">Reported By</Label>
-                    <Input {...createProblemForm.register("reportedBy", { required: true })} />
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={createProblemMutation.isPending}>
-                      {createProblemMutation.isPending ? "Reporting..." : "Report Problem"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-            <Button variant={concise ? "default" : "outline"} size="sm" onClick={() => setConcise(!concise)}>
-              {concise ? "Detailed View" : "Concise View"}
-            </Button>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <ArrowUpDown className="h-4 w-4" />
+                Sort by:
+              </span>
+              <Button
+                variant={sortField === "capsule" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleSort("capsule")}
+                data-testid="sort-capsule"
+              >
+                Capsule{getSortIndicator("capsule")}
+              </Button>
+              <Button
+                variant={sortField === "date" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleSort("date")}
+                data-testid="sort-date"
+              >
+                Date{getSortIndicator("date")}
+              </Button>
+              <Button
+                variant={sortField === "reportedBy" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleSort("reportedBy")}
+                data-testid="sort-reported-by"
+              >
+                Reported By{getSortIndicator("reportedBy")}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
