@@ -120,12 +120,19 @@
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  /* US-008: Enhanced touch feedback for interactive cards */
   .hover-card-pop {
-    transition: transform 200ms ease, box-shadow 200ms ease;
+    transition: transform 150ms ease, box-shadow 150ms ease;
+    cursor: pointer;
+    touch-action: manipulation; /* Prevent 300ms delay on iOS */
   }
   .hover-card-pop:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  }
+  .hover-card-pop:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
   .text-hostel-primary {
     color: var(--hostel-primary);

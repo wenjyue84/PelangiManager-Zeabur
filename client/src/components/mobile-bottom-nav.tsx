@@ -74,7 +74,8 @@ export default function MobileBottomNav() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Primary"
       >
-        <ul className="grid grid-cols-5 gap-1 px-2 py-2">
+        {/* US-003: Improved navigation density with gap-2 and better spacing */}
+        <ul className="grid grid-cols-5 gap-2 px-3 py-2">
           {mainNavigationItems.map((item) => {
             const isActive = location === item.path;
             const canAccess = !item.requireAuth || isAuthenticated;
@@ -96,7 +97,7 @@ export default function MobileBottomNav() {
                       <div className={`flex items-center justify-center h-7 w-7 rounded-full ${isActive ? "bg-white/20" : item.color?.replace("text-", "bg-")}` }>
                         <Icon className={`h-5 w-5 ${isActive ? "text-white" : item.color}` } />
                       </div>
-                      <span className="mt-1 text-[11px] font-medium leading-none">{item.label}</span>
+                      <span className="mt-1 text-xs font-medium leading-none">{item.label}</span>
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -123,7 +124,7 @@ export default function MobileBottomNav() {
                   <div className={`flex items-center justify-center h-7 w-7 rounded-full ${showMoreMenu ? "bg-white/20" : "bg-gray-100"}`}>
                     <MoreHorizontal className={`h-5 w-5 ${showMoreMenu ? "text-white" : "text-gray-600"}`} />
                   </div>
-                  <span className="mt-1 text-[11px] font-medium leading-none">More</span>
+                  <span className="mt-1 text-xs font-medium leading-none">More</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>
