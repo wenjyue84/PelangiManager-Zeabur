@@ -75,12 +75,26 @@ export default function CheckOut() {
   const isMobile = useIsMobile();
   const [isCondensedView, setIsCondensedView] = useState(() => isMobile);
   const [showBulkCheckoutConfirmation, setShowBulkCheckoutConfirmation] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'list' | 'table'>('table');
+  // Default to card view on mobile for better UX (US-002)
+  const [viewMode, setViewMode] = useState<'card' | 'list' | 'table'>(() => {
+    // Check localStorage first for user preference
+    const saved = localStorage.getItem('checkout-view-mode');
+    if (saved && ['card', 'list', 'table'].includes(saved)) {
+      return saved as 'card' | 'list' | 'table';
+    }
+    // Default to card on mobile (<640px), table on desktop
+    return window.innerWidth < 640 ? 'card' : 'table';
+  });
 
   // Auto-switch view mode based on device type
   useEffect(() => {
     setIsCondensedView(isMobile);
   }, [isMobile]);
+
+  // Persist view mode preference (US-002)
+  useEffect(() => {
+    localStorage.setItem('checkout-view-mode', viewMode);
+  }, [viewMode]);
   
   const { data: guestsResponse, isLoading } = useQuery<PaginatedResponse<Guest>>({
     queryKey: ["/api/guests/checked-in"],
@@ -537,10 +551,10 @@ export default function CheckOut() {
                       onClick={() => handleCheckout(guest.id)}
                       disabled={checkoutMutation.isPending}
                       isLoading={checkoutMutation.isPending && checkoutMutation.variables === guest.id}
-                      className="text-hostel-error hover:text-red-700 font-medium p-1"
+                      className="text-hostel-error hover:text-red-700 hover:bg-red-50 font-medium h-11 w-11 sm:h-9 sm:w-9 p-0 touch-manipulation"
                       title="Checkout"
                     >
-                      <UserMinus className="h-3 w-3" />
+                      <UserMinus className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -592,10 +606,10 @@ export default function CheckOut() {
                 size="sm"
                 onClick={() => handleCheckout(guest.id)}
                 disabled={checkoutMutation.isPending}
-                className="text-hostel-error hover:text-red-700 ml-2"
+                className="text-hostel-error hover:text-red-700 hover:bg-red-50 ml-2 h-11 w-11 sm:h-9 sm:w-9 p-0 touch-manipulation"
                 title="Checkout"
               >
-                <UserMinus className="h-3 w-3" />
+                <UserMinus className="h-5 w-5 sm:h-4 sm:w-4" />
               </Button>
             </div>
           );
@@ -751,39 +765,39 @@ export default function CheckOut() {
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* View Mode Switcher */}
-                    <div className="flex items-center gap-1 mr-2">
-                      <Button 
-                        variant={viewMode === 'card' ? 'default' : 'outline'} 
-                        size="sm" 
+                    {/* View Mode Switcher - 44px touch targets on mobile (US-001) */}
+                    <div className="flex items-center gap-2 mr-2">
+                      <Button
+                        variant={viewMode === 'card' ? 'default' : 'outline'}
+                        size="sm"
                         onClick={() => setViewMode('card')}
-                        className="px-2"
+                        className="h-11 sm:h-9 px-3 sm:px-2"
                       >
-                        <CreditCard className="h-4 w-4 mr-1" />
-                        Card
+                        <CreditCard className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Card</span>
                       </Button>
-                      <Button 
-                        variant={viewMode === 'list' ? 'default' : 'outline'} 
-                        size="sm" 
+                      <Button
+                        variant={viewMode === 'list' ? 'default' : 'outline'}
+                        size="sm"
                         onClick={() => setViewMode('list')}
-                        className="px-2"
+                        className="h-11 sm:h-9 px-3 sm:px-2"
                       >
-                        <List className="h-4 w-4 mr-1" />
-                        List
+                        <List className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">List</span>
                       </Button>
-                      <Button 
-                        variant={viewMode === 'table' ? 'default' : 'outline'} 
-                        size="sm" 
+                      <Button
+                        variant={viewMode === 'table' ? 'default' : 'outline'}
+                        size="sm"
                         onClick={() => setViewMode('table')}
-                        className="px-2"
+                        className="h-11 sm:h-9 px-3 sm:px-2"
                       >
-                        <TableIcon className="h-4 w-4 mr-1" />
-                        Table
+                        <TableIcon className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Table</span>
                       </Button>
                     </div>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 gap-2">
+                        <Button variant="outline" size="sm" className="h-11 sm:h-9 gap-2">
                           <FilterIcon className="h-4 w-4" />
                           Filter Guests
                           {hasActiveGuestFilters && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-blue-600" />}
@@ -838,7 +852,7 @@ export default function CheckOut() {
                           <div className="space-y-2">
                             <Label className="text-xs uppercase text-gray-500">Specific Nationality</Label>
                             <Select value={filters.specificNationality} onValueChange={(val) => setFilters(prev => ({ ...prev, specificNationality: val }))}>
-                              <SelectTrigger className="h-8 text-xs">
+                              <SelectTrigger className="h-11 sm:h-9 text-sm sm:text-xs">
                                 <SelectValue placeholder="Select nationality" />
                               </SelectTrigger>
                               <SelectContent>
@@ -855,7 +869,7 @@ export default function CheckOut() {
                           <div className="space-y-2">
                             <Label className="text-xs uppercase text-gray-500">Capsule Assignment</Label>
                             <Select value={filters.capsuleNumber} onValueChange={(val) => setFilters(prev => ({ ...prev, capsuleNumber: val }))}>
-                              <SelectTrigger className="h-8 text-xs">
+                              <SelectTrigger className="h-11 sm:h-9 text-sm sm:text-xs">
                                 <SelectValue placeholder="Select capsule" />
                               </SelectTrigger>
                               <SelectContent>
@@ -880,7 +894,7 @@ export default function CheckOut() {
                                   placeholder="Min"
                                   value={filters.lengthOfStayMin}
                                   onChange={(e) => setFilters(prev => ({ ...prev, lengthOfStayMin: e.target.value }))}
-                                  className="h-8 text-xs"
+                                  className="h-11 sm:h-9 text-sm sm:text-xs"
                                 />
                               </div>
                               <div>
@@ -891,7 +905,7 @@ export default function CheckOut() {
                                   placeholder="Max"
                                   value={filters.lengthOfStayMax}
                                   onChange={(e) => setFilters(prev => ({ ...prev, lengthOfStayMax: e.target.value }))}
-                                  className="h-8 text-xs"
+                                  className="h-11 sm:h-9 text-sm sm:text-xs"
                                 />
                               </div>
                             </div>
@@ -908,7 +922,7 @@ export default function CheckOut() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setCheckinDateShortcut('yesterday')}
-                                      className="text-xs h-6 px-2"
+                                      className="text-sm sm:text-xs h-9 sm:h-7 px-3 sm:px-2"
                                     >
                                       Yesterday
                                     </Button>
@@ -917,7 +931,7 @@ export default function CheckOut() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setCheckinDateShortcut('today')}
-                                      className="text-xs h-6 px-2"
+                                      className="text-sm sm:text-xs h-9 sm:h-7 px-3 sm:px-2"
                                     >
                                       Today
                                     </Button>
@@ -926,7 +940,7 @@ export default function CheckOut() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setCheckinDateShortcut('tomorrow')}
-                                      className="text-xs h-6 px-2"
+                                      className="text-sm sm:text-xs h-9 sm:h-7 px-3 sm:px-2"
                                     >
                                       Tomorrow
                                     </Button>
@@ -938,7 +952,7 @@ export default function CheckOut() {
                                         type="date"
                                         value={filters.checkinDateFrom}
                                         onChange={(e) => setFilters(prev => ({ ...prev, checkinDateFrom: e.target.value }))}
-                                        className="h-8 text-xs"
+                                        className="h-11 sm:h-9 text-sm sm:text-xs"
                                       />
                                     </div>
                                     <div>
@@ -947,7 +961,7 @@ export default function CheckOut() {
                                         type="date"
                                         value={filters.checkinDateTo}
                                         onChange={(e) => setFilters(prev => ({ ...prev, checkinDateTo: e.target.value }))}
-                                        className="h-8 text-xs"
+                                        className="h-11 sm:h-9 text-sm sm:text-xs"
                                       />
                                     </div>
                                   </div>
@@ -962,7 +976,7 @@ export default function CheckOut() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setExpectedCheckoutDateShortcut('yesterday')}
-                                      className="text-xs h-6 px-2"
+                                      className="text-sm sm:text-xs h-9 sm:h-7 px-3 sm:px-2"
                                     >
                                       Yesterday
                                     </Button>
@@ -971,7 +985,7 @@ export default function CheckOut() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setExpectedCheckoutDateShortcut('today')}
-                                      className="text-xs h-6 px-2"
+                                      className="text-sm sm:text-xs h-9 sm:h-7 px-3 sm:px-2"
                                     >
                                       Today
                                     </Button>
@@ -980,7 +994,7 @@ export default function CheckOut() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setExpectedCheckoutDateShortcut('tomorrow')}
-                                      className="text-xs h-6 px-2"
+                                      className="text-sm sm:text-xs h-9 sm:h-7 px-3 sm:px-2"
                                     >
                                       Tomorrow
                                     </Button>
@@ -992,7 +1006,7 @@ export default function CheckOut() {
                                         type="date"
                                         value={filters.expectedCheckoutDateFrom}
                                         onChange={(e) => setFilters(prev => ({ ...prev, expectedCheckoutDateFrom: e.target.value }))}
-                                        className="h-8 text-xs"
+                                        className="h-11 sm:h-9 text-sm sm:text-xs"
                                       />
                                     </div>
                                     <div>
@@ -1001,7 +1015,7 @@ export default function CheckOut() {
                                         type="date"
                                         value={filters.expectedCheckoutDateTo}
                                         onChange={(e) => setFilters(prev => ({ ...prev, expectedCheckoutDateTo: e.target.value }))}
-                                        className="h-8 text-xs"
+                                        className="h-11 sm:h-9 text-sm sm:text-xs"
                                       />
                                     </div>
                                   </div>
