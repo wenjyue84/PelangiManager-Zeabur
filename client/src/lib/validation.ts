@@ -691,6 +691,32 @@ export const nationalityValidation = {
 };
 
 /**
+ * Phone number utility functions
+ */
+export const phoneUtils = {
+  /**
+   * Format phone number for display
+   */
+  formatPhone: (phone: string): string => {
+    return inputFormatters.formatPhone(phone);
+  },
+
+  /**
+   * Validate phone number
+   */
+  isValidPhone: (phone: string): boolean => {
+    return quickValidation.isPhone(phone);
+  },
+
+  /**
+   * Clean phone number (remove formatting)
+   */
+  cleanPhone: (phone: string): string => {
+    return phone.replace(/[^\d+]/g, '');
+  }
+};
+
+/**
  * Bulk validation utilities for validating multiple fields at once
  * Useful for form submission validation and displaying multiple errors
  */
