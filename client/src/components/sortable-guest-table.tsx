@@ -16,6 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
+import { phoneUtils } from "@/lib/validation";
 import GuestDetailsModal from "./guest-details-modal";
 import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
@@ -43,6 +44,26 @@ import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 type SortField = 'name' | 'capsuleNumber' | 'checkinTime' | 'expectedCheckoutDate';
 type SortOrder = 'asc' | 'desc';
+
+// Helper for natural capsule number sorting: first by prefix (C, J, R), then by number (1, 2, ..., 10, 11)
+const parseCapsuleNumber = (cap: string | null | undefined) => {
+  if (!cap) return { prefix: 'ZZZ', num: 999999 };
+  const match = cap.match(/^([A-Za-z]+)(\d+)$/);
+  if (match) {
+    return { prefix: match[1].toUpperCase(), num: parseInt(match[2], 10) };
+  }
+  return { prefix: cap.toUpperCase(), num: 0 };
+};
+
+const compareCapsuleNumbers = (a: string | null | undefined, b: string | null | undefined): number => {
+  const aParsed = parseCapsuleNumber(a);
+  const bParsed = parseCapsuleNumber(b);
+  
+  if (aParsed.prefix !== bParsed.prefix) {
+    return aParsed.prefix.localeCompare(bParsed.prefix);
+  }
+  return aParsed.num - bParsed.num;
+};
 
 // Define proper context interface for checkout mutation
 interface CheckoutMutationContext {
@@ -369,11 +390,9 @@ export default function SortableGuestTable() {
           bValue = (b.type === 'guest' ? b.data.name : b.data.name).toLowerCase();
           break;
         case 'capsuleNumber':
-          // Extract number for proper sorting (C1, C2, C11, C12, etc.)
-          // Handle null capsuleNumbers by putting them at the end
-          aValue = a.data.capsuleNumber ? parseInt(a.data.capsuleNumber.replace('C', '')) : 999999;
-          bValue = b.data.capsuleNumber ? parseInt(b.data.capsuleNumber.replace('C', '')) : 999999;
-          break;
+          // Natural sort for capsule numbers using helper function
+          const capsuleCompare = compareCapsuleNumbers(a.data.capsuleNumber, b.data.capsuleNumber);
+          return sortConfig.order === 'asc' ? capsuleCompare : -capsuleCompare;
         case 'checkinTime':
           aValue = a.type === 'guest' ? new Date(a.data.checkinTime).getTime() : new Date(a.data.createdAt).getTime();
           bValue = b.type === 'guest' ? new Date(b.data.checkinTime).getTime() : new Date(b.data.createdAt).getTime();
@@ -853,12 +872,7 @@ export default function SortableGuestTable() {
       ...availableCapsules
         .filter(c => c.number !== currentCapsule && c.toRent)
         .map(c => ({ number: c.number, isCurrent: false }))
-    ].sort((a, b) => {
-      // Sort numerically by capsule number
-      const aNum = parseInt(a.number.replace('C', ''));
-      const bNum = parseInt(b.number.replace('C', ''));
-      return aNum - bNum;
-    });
+    ].sort((a, b) => compareCapsuleNumbers(a.number, b.number));
 
     return (
       <Select
@@ -935,11 +949,7 @@ export default function SortableGuestTable() {
     const frontSectionCapsules = exportCapsules.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 11 && num <= 24;
-    }).sort((a, b) => {
-      const aNum = parseInt(a.number.replace('C', ''));
-      const bNum = parseInt(b.number.replace('C', ''));
-      return aNum - bNum;
-    });
+    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
     
     frontSectionCapsules.forEach(capsule => {
       const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
@@ -968,11 +978,7 @@ export default function SortableGuestTable() {
     const livingRoomCapsules = exportCapsules.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num === 25 || num === 26;
-    }).sort((a, b) => {
-      const aNum = parseInt(a.number.replace('C', ''));
-      const bNum = parseInt(b.number.replace('C', ''));
-      return aNum - bNum;
-    });
+    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
     
     livingRoomCapsules.forEach(capsule => {
       const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
@@ -993,11 +999,7 @@ export default function SortableGuestTable() {
     const roomCapsules = exportCapsules.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 1 && num <= 6;
-    }).sort((a, b) => {
-      const aNum = parseInt(a.number.replace('C', ''));
-      const bNum = parseInt(b.number.replace('C', ''));
-      return aNum - bNum;
-    });
+    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
     
     roomCapsules.forEach(capsule => {
       const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
@@ -1486,11 +1488,7 @@ export default function SortableGuestTable() {
                                     <span className="font-medium">Auto-assign</span>
                                   </SelectItem>
                                   {availableCapsules
-                                    .sort((a, b) => {
-                                      const aNum = parseInt(a.number.replace('C', ''));
-                                      const bNum = parseInt(b.number.replace('C', ''));
-                                      return aNum - bNum;
-                                    })
+                                    .sort((a, b) => compareCapsuleNumbers(a.number, b.number))
                                     .map((capsule) => (
                                       <SelectItem key={capsule.number} value={capsule.number} className="text-xs">
                                         <div className="flex items-center justify-between w-full">
@@ -1723,16 +1721,27 @@ export default function SortableGuestTable() {
                       
                       <div className="flex items-center gap-2">
                         {guest.phoneNumber && (
-                          <Button
-                            variant="secondary"
-                            className="h-11 w-11 rounded-full"
-                            asChild
-                            title={`Call ${guest.phoneNumber}`}
-                          >
-                            <a href={`tel:${guest.phoneNumber}`}>
+                          phoneUtils.isCallable(guest.phoneNumber) ? (
+                            <Button
+                              variant="secondary"
+                              className="h-11 w-11 rounded-full"
+                              asChild
+                              title={`Call ${guest.phoneNumber}`}
+                            >
+                              <a href={phoneUtils.getTelHref(guest.phoneNumber)!}>
+                                <Phone className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              className="h-11 w-11 rounded-full opacity-50"
+                              disabled
+                              title={guest.phoneNumber}
+                            >
                               <Phone className="h-4 w-4" />
-                            </a>
-                          </Button>
+                            </Button>
+                          )
                         )}
                         <Button
                           variant="destructive"
@@ -1778,11 +1787,7 @@ export default function SortableGuestTable() {
                                   <span className="font-medium">Auto-assign</span>
                                 </SelectItem>
                                 {availableCapsules
-                                  .sort((a, b) => {
-                                    const aNum = parseInt(a.number.replace('C', ''));
-                                    const bNum = parseInt(b.number.replace('C', ''));
-                                    return aNum - bNum;
-                                  })
+                                  .sort((a, b) => compareCapsuleNumbers(a.number, b.number))
                                   .map((capsule) => (
                                     <SelectItem key={capsule.number} value={capsule.number} className="text-xs">
                                       <div className="flex items-center justify-between w-full">

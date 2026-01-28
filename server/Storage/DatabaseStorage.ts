@@ -157,6 +157,32 @@ export class DatabaseStorage implements IStorage {
     sortOrder: 'asc' | 'desc' = 'desc',
     filters?: { search?: string; nationality?: string; capsule?: string }
   ): Promise<PaginatedResponse<Guest>> {
+    // Helper for natural capsule number sorting (C1, C2, ..., C10, C11 instead of C1, C10, C11, C2)
+    // Handles both formats: "C1", "C11" and "C-01", "A-02"
+    const parseCapNum = (cap: string) => {
+      // Match formats like "C1", "C11", "C-01", "A-02", "R3"
+      const match = cap?.match(/^([A-Za-z]+)-?(\d+)$/);
+      if (match) {
+        return { prefix: match[1].toUpperCase(), num: parseInt(match[2], 10) };
+      }
+      return { prefix: cap || '', num: 0 };
+    };
+    
+    const sortCapsuleNumbers = (data: Guest[]) => {
+      return data.sort((a, b) => {
+        const aParsed = parseCapNum(a.capsuleNumber);
+        const bParsed = parseCapNum(b.capsuleNumber);
+        
+        let comparison = 0;
+        if (aParsed.prefix !== bParsed.prefix) {
+          comparison = aParsed.prefix.localeCompare(bParsed.prefix);
+        } else {
+          comparison = aParsed.num - bParsed.num;
+        }
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    };
+    
     const orderColumn = sortBy === 'name' ? guests.name :
                        sortBy === 'capsuleNumber' ? guests.capsuleNumber :
                        sortBy === 'checkinTime' ? guests.checkinTime :
@@ -189,6 +215,36 @@ export class DatabaseStorage implements IStorage {
     // Add capsule filter (exact match)
     if (filters?.capsule) {
       conditions.push(eq(guests.capsuleNumber, filters.capsule));
+    }
+    
+    // For capsuleNumber sorting, we need to fetch all and sort in memory for natural order
+    if (sortBy === 'capsuleNumber') {
+      const allGuests = await this.db.select().from(guests)
+        .where(and(...conditions));
+      
+      const sortedGuests = sortCapsuleNumbers(allGuests);
+      
+      if (!pagination) {
+        return this.paginate(sortedGuests, pagination);
+      }
+      
+      const page = Math.max(1, pagination.page || 1);
+      const limit = Math.max(1, pagination.limit || 20);
+      const offset = (page - 1) * limit;
+      const total = sortedGuests.length;
+      const totalPages = Math.ceil(total / limit);
+      const hasMore = page < totalPages;
+      
+      return {
+        data: sortedGuests.slice(offset, offset + limit),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasMore
+        }
+      };
     }
     
     // If no pagination params, return all results
