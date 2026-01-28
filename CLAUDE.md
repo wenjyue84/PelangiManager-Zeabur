@@ -15,8 +15,29 @@ A comprehensive hostel/capsule hotel management system built with React, TypeScr
 - **Type Checking**: `npm run typecheck` before commits when available
 
 ## 🚀 Development Workflow
+
+### Hybrid SPARC + BMAD Methodology
+PelangiManager uses a hybrid approach for development:
+
+**SPARC ✨ (for simple edits, bug fixes, small features)**
+- 1-3 files affected
+- Under 800 lines
+- Hours to 1 day effort
+- Fast iteration needed
+- See `.sparc/README.md` for templates
+
+**BMAD 🏗️ (for major features, architectural changes)**
+- 4+ files affected
+- Files > 800 lines (required by 800-line rule)
+- Days to weeks effort
+- Complex business logic
+- See `.bmad/README.md` for agent workflows
+
+**Decision Guide:** See `HYBRID-WORKFLOW-GUIDE.md` for detailed criteria and examples
+
+### Core Workflow Rules
 - **Always kill port processes before starting servers** (prevention-first approach)
-- **800-Line Rule**: Keep files under 800 lines - proactively suggest refactoring if exceeded
+- **800-Line Rule**: Keep files under 800 lines - use BMAD for refactoring if exceeded
 - **File Operations**: Always ask for confirmation before deleting any files
 - **Git Operations**: Work primarily on **main** branch, use Conventional Commits format
 
@@ -190,6 +211,12 @@ rm -rf node_modules/.vite && npm run build && npm run dev
 - Keep components focused and under 800 lines
 
 ## 📚 Documentation References
+
+### Methodology & Workflow
+- `HYBRID-WORKFLOW-GUIDE.md` - SPARC vs BMAD decision guide with examples
+- `.sparc/README.md` - SPARC methodology for simple edits
+- `.bmad/README.md` - BMAD methodology for major features
+- `.bmad/templates/` - BMAD phase templates (analysis, planning, implementation, testing)
 
 ### Core Documentation
 - `docs/MASTER_TROUBLESHOOTING_GUIDE.md` - Comprehensive troubleshooting patterns
