@@ -26,10 +26,10 @@ app.get('/health', (req, res) => {
 // MCP protocol endpoint
 app.post('/mcp', createMCPHandler());
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Pelangi MCP Server running on http://localhost:${PORT}`);
-  console.log(`📡 MCP endpoint: http://localhost:${PORT}/mcp`);
-  console.log(`💚 Health check: http://localhost:${PORT}/health`);
+// Start server - listen on 0.0.0.0 for Docker containers
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Pelangi MCP Server running on http://0.0.0.0:${PORT}`);
+  console.log(`📡 MCP endpoint: http://0.0.0.0:${PORT}/mcp`);
+  console.log(`💚 Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`🔗 API URL: ${process.env.PELANGI_API_URL || 'http://localhost:5000'}`);
 });
