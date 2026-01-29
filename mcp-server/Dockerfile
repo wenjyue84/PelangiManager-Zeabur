@@ -7,9 +7,8 @@ WORKDIR /src
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies including devDependencies (needed for TypeScript build)
-# Use --include=dev to ensure devDependencies are installed even if NODE_ENV=production
-RUN npm install --include=dev
+# Install dependencies (TypeScript is now in dependencies, not devDependencies)
+RUN npm install
 
 # Copy source code
 COPY . .
