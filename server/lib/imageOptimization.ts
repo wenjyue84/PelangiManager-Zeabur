@@ -1,7 +1,27 @@
-import sharp from "sharp";
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+
+// Lazy load sharp to handle installation issues gracefully
+let sharp: any = null;
+let sharpLoadAttempted = false;
+
+async function getSharp() {
+  if (sharpLoadAttempted) return sharp;
+  sharpLoadAttempted = true;
+
+  try {
+    const sharpModule = await import("sharp");
+    sharp = sharpModule.default;
+    console.log("✓ Sharp image optimization loaded successfully");
+  } catch (error) {
+    console.warn("⚠️  Sharp not available - image optimization disabled");
+    console.warn("   Install with: npm install --os=win32 --cpu=x64 sharp");
+    sharp = null;
+  }
+
+  return sharp;
+}
 
 // ⚠️  CRITICAL IMAGE OPTIMIZATION LIBRARY - DO NOT MODIFY WITHOUT STRONG REASON ⚠️
 //
@@ -95,7 +115,7 @@ export async function optimizeImage(
   const originalSize = fileBuffer.length;
 
   let optimizedBuffer: Buffer;
-  let imageInfo: sharp.Metadata;
+  let imageInfo: any; // Sharp metadata type
   let compressionInfo = {
     originalFormat: originalMimetype,
     optimizedFormat: `image/${optimizationConfig.outputFormat}`,
@@ -103,11 +123,21 @@ export async function optimizeImage(
   };
 
   try {
-    // Get original image metadata
-    imageInfo = await sharp(fileBuffer).metadata();
-    
-    // Create Sharp pipeline
-    let pipeline = sharp(fileBuffer);
+    // Try to load sharp
+    const sharpInstance = await getSharp();
+
+    // Check if sharp is available
+    if (!sharpInstance) {
+      console.warn("Sharp not available - returning original image");
+      optimizedBuffer = fileBuffer;
+      compressionInfo.optimized = false;
+      imageInfo = { width: 0, height: 0, format: 'unknown' } as any;
+    } else {
+      // Get original image metadata
+      imageInfo = await sharpInstance(fileBuffer).metadata();
+
+      // Create Sharp pipeline
+      let pipeline = sharpInstance(fileBuffer);
 
     // Resize if image is larger than max dimensions
     if (optimizationConfig.maxWidth && optimizationConfig.maxHeight) {
@@ -142,14 +172,15 @@ export async function optimizeImage(
         break;
     }
 
-    optimizedBuffer = await pipeline.toBuffer();
+      optimizedBuffer = await pipeline.toBuffer();
 
-    compressionInfo = {
-      ...compressionInfo,
-      originalDimensions: `${imageInfo.width}x${imageInfo.height}`,
-      originalFormat: imageInfo.format || originalMimetype,
-    };
-    
+      compressionInfo = {
+        ...compressionInfo,
+        originalDimensions: `${imageInfo.width}x${imageInfo.height}`,
+        originalFormat: imageInfo.format || originalMimetype,
+      };
+    }
+
   } catch (sharpError) {
     console.error("Sharp optimization failed, using original:", sharpError);
     // Fallback to original file if Sharp fails

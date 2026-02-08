@@ -15,7 +15,7 @@ import pushRoutes from "./push";
 import databaseRoutes from "./database";
 import environmentRoutes from "./environment";
 
-export function registerRoutes(app: Express) {
+export function registerModularRoutes(app: Express) {
   // Register auth routes
   app.use("/api/auth", authRoutes);
   
@@ -61,6 +61,11 @@ export function registerRoutes(app: Express) {
   
   // Register test routes
   app.use("/api/tests", testRoutes);
+
+  // Top-level API health (for MCP server and load balancers)
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", service: "pelangi-manager", timestamp: new Date().toISOString() });
+  });
   
   // Error reporting endpoint (for global error boundary)
   app.post("/api/errors/report", async (req, res) => {
