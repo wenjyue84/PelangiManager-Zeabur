@@ -1,11 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
 
-// Prefer Zeabur internal host when set (service-to-service); else use public API URL
+// Prefer explicit PELANGI_API_URL; fall back to Zeabur internal host (port 80)
 const internalHost = process.env.PELANGI_MANAGER_HOST;
-const internalPort = process.env.PELANGI_MANAGER_PORT || '5000';
-const rawApiUrl = internalHost
-  ? `http://${internalHost.replace(/\/+$/, '')}:${internalPort}`
-  : (process.env.PELANGI_API_URL || 'http://localhost:5000');
+const rawApiUrl = process.env.PELANGI_API_URL
+  || (internalHost ? `http://${internalHost.replace(/\/+$/, '')}` : 'http://localhost:5000');
 const API_URL = rawApiUrl.replace(/\/+$/, '');
 const API_TOKEN = process.env.PELANGI_API_TOKEN;
 
