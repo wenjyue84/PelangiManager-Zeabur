@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
-import { registerRoutes as registerModularRoutes } from "./routes/index";
+import { registerModularRoutes } from "./routes/index";
 
 /**
  * IMPORTANT: KEEP THIS FILE MINIMAL!
