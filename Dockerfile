@@ -10,10 +10,9 @@ WORKDIR /app
 # Copy package files first (for better caching)
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies needed for build)
-# Use npm install instead of npm ci to resolve platform-specific optional deps
-# (npm ci strictly follows lockfile which may lack linux-musl binaries)
-RUN npm install --include=dev
+# Install dependencies - delete lockfile first to resolve platform-specific
+# optional deps (lockfile from Windows lacks @rollup/rollup-linux-x64-musl)
+RUN rm -f package-lock.json && npm install --include=dev
 
 # Copy source code
 COPY . .
