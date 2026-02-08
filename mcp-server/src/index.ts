@@ -5,6 +5,7 @@ import { createMCPHandler } from './server.js';
 import { apiClient, getApiBaseUrl } from './lib/http-client.js';
 import { initBaileys, getWhatsAppStatus } from './lib/baileys-client.js';
 import { startDailyReportScheduler } from './lib/daily-report.js';
+import { startCheckoutAlertScheduler } from './lib/checkout-alerts.js';
 
 // Load environment variables
 dotenv.config();
@@ -100,6 +101,20 @@ app.listen(PORT, '0.0.0.0', () => {
 
       // Start daily report scheduler (11:30 AM MYT)
       startDailyReportScheduler();
+
+      // Start checkout alert scheduler (9:00 AM MYT)
+      startCheckoutAlertScheduler();
+
+      // Initialize WhatsApp AI Assistant (optional — non-fatal)
+      try {
+        const { initAssistant } = await import('../../assistant/dist/index.js');
+        const { registerMessageHandler, sendWhatsAppMessage, getWhatsAppStatus: getWAStatus } = await import('./lib/baileys-client.js');
+        const { callAPI } = await import('./lib/http-client.js');
+        await initAssistant({ registerMessageHandler, sendMessage: sendWhatsAppMessage, callAPI, getWhatsAppStatus: getWAStatus });
+        console.log('WhatsApp AI Assistant initialized');
+      } catch (err: any) {
+        console.warn(`AI Assistant init skipped: ${err.message}`);
+      }
     } catch (err: any) {
       console.warn(`WhatsApp init failed: ${err.message}`);
       console.warn('WhatsApp tools will fail. Run: node pair-whatsapp.cjs to pair.');

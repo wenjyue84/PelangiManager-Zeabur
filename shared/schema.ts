@@ -58,12 +58,14 @@ export const guests = pgTable("guests", {
   profilePhotoUrl: text("profile_photo_url"),
   selfCheckinToken: text("self_checkin_token"), // Link back to the token used for self check-in
   status: text("status"),
+  alertSettings: text("alert_settings"), // JSON string for checkout alert configuration
 }, (table) => ([
   index("idx_guests_capsule_number").on(table.capsuleNumber),
   index("idx_guests_is_checked_in").on(table.isCheckedIn),
   index("idx_guests_checkin_time").on(table.checkinTime),
   index("idx_guests_checkout_time").on(table.checkoutTime),
   index("idx_guests_self_checkin_token").on(table.selfCheckinToken),
+  index("idx_guests_expected_checkout_date").on(table.expectedCheckoutDate),
 ]));
 
 export const capsules = pgTable("capsules", {
@@ -199,12 +201,21 @@ export const insertUserSchema = createInsertSchema(users).omit({
   }).default("staff"),
 });
 
+// Guest alert settings validation schema
+export const guestAlertSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  channels: z.array(z.enum(['whatsapp', 'push'])).default(['whatsapp']),
+  advanceNotice: z.array(z.number().min(0).max(30)).default([0]),
+  lastNotified: z.string().datetime().optional()
+});
+
 export const insertGuestSchema = createInsertSchema(guests).omit({
   id: true,
   checkinTime: true,
   checkoutTime: true,
   isCheckedIn: true,
   profilePhotoUrl: true, // Omit the auto-generated validation
+  alertSettings: true, // Omit from insert schema
 }).extend({
   name: z.string()
     .min(2, "Please enter the guest's full name (at least 2 characters)")
@@ -1157,6 +1168,17 @@ export const updateGuestSchema = z.object({
     .optional(),
   age: z.string().optional(),
   profilePhotoUrl: z.any().optional(),
+  alertSettings: z.string()
+    .transform(val => {
+      if (!val) return undefined;
+      try {
+        const parsed = JSON.parse(val);
+        return guestAlertSettingsSchema.parse(parsed);
+      } catch {
+        return undefined;
+      }
+    })
+    .optional(),
 });
 
 // Update user schema for editing

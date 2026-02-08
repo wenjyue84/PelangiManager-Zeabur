@@ -22,6 +22,7 @@ import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { NATIONALITIES } from "@/lib/nationalities";
 import { pushNotificationManager } from "@/lib/pushNotifications";
+import CheckoutAlertDialog from "@/components/CheckoutAlertDialog";
 
 import type { Guest, PaginatedResponse } from "@shared/schema";
 import { isGuestPaid } from "@/lib/guest";
@@ -75,6 +76,8 @@ export default function CheckOut() {
   const isMobile = useIsMobile();
   const [isCondensedView, setIsCondensedView] = useState(() => isMobile);
   const [showBulkCheckoutConfirmation, setShowBulkCheckoutConfirmation] = useState(false);
+  const [alertDialogGuest, setAlertDialogGuest] = useState<Guest | null>(null);
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
   // Default to card view on mobile for better UX (US-002)
   const [viewMode, setViewMode] = useState<'card' | 'list' | 'table'>(() => {
     // Check localStorage first for user preference
@@ -108,11 +111,11 @@ export default function CheckOut() {
       await apiRequest("POST", `/api/capsules/${capsuleNumber}/mark-cleaned`, {
         cleanedBy: "Staff"
       });
-      
+
       // Refresh relevant queries
       queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
-      
+
       toast({
         title: "Success",
         description: `${labels.singular} ${capsuleNumber} marked as cleaned successfully`,
@@ -124,6 +127,12 @@ export default function CheckOut() {
         variant: "destructive",
       });
     }
+  };
+
+  // Function to open alert dialog
+  const openAlertDialog = (guest: Guest) => {
+    setAlertDialogGuest(guest);
+    setAlertDialogOpen(true);
   };
 
   // Helper functions for date shortcuts
@@ -515,13 +524,19 @@ export default function CheckOut() {
                     <>
                       <TableCell className="text-sm text-gray-600">
                         {guest.expectedCheckoutDate ? (
-                          <div>
-                            <span className={`font-medium ${isOverdue ? 'text-red-600' : isToday ? 'text-orange-600' : 'text-gray-900'}`}>
-                              {new Date(guest.expectedCheckoutDate).toLocaleDateString()}
-                            </span>
-                            {isOverdue && <div className="text-xs text-red-500">Overdue</div>}
-                            {isToday && <div className="text-xs text-orange-500">Today</div>}
-                          </div>
+                          <button
+                            onClick={() => openAlertDialog(guest)}
+                            className="group flex items-center gap-2 hover:bg-gray-50 rounded-md p-1 -m-1 transition-colors"
+                          >
+                            <div>
+                              <span className={`font-medium ${isOverdue ? 'text-red-600' : isToday ? 'text-orange-600' : 'text-gray-900'}`}>
+                                {new Date(guest.expectedCheckoutDate).toLocaleDateString()}
+                              </span>
+                              {isOverdue && <div className="text-xs text-red-500">Overdue</div>}
+                              {isToday && <div className="text-xs text-orange-500">Today</div>}
+                            </div>
+                            <Bell className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -592,6 +607,15 @@ export default function CheckOut() {
                       {guest.capsuleNumber}
                     </Badge>
                     <span className="font-medium text-sm truncate">{guest.name}</span>
+                    {guest.expectedCheckoutDate && (
+                      <button
+                        onClick={() => openAlertDialog(guest)}
+                        className="group flex-shrink-0"
+                        title="Set checkout reminder"
+                      >
+                        <Bell className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                      </button>
+                    )}
                   </div>
                   <div className="text-xs text-gray-600">
                     {formatDuration(guest.checkinTime.toString())}
@@ -669,13 +693,19 @@ export default function CheckOut() {
                   </div>
                   
                   {guest.expectedCheckoutDate && (
-                    <div className="text-sm">
+                    <div className="text-sm flex items-center gap-2">
                       <span className="font-medium text-gray-800">Expected Out:</span>
-                      <span className={`ml-1 ${isOverdue ? 'text-red-600' : isToday ? 'text-orange-600' : 'text-gray-600'}`}>
-                        {new Date(guest.expectedCheckoutDate).toLocaleDateString()}
-                        {isOverdue && <span className="text-red-500 ml-1">(Overdue)</span>}
-                        {isToday && <span className="text-orange-500 ml-1">(Today)</span>}
-                      </span>
+                      <button
+                        onClick={() => openAlertDialog(guest)}
+                        className="group flex items-center gap-1 hover:bg-gray-100 rounded px-1 -mx-1 transition-colors"
+                      >
+                        <span className={`${isOverdue ? 'text-red-600' : isToday ? 'text-orange-600' : 'text-gray-600'}`}>
+                          {new Date(guest.expectedCheckoutDate).toLocaleDateString()}
+                          {isOverdue && <span className="text-red-500 ml-1">(Overdue)</span>}
+                          {isToday && <span className="text-orange-500 ml-1">(Today)</span>}
+                        </span>
+                        <Bell className="h-3 w-3 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                      </button>
                     </div>
                   )}
                   
@@ -1170,6 +1200,13 @@ export default function CheckOut() {
         variant="warning"
         icon={<UserMinus className="h-6 w-6 text-orange-600" />}
         isLoading={bulkCheckoutMutation.isPending}
+      />
+
+      {/* Checkout Alert Dialog */}
+      <CheckoutAlertDialog
+        guest={alertDialogGuest}
+        open={alertDialogOpen}
+        onOpenChange={setAlertDialogOpen}
       />
     </div>
   );
