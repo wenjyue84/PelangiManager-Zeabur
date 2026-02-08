@@ -7,6 +7,7 @@ const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || path.resolve(__dirname, '../..
 
 let sock: ReturnType<typeof makeWASocket> | null = null;
 let currentState: string = 'close';
+let currentQR: string | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export async function initBaileys(): Promise<void> {
@@ -21,7 +22,12 @@ export async function initBaileys(): Promise<void> {
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update: any) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      currentQR = qr;
+      console.log('QR code available. Visit /admin/whatsapp-qr to scan.');
+    }
 
     if (connection) currentState = connection;
 
@@ -39,13 +45,14 @@ export async function initBaileys(): Promise<void> {
         console.error('WhatsApp logged out. Delete whatsapp-auth/ and run: node pair-whatsapp.cjs');
       }
     } else if (connection === 'open') {
+      currentQR = null; // Clear QR after successful connection
       const user = (sock as any)?.user;
       console.log(`WhatsApp connected: ${user?.name || 'Unknown'} (${user?.id?.split(':')[0] || '?'})`);
     }
   });
 }
 
-export function getWhatsAppStatus(): { state: string; user: any; authDir: string } {
+export function getWhatsAppStatus(): { state: string; user: any; authDir: string; qr: string | null } {
   const user = (sock as any)?.user;
   return {
     state: currentState,
@@ -54,7 +61,8 @@ export function getWhatsAppStatus(): { state: string; user: any; authDir: string
       id: user.id,
       phone: user.id?.split(':')[0]
     } : null,
-    authDir: AUTH_DIR
+    authDir: AUTH_DIR,
+    qr: currentQR
   };
 }
 

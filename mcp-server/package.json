@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@types/node-cron": "^3.0.11",
+    "@types/qrcode": "^1.5.5",
     "tsx": "^4.7.0"
   }
 }

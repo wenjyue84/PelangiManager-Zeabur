@@ -27,6 +27,40 @@ app.get('/health', (req, res) => {
   });
 });
 
+// WhatsApp QR code pairing endpoint (temporary - remove after pairing)
+app.get('/admin/whatsapp-qr', async (req, res) => {
+  const status = getWhatsAppStatus();
+  if (status.state === 'open') {
+    res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px">
+      <h2>WhatsApp Connected</h2>
+      <p>Account: ${status.user?.name || 'Unknown'} (${status.user?.phone || '?'})</p>
+      <p style="color:green;font-size:24px">Already paired!</p>
+    </body></html>`);
+    return;
+  }
+  if (!status.qr) {
+    res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px">
+      <h2>WhatsApp QR Code</h2>
+      <p>No QR code available yet. Status: <b>${status.state}</b></p>
+      <p>Waiting for Baileys to generate QR code...</p>
+      <script>setTimeout(()=>location.reload(),3000)</script>
+    </body></html>`);
+    return;
+  }
+  try {
+    const QRCode = await import('qrcode');
+    const qrImage = await QRCode.default.toDataURL(status.qr);
+    res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px">
+      <h2>Scan with WhatsApp</h2>
+      <img src="${qrImage}" style="width:300px;height:300px" />
+      <p>Open WhatsApp > Linked Devices > Link a Device</p>
+      <script>setTimeout(()=>location.reload(),5000)</script>
+    </body></html>`);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // MCP protocol endpoint
 app.post('/mcp', createMCPHandler());
 
