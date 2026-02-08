@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft, Copy, Filter as FilterIcon, CalendarPlus, Phone, AlertCircle, Clock, Ban, Star, LogOut, Building2, Undo2 } from "lucide-react";
+import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft, Copy, Filter as FilterIcon, CalendarPlus, Phone, AlertCircle, Clock, Ban, Star, LogOut, Building2, Undo2, Bell } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import { phoneUtils } from "@/lib/validation";
 import GuestDetailsModal from "./guest-details-modal";
 import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
+import CheckoutAlertDialog from "./CheckoutAlertDialog";
 
 import type { Guest, GuestToken, PaginatedResponse, UpdateGuestTokenCapsule } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -87,6 +88,8 @@ export default function SortableGuestTable() {
   const [capsuleChangeGuest, setCapsuleChangeGuest] = useState<Guest | null>(null);
   const [showAllCapsules, setShowAllCapsules] = useState(false);
   const [toggledOutstandingGuests, setToggledOutstandingGuests] = useState<Set<string>>(new Set());
+  const [alertDialogGuest, setAlertDialogGuest] = useState<Guest | null>(null);
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
   const { toast } = useToast();
   const { isAuthenticated, logout } = useAuth();
 
@@ -779,9 +782,14 @@ export default function SortableGuestTable() {
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
-    
+
     setExtendGuest(guest);
     setIsExtendOpen(true);
+  };
+
+  const openAlertDialog = (guest: Guest) => {
+    setAlertDialogGuest(guest);
+    setAlertDialogOpen(true);
   };
 
   const handleCapsuleChange = async (guest: Guest, newCapsuleNumber: string) => {
@@ -1388,9 +1396,19 @@ export default function SortableGuestTable() {
                         {/* Checkout column */}
                         <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
                           {guest.expectedCheckoutDate ? (
-                            <span className="font-medium">
-                              {formatShortDate(guest.expectedCheckoutDate)}
-                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openAlertDialog(guest);
+                              }}
+                              className="group flex items-center gap-1.5 hover:bg-gray-50 rounded-md px-1 -mx-1 transition-colors"
+                              title="Set checkout reminder"
+                            >
+                              <span className="font-medium">
+                                {formatShortDate(guest.expectedCheckoutDate)}
+                              </span>
+                              <Bell className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                            </button>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
@@ -1677,10 +1695,20 @@ export default function SortableGuestTable() {
                           </button>
                           {statusInfo && <span title={statusInfo.label}>{statusInfo.icon}</span>}
                         </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          In: {formatShortDate(guest.checkinTime.toString())}
+                        <div className="text-xs text-gray-600 mt-1 flex items-center gap-2">
+                          <span>In: {formatShortDate(guest.checkinTime.toString())}</span>
                           {guest.expectedCheckoutDate && (
-                            <span className="ml-2">Out: {formatShortDate(guest.expectedCheckoutDate)}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openAlertDialog(guest);
+                              }}
+                              className="group flex items-center gap-1 hover:bg-gray-100 rounded px-1 -mx-1 transition-colors"
+                              title="Set checkout reminder"
+                            >
+                              <span>Out: {formatShortDate(guest.expectedCheckoutDate)}</span>
+                              <Bell className="h-3 w-3 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                            </button>
                           )}
                         </div>
                         {!isCondensedView && (
@@ -1927,6 +1955,12 @@ export default function SortableGuestTable() {
         />
       )}
 
+      {/* Checkout Alert Dialog */}
+      <CheckoutAlertDialog
+        guest={alertDialogGuest}
+        open={alertDialogOpen}
+        onOpenChange={setAlertDialogOpen}
+      />
 
     </Card>
   );
