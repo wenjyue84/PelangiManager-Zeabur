@@ -2,6 +2,9 @@ FROM node:22-alpine
 LABEL "language"="nodejs"
 LABEL "framework"="express"
 
+# Add build dependencies for native modules (@whiskeysockets/baileys)
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /src
 
 # Copy package files
