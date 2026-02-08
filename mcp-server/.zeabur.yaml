@@ -1,6 +1,8 @@
 # Zeabur configuration for Pelangi MCP Server
 name: pelangi-mcp-server
 build:
+  # CRITICAL: Use Dockerfile in mcp-server directory, not root!
+  dockerfile: Dockerfile
   buildCommand: npm install && npm run build
   startCommand: npm start
   port: 3001
