@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, UserPlus, UserX, ListChecks, Settings, MoreHorizontal, DollarSign } from "lucide-react";
+import { Home, UserPlus, UserX, ListChecks, Settings, MoreHorizontal, DollarSign, HelpCircle } from "lucide-react";
 import { AuthContext } from "@/lib/auth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -39,21 +39,29 @@ const mainNavigationItems = [
 ];
 
 const moreNavigationItems = [
-  { 
-    path: "/finance", 
-    label: "Finance", 
-    icon: DollarSign, 
+  {
+    path: "/finance",
+    label: "Finance",
+    icon: DollarSign,
     requireAuth: true,
     color: "text-orange-600 bg-orange-50",
     tooltip: "Track expenses, repairs, utilities, and financial records"
   },
-  { 
-    path: "/settings", 
-    label: "Settings", 
-    icon: Settings, 
-    requireAuth: true, 
+  {
+    path: "/settings",
+    label: "Settings",
+    icon: Settings,
+    requireAuth: true,
     color: "text-blue-600 bg-blue-50",
     tooltip: "Configure system settings and user management"
+  },
+  {
+    path: "/help",
+    label: "Help",
+    icon: HelpCircle,
+    requireAuth: true,
+    color: "text-cyan-600 bg-cyan-50",
+    tooltip: "Interactive guide to learn how to use PelangiManager"
   },
 ];
 
