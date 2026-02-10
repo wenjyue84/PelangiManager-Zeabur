@@ -1,0 +1,78 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Security: Prevent committing sensitive files
+echo "🔒 Running security checks..."
+
+# List of sensitive patterns to check
+SENSITIVE_PATTERNS=(
+  "\.env$"
+  "\.env\.local$"
+  "local\.env$"
+  "evolution-api\.env$"
+  "\.zeabur-token$"
+  "whatsapp-auth/"
+  "whatsapp-data/"
+  "nvapi-"
+  "NVIDIA_API_KEY"
+  "DATABASE_URL.*postgresql"
+  "JWT_SECRET"
+  "API_KEY.*['\"].*[A-Za-z0-9]{20,}"
+  "Bearer [A-Za-z0-9_-]{20,}"
+  "password.*['\"].*[^example]"
+  "secret.*['\"].*[^your-]"
+)
+
+# Check staged files
+STAGED_FILES=$(git diff --cached --name-only)
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "✅ No files staged"
+  exit 0
+fi
+
+# Check for sensitive file names
+for pattern in "${SENSITIVE_PATTERNS[@]}"; do
+  if echo "$STAGED_FILES" | grep -qE "$pattern"; then
+    echo "❌ BLOCKED: Attempting to commit sensitive file matching: $pattern"
+    echo ""
+    echo "Blocked files:"
+    echo "$STAGED_FILES" | grep -E "$pattern"
+    echo ""
+    echo "💡 If this is a false positive:"
+    echo "   1. Add the pattern to .gitignore"
+    echo "   2. Run: git rm --cached <file>"
+    echo "   3. Run: git commit -m 'remove sensitive file'"
+    echo ""
+    exit 1
+  fi
+done
+
+# Check file contents for secrets
+STAGED_CONTENT=$(git diff --cached)
+
+# Patterns that suggest secrets in content
+if echo "$STAGED_CONTENT" | grep -qE "(nvapi-[A-Za-z0-9_-]{30,}|sk-[A-Za-z0-9]{20,}|Bearer [A-Za-z0-9_-]{40,})"; then
+  echo "❌ BLOCKED: Potential API key or token detected in staged changes"
+  echo ""
+  echo "Detected pattern in:"
+  git diff --cached --name-only
+  echo ""
+  echo "💡 Review your changes for exposed secrets"
+  echo "   Run: git diff --cached | grep -E '(nvapi-|sk-|Bearer)'"
+  echo ""
+  exit 1
+fi
+
+# Check for actual connection strings (not examples)
+if echo "$STAGED_CONTENT" | grep -qE "DATABASE_URL.*postgresql://.*:[^'].*@.*[0-9]"; then
+  if ! echo "$STAGED_CONTENT" | grep -qE "(example|placeholder|your-|localhost)"; then
+    echo "❌ BLOCKED: Real database connection string detected"
+    echo ""
+    echo "💡 Use .env files for real credentials"
+    echo ""
+    exit 1
+  fi
+fi
+
+echo "✅ Security checks passed"
