@@ -95,10 +95,15 @@ vite.config.ts.*
 
 # WhatsApp & Zeabur sensitive files
 mcp-server/whatsapp-auth/
+mcp-server/whatsapp-data/
 whatsapp-auth/
+whatsapp-data/
 .env.zeabur
 .zeabur-token
 mcp-server/evolution-api.env
+local.env
+*.env.local
+*.env.*.local
 
 # Test scripts (temporary)
 mcp-server/test-*.ts
