@@ -169,6 +169,14 @@ export default defineConfig({
       overlay: false // Disable runtime error overlay
     },
     proxy: {
+      '/api/rainbow-kb': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      },
+      '/api/rainbow': {
+        target: `http://localhost:${process.env.MCP_SERVER_PORT || '3002'}`,
+        changeOrigin: true
+      },
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true
