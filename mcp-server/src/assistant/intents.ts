@@ -7,14 +7,15 @@ import { getIntentConfig } from './intent-config.js';
 import intentKeywordsData from './data/intent-keywords.json' assert { type: 'json' };
 import intentExamplesData from './data/intent-examples.json' assert { type: 'json' };
 
-// ─── Emergency patterns (regex, 3-5 critical patterns only) ─────────
+// ─── Emergency patterns (regex, critical patterns for immediate escalation) ─────────
 
 const EMERGENCY_PATTERNS: RegExp[] = [
   /\b(fire|kebakaran|着火|火灾)\b/i,
   /\b(ambulan[cs]e|hospital|emergency|kecemasan|darurat|急救|紧急)\b/i,
-  /\b(stol[ea]n|theft|rob(?:bed|bery)|dicuri|dirompak|被偷|被抢)\b/i,
+  /\b(stol[ea]n|theft|rob(?:bed|bery)|dicuri|dirompak|kecurian|被偷|被抢|失窃)\b/i,
   /\b(assault|attack|violen[ct]|fight|serang|pukul|袭击|打架)\b/i,
   /\b(police|polis|cops?|警察|报警)\b/i,
+  /\b(locked.*card|card.*locked|terkunci|锁在里面|出不去)\b/i,
 ];
 
 export function isEmergency(text: string): boolean {

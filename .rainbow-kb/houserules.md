@@ -5,7 +5,7 @@
 ## Core House Rules
 
 ### 1. Quiet Hours
-**Time:** 11:00 PM - 7:00 AM
+**Time:** 11:00 PM - 9:00 AM
 **Why:** Respect for guests who are sleeping
 **Details:**
 - Keep noise to minimum in dormitory areas
@@ -26,7 +26,7 @@
 - Use outdoor designated area only
 - Dispose of cigarette butts properly
 
-**Penalty:** RM50 cleaning fee if smoking detected indoors
+**Penalty:** RM300 penalty if smoking detected indoors (plus any cleaning/damage costs)
 
 ### 3. No Outside Guests
 **Rule:** Only registered guests allowed in dormitory areas
@@ -147,8 +147,6 @@
 
 ### Laundry
 - Self-service laundry available (RM5/load)
-- Washer: Free to use (bring your own detergent)
-- Dryer: RM5 per cycle
 - Don't leave clothes in machines (will be removed after 30 min)
 
 ### Noise Levels (Daytime)
@@ -211,7 +209,7 @@ A: Contact staff immediately. We'll address the issue.
 4. **Community** — Positive atmosphere
 
 **Key Times:**
-- Quiet Hours: 11 PM - 7 AM
+- Quiet Hours: 11 PM - 9 AM
 - Check-Out: 12 PM
 - Check-In: 2 PM
 

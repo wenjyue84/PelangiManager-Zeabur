@@ -11,6 +11,9 @@ import { isAIAvailable, classifyAndRespond, translateText } from './ai-client.js
 import { buildSystemPrompt, guessTopicFiles } from './knowledge-base.js';
 import { configStore } from './config-store.js';
 import { initWorkflowExecutor, executeWorkflowStep, createWorkflowState, forwardWorkflowSummary } from './workflow-executor.js';
+import { maybeWriteDiary } from './memory-writer.js';
+import type { ConversationEvent } from './memory-writer.js';
+import { logMessage } from './conversation-logger.js';
 
 let sendMessage: SendMessageFn;
 let callAPI: CallAPIFn;
@@ -96,6 +99,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     // Get or create conversation
     const convo = getOrCreate(phone, msg.pushName);
     addMessage(phone, 'user', text);
+    logMessage(phone, msg.pushName, 'user', text, { instanceId: msg.instanceId }).catch(() => {});
     const lang = convo.language;
 
     // If in active workflow, continue workflow execution
@@ -105,11 +109,13 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       if (result.newState) {
         updateWorkflowState(phone, result.newState);
         addMessage(phone, 'assistant', result.response);
+        logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'workflow', instanceId: msg.instanceId }).catch(() => {});
         await sendMessage(phone, result.response, msg.instanceId);
       } else {
         // Workflow complete - forward summary and cleanup
         updateWorkflowState(phone, null);
         addMessage(phone, 'assistant', result.response);
+        logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'workflow_complete', instanceId: msg.instanceId }).catch(() => {});
         await sendMessage(phone, result.response, msg.instanceId);
 
         if (result.shouldForward && result.conversationSummary) {
@@ -128,6 +134,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       const result = await handleBookingStep(convo.bookingState, text, lang, convo.messages);
       updateBookingState(phone, result.newState);
       addMessage(phone, 'assistant', result.response);
+      logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'booking', instanceId: msg.instanceId }).catch(() => {});
       await sendMessage(phone, result.response, msg.instanceId);
       return;
     }
@@ -149,6 +156,13 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     // ─── LLM classify + respond (single call) ───────────────────
     let response: string | null = null;
 
+    // Track conversation event for auto-diary (populated during classification)
+    const _diaryEvent: ConversationEvent = {
+      phone, pushName: msg.pushName, intent: '', action: '',
+      messageType: 'info', confidence: 1, guestText: text,
+      escalated: false, bookingStarted: false, workflowStarted: false
+    };
+
     if (isAIAvailable()) {
       const topicFiles = guessTopicFiles(processText);
       console.log(`[Router] KB files: [${topicFiles.join(', ')}]`);
@@ -169,6 +183,12 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       const repeatCheck = checkRepeatIntent(phone, result.intent);
       console.log(`[Router] Intent: ${result.intent} | Action: ${result.action} | Routed: ${routedAction} | msgType: ${messageType} | repeat: ${repeatCheck.count} | Confidence: ${result.confidence.toFixed(2)}`);
 
+      // Populate diary event with classification results
+      _diaryEvent.intent = result.intent;
+      _diaryEvent.action = routedAction;
+      _diaryEvent.messageType = messageType;
+      _diaryEvent.confidence = result.confidence;
+
       // Track intent for future repeat detection
       updateLastIntent(phone, result.intent, result.confidence);
 
@@ -186,6 +206,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
               recentMessages: convo.messages.map(m => `${m.role}: ${m.content}`),
               originalMessage: text, instanceId: msg.instanceId
             });
+            _diaryEvent.escalated = true;
             console.log(`[Router] Complaint override: ${result.intent} → LLM + escalate`);
           } else if (messageType === 'problem') {
             // Problem report → use LLM response (context-aware help)
@@ -219,6 +240,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
 
         case 'start_booking': {
           resetUnknown(phone);
+          _diaryEvent.bookingStarted = true;
           const bookingState = createBookingState();
           const bookingResult = await handleBookingStep(bookingState, text, lang, convo.messages);
           updateBookingState(phone, bookingResult.newState);
@@ -228,6 +250,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
 
         case 'escalate': {
           // Send AI's empathetic response + notify staff
+          _diaryEvent.escalated = true;
           response = result.response;
           await escalateToStaff({
             phone,
@@ -275,6 +298,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
           }
 
           console.log(`[Router] Starting workflow: ${workflow.name} (${workflowId})`);
+          _diaryEvent.workflowStarted = true;
           const workflowState = createWorkflowState(workflowId);
           const workflowResult = await executeWorkflowStep(workflowState, null, lang);
 
@@ -300,6 +324,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
             const unknownCount = incrementUnknown(phone);
             const escReason = shouldEscalate(null, unknownCount);
             if (escReason) {
+              _diaryEvent.escalated = true;
               await escalateToStaff({
                 phone,
                 pushName: msg.pushName,
@@ -330,7 +355,21 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
         }
       }
       addMessage(phone, 'assistant', response);
+      logMessage(phone, msg.pushName, 'assistant', response, {
+        intent: _diaryEvent.intent || undefined,
+        confidence: _diaryEvent.confidence,
+        action: _diaryEvent.action || undefined,
+        instanceId: msg.instanceId
+      }).catch(() => {});
       await sendMessage(phone, response, msg.instanceId);
+    }
+
+    // ─── Auto-diary: write noteworthy events to today's memory log ──
+    // Uses tracked event data from classification above (no re-classification)
+    try {
+      maybeWriteDiary(_diaryEvent);
+    } catch {
+      // Non-fatal — never crash the router over diary writes
     }
   } catch (err: any) {
     console.error(`[Router] Error processing message from ${phone}:`, err.message);

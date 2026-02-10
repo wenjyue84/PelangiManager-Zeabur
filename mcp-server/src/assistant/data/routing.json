@@ -12,7 +12,8 @@
     "action": "llm_reply"
   },
   "checkin_info": {
-    "action": "llm_reply"
+    "action": "workflow",
+    "workflow_id": "checkin_full"
   },
   "checkout_info": {
     "action": "llm_reply"
@@ -21,7 +22,8 @@
     "action": "llm_reply"
   },
   "availability": {
-    "action": "llm_reply"
+    "action": "workflow",
+    "workflow_id": "booking"
   },
   "booking": {
     "action": "workflow",
@@ -29,7 +31,7 @@
   },
   "complaint": {
     "action": "workflow",
-    "workflow_id": "escalate"
+    "workflow_id": "complaint_handling"
   },
   "contact_staff": {
     "action": "workflow",
@@ -43,6 +45,22 @@
   },
   "payment": {
     "action": "llm_reply"
+  },
+  "theft": {
+    "action": "workflow",
+    "workflow_id": "theft_emergency"
+  },
+  "card_locked": {
+    "action": "workflow",
+    "workflow_id": "card_locked_troubleshoot"
+  },
+  "tourist_guide": {
+    "action": "workflow",
+    "workflow_id": "tourist_guide"
+  },
+  "lower_deck": {
+    "action": "workflow",
+    "workflow_id": "lower_deck_preference"
   },
   "general": {
     "action": "llm_reply"

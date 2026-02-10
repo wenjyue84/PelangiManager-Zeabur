@@ -230,6 +230,66 @@
         "until next time",
         "bye bye"
       ]
+    },
+    {
+      "intent": "theft",
+      "examples": [
+        "someone stole my phone",
+        "my wallet is missing",
+        "I was robbed",
+        "my stuff was stolen",
+        "theft in my capsule",
+        "someone took my laptop",
+        "my belongings are missing",
+        "I think someone robbed me",
+        "my bag was stolen",
+        "my items are gone"
+      ]
+    },
+    {
+      "intent": "card_locked",
+      "examples": [
+        "I locked my card inside",
+        "card is stuck in capsule",
+        "I can't get out",
+        "the card is locked inside",
+        "my key card is in the capsule",
+        "locked out of capsule",
+        "door won't open",
+        "card is inside and door locked",
+        "I'm stuck in the capsule",
+        "can't access my card"
+      ]
+    },
+    {
+      "intent": "tourist_guide",
+      "examples": [
+        "what can I do in Johor Bahru",
+        "places to visit nearby",
+        "tourist attractions here",
+        "where should I go sightseeing",
+        "recommend places to visit",
+        "things to do in JB",
+        "tourist spots near hostel",
+        "what's fun around here",
+        "where can I go for tours",
+        "suggest places to explore"
+      ]
+    },
+    {
+      "intent": "lower_deck",
+      "examples": [
+        "I prefer lower deck",
+        "do you have bottom bunk",
+        "I want a lower capsule",
+        "prefer not top bed",
+        "lower bed available",
+        "can I get bottom capsule",
+        "I don't want upper deck",
+        "prefer ground level capsule",
+        "lower capsule please",
+        "bottom bunk preference"
+      ]
     }
   ]
 }
