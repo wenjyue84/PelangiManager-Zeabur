@@ -1,0 +1,114 @@
+import type { IntentCategory, KnowledgeEntry, CallAPIFn } from './types.js';
+
+type Language = 'en' | 'ms' | 'zh';
+
+// ─── Static Knowledge Base ──────────────────────────────────────────
+const FAQ: KnowledgeEntry[] = [
+  {
+    intent: 'wifi',
+    response: {
+      en: '📶 *WiFi Info*\nNetwork: *pelangi capsule*\nPassword: *ilovestaycapsule*',
+      ms: '📶 *Info WiFi*\nRangkaian: *pelangi capsule*\nKata laluan: *ilovestaycapsule*',
+      zh: '📶 *WiFi信息*\n网络名称: *pelangi capsule*\n密码: *ilovestaycapsule*'
+    }
+  },
+  {
+    intent: 'directions',
+    response: {
+      en: '📍 *How to find us*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru\n\nGoogle Maps: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\nWe\'re in a quiet residential area in Taman Pelangi, walking distance to cafes and shops.',
+      ms: '📍 *Cara ke sini*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru\n\nGoogle Maps: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\nKami terletak di kawasan perumahan yang tenang di Taman Pelangi.',
+      zh: '📍 *如何到达*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru\n\nGoogle地图: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\n我们位于Taman Pelangi安静的住宅区，步行可达咖啡店和商店。'
+    }
+  },
+  {
+    intent: 'checkin_info',
+    response: {
+      en: '⏰ *Check-in Info*\n\nCheck-in time: *2:00 PM*\nDoor password: *1270#*\n\nEarly check-in may be available — ask staff!',
+      ms: '⏰ *Info Daftar Masuk*\n\nMasa daftar masuk: *2:00 PM*\nKata laluan pintu: *1270#*\n\nDaftar masuk awal mungkin boleh — tanya staf!',
+      zh: '⏰ *入住信息*\n\n入住时间: *下午2:00*\n门密码: *1270#*\n\n可能可以提前入住——请咨询工作人员！'
+    }
+  },
+  {
+    intent: 'checkout_info',
+    response: {
+      en: '⏰ *Check-out Info*\n\nCheck-out time: *12:00 PM (noon)*\n\nLate check-out: RM20/hour surcharge (subject to availability).',
+      ms: '⏰ *Info Daftar Keluar*\n\nMasa daftar keluar: *12:00 PM (tengah hari)*\n\nDaftar keluar lewat: RM20/jam (tertakluk kepada ketersediaan).',
+      zh: '⏰ *退房信息*\n\n退房时间: *中午12:00*\n\n延迟退房: 每小时RM20（视情况而定）。'
+    }
+  },
+  {
+    intent: 'pricing',
+    response: {
+      en: '💰 *Our Rates*\n\n🏷️ Daily: *RM45/night*\n🏷️ Weekly: *RM270/week* (save RM45!)\n🏷️ Monthly: *RM594/month*\n\nDeposit: RM200 (monthly stays, refundable)\nPayment: Cash, bank transfer, Touch \'n Go\n\nWant to book? Just say *"book"*!',
+      ms: '💰 *Harga Kami*\n\n🏷️ Harian: *RM45/malam*\n🏷️ Mingguan: *RM270/minggu* (jimat RM45!)\n🏷️ Bulanan: *RM594/bulan*\n\nDeposit: RM200 (penginapan bulanan, boleh dikembalikan)\nBayaran: Tunai, pindahan bank, Touch \'n Go\n\nNak tempah? Cakap *"tempah"*!',
+      zh: '💰 *我们的价格*\n\n🏷️ 日租: *RM45/晚*\n🏷️ 周租: *RM270/周*（省RM45！）\n🏷️ 月租: *RM594/月*\n\n押金: RM200（仅月租，可退还）\n付款方式: 现金、银行转账、Touch \'n Go\n\n想预订吗？直接说 *"预订"*！'
+    }
+  },
+  {
+    intent: 'facilities',
+    response: {
+      en: '🏨 *Facilities*\n\n• ~24 capsules across 3 sections (Front, Middle, Back)\n• Each capsule: personal light, USB port, power outlet, privacy curtain\n• Shared kitchen with fridge & microwave\n• Laundry (RM5/load)\n• Living room area\n• Free WiFi\n\n🎥 Video tour: https://www.youtube.com/watch?v=6Ux11oBZaQQ',
+      ms: '🏨 *Kemudahan*\n\n• ~24 kapsul dalam 3 seksyen (Depan, Tengah, Belakang)\n• Setiap kapsul: lampu peribadi, port USB, soket kuasa, langsir privasi\n• Dapur kongsi dengan peti sejuk & ketuhar gelombang mikro\n• Dobi (RM5/cucian)\n• Ruang tamu\n• WiFi percuma\n\n🎥 Video lawatan: https://www.youtube.com/watch?v=6Ux11oBZaQQ',
+      zh: '🏨 *设施*\n\n• 约24个胶囊，分3个区域（前、中、后）\n• 每个胶囊：个人灯、USB接口、电源插座、隐私帘\n• 共享厨房（冰箱和微波炉）\n• 洗衣（RM5/次）\n• 客厅区域\n• 免费WiFi\n\n🎥 视频导览: https://www.youtube.com/watch?v=6Ux11oBZaQQ'
+    }
+  },
+  {
+    intent: 'rules',
+    response: {
+      en: '📋 *House Rules*\n\n1. No smoking indoors\n2. Quiet hours: 11 PM – 7 AM\n3. No outside guests in sleeping area\n4. Keep common areas clean\n5. No illegal substances\n6. Check-out by 12:00 PM\n7. Report any damage immediately\n\n_Adults only hostel_',
+      ms: '📋 *Peraturan Rumah*\n\n1. Dilarang merokok di dalam\n2. Waktu senyap: 11 PM – 7 AM\n3. Tiada tetamu luar di kawasan tidur\n4. Jaga kebersihan kawasan berkongsi\n5. Tiada bahan terlarang\n6. Daftar keluar sebelum 12:00 PM\n7. Laporkan kerosakan segera\n\n_Hostel untuk dewasa sahaja_',
+      zh: '📋 *住宿规则*\n\n1. 室内禁止吸烟\n2. 安静时间：晚上11点至早上7点\n3. 睡眠区域不允许外来访客\n4. 请保持公共区域整洁\n5. 禁止违禁品\n6. 中午12:00前退房\n7. 如有损坏请立即报告\n\n_仅限成人旅馆_'
+    }
+  }
+];
+
+// ─── API Settings Cache ─────────────────────────────────────────────
+let cachedSettings: Record<string, any> | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 300_000; // 5 minutes
+
+let callAPIFn: CallAPIFn | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+export function initKnowledge(callAPI: CallAPIFn): void {
+  callAPIFn = callAPI;
+  // Initial cache load
+  refreshSettingsCache().catch(() => {});
+  // Auto-refresh every 5 minutes
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    refreshSettingsCache().catch(() => {});
+  }, CACHE_TTL_MS);
+}
+
+export function destroyKnowledge(): void {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+async function refreshSettingsCache(): Promise<void> {
+  if (!callAPIFn) return;
+  try {
+    const settings = await callAPIFn<Record<string, any>>('GET', '/api/settings');
+    cachedSettings = settings;
+    cacheTimestamp = Date.now();
+  } catch (err: any) {
+    console.warn('[Knowledge] Failed to refresh settings cache:', err.message);
+  }
+}
+
+export function getAnswer(intent: IntentCategory, lang: Language): string | null {
+  const entry = FAQ.find(e => e.intent === intent);
+  if (!entry) return null;
+  return entry.response[lang] || entry.response.en;
+}
+
+export function getCachedSettings(): Record<string, any> | null {
+  return cachedSettings;
+}
+
+export function isCacheValid(): boolean {
+  return cachedSettings !== null && (Date.now() - cacheTimestamp) < CACHE_TTL_MS;
+}
