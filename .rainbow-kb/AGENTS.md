@@ -18,7 +18,9 @@
 ├── AGENTS.md           # THIS FILE - Start here every time
 ├── soul.md             # Who Rainbow is (identity, personality, voice)
 ├── users.md            # Who our users are (mostly hostel guests)
-├── memory.md           # Core memory system (how to remember)
+├── memory.md           # Durable operational memory (always loaded into LLM context)
+├── memory/             # Daily logs directory
+│   └── YYYY-MM-DD.md   # Daily operational logs (today + yesterday loaded)
 ├── houserules.md       # Hostel house rules
 ├── payment.md          # Payment policies and procedures
 ├── checkin.md          # Check-in process details
@@ -62,7 +64,7 @@ See **soul.md** for full identity and values.
 | Check-in process | checkin.md, users.md | "How do I check in?" |
 | Facilities | facilities.md | "Do you have WiFi?" |
 | General questions | faq.md | "What time is checkout?" |
-| Memory system | memory.md | (internal - how to remember) |
+| Operational context | memory.md + memory/today.md | (always loaded automatically) |
 
 **Rule:** Only read what you need. Don't load everything.
 
@@ -88,8 +90,10 @@ When answering questions:
 | File | Load When | Purpose |
 |------|-----------|---------|
 | **soul.md** | ALWAYS (every answer) | Who Rainbow is, her voice/personality |
+| **memory.md** | ALWAYS (every answer) | Durable operational memory (curated facts) |
+| **memory/today.md** | ALWAYS (every answer) | Today's daily operational log — **HIGHEST PRIORITY** |
+| **memory/yesterday.md** | ALWAYS (every answer) | Yesterday's log for continuity |
 | **users.md** | User questions | Understanding who we serve |
-| **memory.md** | Internal only | How the memory system works |
 | **houserules.md** | Rules questions | House policies |
 | **payment.md** | Payment questions | Pricing, payment methods |
 | **checkin.md** | Check-in questions | Process details |
@@ -97,10 +101,44 @@ When answering questions:
 | **faq.md** | General questions | Common answers |
 
 **Default pattern:**
-1. Always load: AGENTS.md + soul.md
+1. Always load: AGENTS.md + soul.md + memory.md + today/yesterday logs
 2. Load specific: Based on question type (see routing table)
 3. Never load: Entire KB at once
 </progressive-disclosure>
+
+<memory-system>
+## Memory System — "Write It Down, No Mental Notes!"
+
+Rainbow has a two-tier memory system inspired by the OpenClaw progressive disclosure pattern:
+
+### Tier 1: Daily Logs (`memory/YYYY-MM-DD.md`)
+- **Auto-written** by the system after each conversation
+- Records: complaints, escalations, bookings, problems, patterns
+- Organized into sections: Staff Notes, Issues Reported, Operational Changes, Patterns Observed, AI Notes
+- **Today's log has HIGHEST PRIORITY** — reference it when relevant
+- Yesterday's log provides continuity
+
+### Tier 2: Durable Memory (`memory.md`)
+- Curated long-term operational facts (not raw logs)
+- Staff can edit via the admin dashboard
+- Contains: hostel facts, preferences, seasonal info, known quirks
+- Think of this as the "permanent knowledge" that doesn't change day to day
+
+### Recency Rule
+- If something happened TODAY, it is more relevant than something from yesterday
+- If a guest had an issue earlier today, acknowledge it naturally
+- Yesterday's patterns may still be active — don't ignore them
+- Durable memory is baseline truth — always applies
+
+### What Gets Logged Automatically
+The system auto-writes diary entries for:
+- Guest complaints and problems (→ Issues Reported)
+- Escalations to staff (→ Issues Reported)
+- Booking inquiries (→ Staff Notes)
+- Workflow activations (→ Staff Notes)
+- Payment forwarding (→ Staff Notes)
+- Low-confidence responses (→ Patterns Observed)
+</memory-system>
 
 <summary>
 ## Summary

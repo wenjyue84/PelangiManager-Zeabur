@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync, watch } from 'fs';
+import { readFileSync, readdirSync, existsSync, watch, mkdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { configStore } from './config-store.js';
@@ -8,6 +8,8 @@ const __dirname = dirname(__filename);
 
 // .rainbow-kb/ lives at project root (3 levels up from src/assistant/)
 const RAINBOW_KB_DIR = resolve(__dirname, '..', '..', '..', '.rainbow-kb');
+const MEMORY_DIR = join(RAINBOW_KB_DIR, 'memory');
+const DURABLE_MEMORY_FILE = 'memory.md';
 
 // In-memory cache of all KB files
 let kbCache: Map<string, string> = new Map();
@@ -18,6 +20,9 @@ const CORE_FILES = ['AGENTS.md', 'soul.md'];
 // Keyword patterns → which topic files to load
 // Patterns use regex alternation, tested case-insensitively
 const TOPIC_FILE_MAP: Record<string, string[]> = {
+  // Availability & Booking
+  'availab|vacancy|room|capsule|space|bed|book|reserve|reservation|tempah|kosong|空房|预订':
+    ['availability.md'],
   // Payment & pricing
   'price|cost|rate|how much|berapa|多少|rm\\d|ringgit|pay|bayar|deposit|refund|cancel':
     ['payment.md'],
@@ -51,9 +56,58 @@ export function guessTopicFiles(text: string): string[] {
   return Array.from(files);
 }
 
+// ─── Timezone Helpers (MYT = Asia/Kuala_Lumpur, UTC+8) ──────────────
+
+export function getTodayDate(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kuala_Lumpur' });
+}
+
+export function getYesterdayDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kuala_Lumpur' });
+}
+
+export function getMYTTimestamp(): string {
+  return new Date().toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
+// ─── Memory Helpers ─────────────────────────────────────────────────
+
+export function getMemoryDir(): string {
+  return MEMORY_DIR;
+}
+
+export function getDurableMemory(): string {
+  return kbCache.get(DURABLE_MEMORY_FILE) || '';
+}
+
+export function listMemoryDays(): string[] {
+  if (!existsSync(MEMORY_DIR)) return [];
+  return readdirSync(MEMORY_DIR)
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
+    .map(f => f.replace('.md', ''))
+    .sort()
+    .reverse();
+}
+
 // ─── Loading & Caching ──────────────────────────────────────────────
 
 export function reloadKBFile(filename: string): void {
+  // Handle memory/ subdirectory paths
+  if (filename.startsWith('memory/') || filename.startsWith('memory\\')) {
+    const filePath = join(RAINBOW_KB_DIR, filename);
+    if (existsSync(filePath)) {
+      kbCache.set(filename.replace(/\\/g, '/'), readFileSync(filePath, 'utf-8'));
+      console.log(`[KnowledgeBase] Reloaded ${filename}`);
+    }
+    return;
+  }
   const filePath = join(RAINBOW_KB_DIR, filename);
   if (existsSync(filePath)) {
     kbCache.set(filename, readFileSync(filePath, 'utf-8'));
@@ -70,6 +124,19 @@ export function reloadAllKB(): void {
   for (const file of files) {
     kbCache.set(file, readFileSync(join(RAINBOW_KB_DIR, file), 'utf-8'));
   }
+
+  // Also load today + yesterday daily logs from memory/
+  if (existsSync(MEMORY_DIR)) {
+    const today = getTodayDate();
+    const yesterday = getYesterdayDate();
+    for (const date of [today, yesterday]) {
+      const memFile = join(MEMORY_DIR, `${date}.md`);
+      if (existsSync(memFile)) {
+        kbCache.set(`memory/${date}.md`, readFileSync(memFile, 'utf-8'));
+      }
+    }
+  }
+
   console.log(`[KnowledgeBase] Loaded ${kbCache.size} KB files from .rainbow-kb/`);
 }
 
@@ -85,6 +152,22 @@ function watchKBDirectory(): void {
     console.log(`[KnowledgeBase] Watching .rainbow-kb/ for changes`);
   } catch (err: any) {
     console.warn(`[KnowledgeBase] Could not watch .rainbow-kb/: ${err.message}`);
+  }
+
+  // Also watch memory/ subdirectory
+  if (!existsSync(MEMORY_DIR)) {
+    try { mkdirSync(MEMORY_DIR, { recursive: true }); } catch {}
+  }
+  try {
+    watch(MEMORY_DIR, (eventType, filename) => {
+      if (filename && filename.endsWith('.md')) {
+        console.log(`[KnowledgeBase] Memory file changed: ${filename}, reloading...`);
+        reloadKBFile(`memory/${filename}`);
+      }
+    });
+    console.log(`[KnowledgeBase] Watching .rainbow-kb/memory/ for changes`);
+  } catch (err: any) {
+    console.warn(`[KnowledgeBase] Could not watch memory/: ${err.message}`);
   }
 }
 
@@ -136,6 +219,35 @@ export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []
     .filter(Boolean)
     .join('\n\n---\n\n');
 
+  // Build operational memory section (durable + today + yesterday)
+  // Inspired by OpenClaw's progressive disclosure: always load today + yesterday,
+  // with explicit recency weighting so the bot pays more attention to recent events
+  const memoryParts: string[] = [];
+  const durableMemory = kbCache.get(DURABLE_MEMORY_FILE);
+  if (durableMemory) {
+    memoryParts.push(durableMemory);
+  }
+  const today = getTodayDate();
+  const yesterday = getYesterdayDate();
+  const todayLog = kbCache.get(`memory/${today}.md`);
+  if (todayLog) {
+    memoryParts.push(`--- TODAY (${today}) — HIGH PRIORITY ---\n${todayLog}`);
+  }
+  const yesterdayLog = kbCache.get(`memory/${yesterday}.md`);
+  if (yesterdayLog) {
+    memoryParts.push(`--- Yesterday (${yesterday}) ---\n${yesterdayLog}`);
+  }
+
+  const memoryContent = memoryParts.length > 0
+    ? `\n\n<operational_memory>
+MEMORY PRIORITY: Today's entries are MOST relevant. Give them highest attention when answering.
+Yesterday's entries provide continuity. Durable memory contains permanent facts.
+If a guest's issue was logged today, reference it naturally (e.g., "I see we had a report about X earlier").
+
+${memoryParts.join('\n\n')}
+</operational_memory>`
+    : '';
+
   const topicContent = topicFiles
     .map(f => kbCache.get(f) || '')
     .filter(Boolean)
@@ -163,10 +275,11 @@ GENERAL RULES:
 - NEVER invent prices, availability, or policies not in the Knowledge Base
 - If the answer is NOT in the Knowledge Base, say: "I don't have that information. Let me connect you with our team."
 - Do not provide info about other hotels or hostels
+- Use operational memory for context about current operations, known issues, and staff notes
 
 Return JSON: { "intent": "<one of the defined intents>", "action": "<routing action>", "response": "<your response or empty for static_reply>", "confidence": 0.0-1.0 }
 
 <knowledge_base>
-${coreContent}${topicContent ? `\n\n---\n\n${topicContent}` : ''}
+${coreContent}${memoryContent}${topicContent ? `\n\n---\n\n${topicContent}` : ''}
 </knowledge_base>`;
 }

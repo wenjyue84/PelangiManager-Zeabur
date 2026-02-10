@@ -232,6 +232,74 @@
           "支付方式", "如何付款"
         ]
       }
+    },
+    {
+      "intent": "theft",
+      "keywords": {
+        "en": [
+          "stolen", "theft", "rob", "robbed", "robbery", "missing",
+          "took my", "stole", "thief", "missing items", "lost items", "someone took"
+        ],
+        "ms": [
+          "dicuri", "kecurian", "dirompak", "rompak", "hilang",
+          "ambil barang", "pencuri", "barang hilang", "kena curi"
+        ],
+        "zh": [
+          "被偷", "盗窃", "被抢", "抢劫", "丢失",
+          "偷了", "小偷", "失窃", "东西不见了"
+        ]
+      }
+    },
+    {
+      "intent": "card_locked",
+      "keywords": {
+        "en": [
+          "locked out", "card locked", "locked inside", "card inside capsule",
+          "cant get out", "cant open", "door locked", "key inside", "card stuck"
+        ],
+        "ms": [
+          "terkunci", "kad terkunci", "kad dalam capsule", "tak boleh keluar",
+          "tak boleh buka", "pintu terkunci", "kunci dalam", "kad tersekat"
+        ],
+        "zh": [
+          "锁在里面", "卡锁在", "门锁了", "出不去",
+          "打不开", "钥匙在里面", "卡在里面", "被锁了"
+        ]
+      }
+    },
+    {
+      "intent": "tourist_guide",
+      "keywords": {
+        "en": [
+          "tourist", "tourism", "attraction", "places to visit", "things to do",
+          "where to go", "sightseeing", "must visit", "recommend places", "tourist spots"
+        ],
+        "ms": [
+          "pelancongan", "tempat menarik", "tempat lawatan", "nak pergi mana",
+          "aktiviti", "jalan-jalan", "tempat best", "recommend tempat"
+        ],
+        "zh": [
+          "旅游", "景点", "观光", "去哪玩", "游览",
+          "好玩的地方", "推荐景点", "必去的地方", "旅游景点"
+        ]
+      }
+    },
+    {
+      "intent": "lower_deck",
+      "keywords": {
+        "en": [
+          "lower deck", "lower bed", "bottom bunk", "prefer lower", "lower capsule",
+          "bottom capsule", "ground level", "even number", "not top"
+        ],
+        "ms": [
+          "lower deck", "bawah", "prefer bawah", "capsule bawah",
+          "tingkat bawah", "tak nak atas", "nombor genap"
+        ],
+        "zh": [
+          "下铺", "下层", "底层", "不要上铺",
+          "下面的", "偶数", "下面一层"
+        ]
+      }
     }
   ]
 }

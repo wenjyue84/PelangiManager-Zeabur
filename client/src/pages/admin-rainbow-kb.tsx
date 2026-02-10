@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Sparkles, Users, Brain, Shield, CreditCard, CheckCircle, Home, HelpCircle, Save, RotateCcw, Eye, Code, AlertCircle, BookOpen } from "lucide-react";
+import { FileText, Sparkles, Users, Brain, Shield, CreditCard, CheckCircle, Home, HelpCircle, Save, RotateCcw, Eye, Code, AlertCircle, BookOpen, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -95,6 +95,11 @@ const KB_FILES = [
   }
 ];
 
+interface MemoryFile {
+  date: string;
+  filename: string;
+}
+
 export default function AdminRainbowKB() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
@@ -103,17 +108,60 @@ export default function AdminRainbowKB() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+  const [memoryFiles, setMemoryFiles] = useState<MemoryFile[]>([]);
+  const [isLoadingMemory, setIsLoadingMemory] = useState(false);
   const { toast } = useToast();
 
   const coreFiles = KB_FILES.filter(f => f.category === "core");
   const systemFiles = KB_FILES.filter(f => f.category === "system");
   const knowledgeFiles = KB_FILES.filter(f => f.category === "knowledge");
 
+  // Load memory files when component mounts
+  useEffect(() => {
+    loadMemoryFiles();
+  }, []);
+
+  // Load memory files list
+  const loadMemoryFiles = async () => {
+    setIsLoadingMemory(true);
+    try {
+      // PERMANENT FIX: Add cache-busting timestamp
+      const cacheBuster = Date.now();
+      const response = await fetch(`/api/rainbow-kb/memory?_=${cacheBuster}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to load memory files');
+
+      const data = await response.json();
+      const files = data.days.map((date: string) => ({
+        date,
+        filename: `${date}.md`
+      }));
+      setMemoryFiles(files);
+    } catch (error) {
+      console.error('Failed to load memory files:', error);
+    } finally {
+      setIsLoadingMemory(false);
+    }
+  };
+
   // Load file content when selected
   const loadFile = async (filename: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/rainbow-kb/files/${filename}`);
+      // PERMANENT FIX: Add cache-busting timestamp to prevent browser caching
+      const cacheBuster = Date.now();
+      const response = await fetch(`/api/rainbow-kb/files/${filename}?_=${cacheBuster}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       if (!response.ok) throw new Error('Failed to load file');
 
       const data = await response.json();
@@ -133,17 +181,60 @@ export default function AdminRainbowKB() {
     }
   };
 
+  // Load memory file content
+  const loadMemoryFile = async (date: string) => {
+    setIsLoading(true);
+    try {
+      // PERMANENT FIX: Add cache-busting timestamp
+      const cacheBuster = Date.now();
+      const response = await fetch(`/api/rainbow-kb/memory/${date}?_=${cacheBuster}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to load memory file');
+
+      const data = await response.json();
+      setFileContent(data.content);
+      setOriginalContent(data.content);
+      setSelectedFile(`memory/${date}.md`);
+      setIsEditing(false);
+      setViewMode("edit");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to load memory file for ${date}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Save file content
   const saveFile = async () => {
     if (!selectedFile) return;
 
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/rainbow-kb/files/${selectedFile}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: fileContent })
-      });
+      let response;
+      // Check if this is a memory file
+      if (selectedFile.startsWith('memory/')) {
+        const date = selectedFile.replace('memory/', '').replace('.md', '');
+        response = await fetch(`/api/rainbow-kb/memory/${date}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: fileContent })
+        });
+      } else {
+        response = await fetch(`/api/rainbow-kb/files/${selectedFile}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: fileContent })
+        });
+      }
 
       if (!response.ok) throw new Error('Failed to save file');
 
@@ -153,7 +244,7 @@ export default function AdminRainbowKB() {
 
       toast({
         title: "Success",
-        description: `${selectedFile} saved successfully. Backup: ${data.backup}`,
+        description: `${selectedFile} saved successfully. ${data.backup ? `Backup: ${data.backup}` : ''}`,
       });
     } catch (error) {
       toast({
@@ -183,6 +274,13 @@ export default function AdminRainbowKB() {
   };
 
   const selectedFileInfo = KB_FILES.find(f => f.id === selectedFile);
+  const isMemoryFile = selectedFile?.startsWith('memory/');
+  const memoryFileDisplay = isMemoryFile ? {
+    icon: Calendar,
+    color: "text-indigo-600",
+    name: selectedFile.replace('memory/', ''),
+    description: "Daily memory log"
+  } : null;
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -209,9 +307,10 @@ export default function AdminRainbowKB() {
             <h2 className="font-semibold mb-3">Knowledge Base Files</h2>
 
             <Tabs defaultValue="core">
-              <TabsList className="grid w-full grid-cols-4 mb-3">
+              <TabsList className="grid w-full grid-cols-5 mb-3">
                 <TabsTrigger value="core">Core</TabsTrigger>
                 <TabsTrigger value="system">System</TabsTrigger>
+                <TabsTrigger value="memory">Memory</TabsTrigger>
                 <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
                 <TabsTrigger value="help">Help</TabsTrigger>
               </TabsList>
@@ -236,6 +335,48 @@ export default function AdminRainbowKB() {
                     onClick={() => loadFile(file.id)}
                   />
                 ))}
+              </TabsContent>
+
+              <TabsContent value="memory" className="space-y-2 mt-0">
+                {isLoadingMemory ? (
+                  <div className="text-center py-4 text-sm text-muted-foreground">
+                    Loading memory files...
+                  </div>
+                ) : memoryFiles.length === 0 ? (
+                  <div className="text-center py-4 text-sm text-muted-foreground">
+                    No memory files found
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 mb-2 p-2 bg-muted/50 rounded">
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        {memoryFiles.length} daily log{memoryFiles.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {memoryFiles.map(file => (
+                      <button
+                        key={file.date}
+                        onClick={() => loadMemoryFile(file.date)}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${
+                          selectedFile === `memory/${file.filename}`
+                            ? 'bg-purple-50 border-purple-300 shadow-sm'
+                            : 'bg-white hover:bg-muted/50 border-border'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Calendar className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">{file.filename}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Daily memory log
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
               </TabsContent>
 
               <TabsContent value="knowledge" className="space-y-2 mt-0">
@@ -293,7 +434,17 @@ export default function AdminRainbowKB() {
               {/* Editor Header */}
               <div className="p-4 border-b bg-muted/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {selectedFileInfo && (
+                  {isMemoryFile && memoryFileDisplay ? (
+                    <>
+                      <memoryFileDisplay.icon className={`h-5 w-5 ${memoryFileDisplay.color}`} />
+                      <div>
+                        <h3 className="font-semibold">{memoryFileDisplay.name}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {memoryFileDisplay.description}
+                        </p>
+                      </div>
+                    </>
+                  ) : selectedFileInfo ? (
                     <>
                       <selectedFileInfo.icon className={`h-5 w-5 ${selectedFileInfo.color}`} />
                       <div>
@@ -303,7 +454,7 @@ export default function AdminRainbowKB() {
                         </p>
                       </div>
                     </>
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 border rounded-lg p-1">

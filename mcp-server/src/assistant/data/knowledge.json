@@ -19,25 +19,25 @@
     {
       "intent": "checkin_info",
       "response": {
-        "en": "⏰ *Check-in Info*\n\nCheck-in time: *2:00 PM*\nDoor password: *1270#*\n\nEarly check-in may be available — ask staff!",
-        "ms": "⏰ *Info Daftar Masuk*\n\nMasa daftar masuk: *2:00 PM*\nKata laluan pintu: *1270#*\n\nDaftar masuk awal mungkin boleh — tanya staf!",
-        "zh": "⏰ *入住信息*\n\n入住时间: *下午2:00*\n门密码: *1270#*\n\n可能可以提前入住——请咨询工作人员！"
+        "en": "⏰ *Check-in Info*\n\nCheck-in time: *2:00 PM*\nDoor password: *1270#*\n\nEarly check-in available (no extra fee) — just ask staff!",
+        "ms": "⏰ *Info Daftar Masuk*\n\nMasa daftar masuk: *2:00 PM*\nKata laluan pintu: *1270#*\n\nDaftar masuk awal tersedia (tiada bayaran tambahan) — tanya staf!",
+        "zh": "⏰ *入住信息*\n\n入住时间: *下午2:00*\n门密码: *1270#*\n\n可提前入住（无额外费用）——请咨询工作人员！"
       }
     },
     {
       "intent": "checkout_info",
       "response": {
-        "en": "⏰ *Check-out Info*\n\nCheck-out time: *12:00 PM (noon)*\n\nLate check-out: RM20/hour surcharge (subject to availability).",
-        "ms": "⏰ *Info Daftar Keluar*\n\nMasa daftar keluar: *12:00 PM (tengah hari)*\n\nDaftar keluar lewat: RM20/jam (tertakluk kepada ketersediaan).",
-        "zh": "⏰ *退房信息*\n\n退房时间: *中午12:00*\n\n延迟退房: 每小时RM20（视情况而定）。"
+        "en": "⏰ *Check-out Info*\n\nCheck-out time: *12:00 PM (noon)*\n\nLate check-out available (no extra fee, subject to availability).",
+        "ms": "⏰ *Info Daftar Keluar*\n\nMasa daftar keluar: *12:00 PM (tengah hari)*\n\nDaftar keluar lewat tersedia (tiada bayaran tambahan, tertakluk kepada ketersediaan).",
+        "zh": "⏰ *退房信息*\n\n退房时间: *中午12:00*\n\n可延迟退房（无额外费用，视情况而定）。"
       }
     },
     {
       "intent": "pricing",
       "response": {
-        "en": "💰 *Our Rates*\n\n🏷️ Daily: *RM45/night*\n🏷️ Weekly: *RM270/week* (save RM45!)\n🏷️ Monthly: *RM650/month* (save RM700 vs daily!)\n\nDeposit: RM200 (monthly stays, refundable)\nPayment: Cash, bank transfer, Touch 'n Go\n\nWant to book? Just say *\"book\"*!",
-        "ms": "💰 *Harga Kami*\n\n🏷️ Harian: *RM45/malam*\n🏷️ Mingguan: *RM270/minggu* (jimat RM45!)\n🏷️ Bulanan: *RM650/bulan* (jimat RM700 berbanding harian!)\n\nDeposit: RM200 (penginapan bulanan, boleh dikembalikan)\nBayaran: Tunai, pindahan bank, Touch 'n Go\n\nNak tempah? Cakap *\"tempah\"*!",
-        "zh": "💰 *我们的价格*\n\n🏷️ 日租: *RM45/晚*\n🏷️ 周租: *RM270/周*（省RM45！）\n🏷️ 月租: *RM650/月*（比日租省RM700！）\n\n押金: RM200（仅月租，可退还）\n付款方式: 现金、银行转账、Touch 'n Go\n\n想预订吗？直接说 *\"预订\"*！"
+        "en": "💰 *Our Rates*\n\n🏷️ Daily: *RM45/night*\n🏷️ 7 nights: *RM267* (~RM38/night)\n🏷️ Monthly: *RM650/month* (~RM22/night)\n\nDeposit: RM10 key-card + RM100 security (long-term stays, refundable)\nPayment: DuitNow QR, Bank transfer, Cash (Touch 'n Go, Boost, ShopeePay, GrabPay)\n\nWant to book? Just say *\"book\"*!",
+        "ms": "💰 *Harga Kami*\n\n🏷️ Harian: *RM45/malam*\n🏷️ 7 malam: *RM267* (~RM38/malam)\n🏷️ Bulanan: *RM650/bulan* (~RM22/malam)\n\nDeposit: RM10 kad kunci + RM100 sekuriti (penginapan jangka panjang, boleh dikembalikan)\nBayaran: DuitNow QR, Pindahan bank, Tunai (Touch 'n Go, Boost, ShopeePay, GrabPay)\n\nNak tempah? Cakap *\"tempah\"*!",
+        "zh": "💰 *我们的价格*\n\n🏷️ 日租: *RM45/晚*\n🏷️ 7晚: *RM267*（约RM38/晚）\n🏷️ 月租: *RM650/月*（约RM22/晚）\n\n押金: RM10钥匙卡 + RM100押金（长期住宿，可退还）\n付款方式: DuitNow QR、银行转账、现金（Touch 'n Go、Boost、ShopeePay、GrabPay）\n\n想预订吗？直接说 *\"预订\"*！"
       }
     },
     {
@@ -51,17 +51,17 @@
     {
       "intent": "rules",
       "response": {
-        "en": "📋 *House Rules*\n\n1. No smoking indoors\n2. Quiet hours: 11 PM – 7 AM\n3. No outside guests in sleeping area\n4. Keep common areas clean\n5. No illegal substances\n6. Check-out by 12:00 PM\n7. Report any damage immediately\n\n_Adults only hostel_",
-        "ms": "📋 *Peraturan Rumah*\n\n1. Dilarang merokok di dalam\n2. Waktu senyap: 11 PM – 7 AM\n3. Tiada tetamu luar di kawasan tidur\n4. Jaga kebersihan kawasan berkongsi\n5. Tiada bahan terlarang\n6. Daftar keluar sebelum 12:00 PM\n7. Laporkan kerosakan segera\n\n_Hostel untuk dewasa sahaja_",
-        "zh": "📋 *住宿规则*\n\n1. 室内禁止吸烟\n2. 安静时间：晚上11点至早上7点\n3. 睡眠区域不允许外来访客\n4. 请保持公共区域整洁\n5. 禁止违禁品\n6. 中午12:00前退房\n7. 如有损坏请立即报告\n\n_仅限成人旅馆_"
+        "en": "📋 *House Rules*\n\n1. No smoking indoors (RM300 penalty)\n2. Quiet hours: 11 PM – 9 AM\n3. No outside guests in sleeping area\n4. Keep common areas clean\n5. No illegal substances\n6. Check-out by 12:00 PM\n7. Report any damage immediately\n\n_Adults only hostel_",
+        "ms": "📋 *Peraturan Rumah*\n\n1. Dilarang merokok di dalam (penalti RM300)\n2. Waktu senyap: 11 PM – 9 AM\n3. Tiada tetamu luar di kawasan tidur\n4. Jaga kebersihan kawasan berkongsi\n5. Tiada bahan terlarang\n6. Daftar keluar sebelum 12:00 PM\n7. Laporkan kerosakan segera\n\n_Hostel untuk dewasa sahaja_",
+        "zh": "📋 *住宿规则*\n\n1. 室内禁止吸烟（罚款RM300）\n2. 安静时间：晚上11点至早上9点\n3. 睡眠区域不允许外来访客\n4. 请保持公共区域整洁\n5. 禁止违禁品\n6. 中午12:00前退房\n7. 如有损坏请立即报告\n\n_仅限成人旅馆_"
       }
     },
     {
       "intent": "payment",
       "response": {
-        "en": "🏦 *Payment Info*\n\nBank: *Maybank*\nAccount: *5511 2865 2007*\nName: *Pelangi Capsule Hostel*\n\nPayment methods: Bank transfer, Cash, Touch 'n Go\n\nAfter payment, please send your receipt/screenshot here and we'll confirm it! — Rainbow 🌈",
-        "ms": "🏦 *Info Pembayaran*\n\nBank: *Maybank*\nAkaun: *5511 2865 2007*\nNama: *Pelangi Capsule Hostel*\n\nKaedah bayaran: Pindahan bank, Tunai, Touch 'n Go\n\nSelepas bayar, sila hantar resit/tangkap skrin di sini dan kami akan sahkan! — Rainbow 🌈",
-        "zh": "🏦 *付款信息*\n\n银行: *Maybank*\n账号: *5511 2865 2007*\n户名: *Pelangi Capsule Hostel*\n\n付款方式: 银行转账、现金、Touch 'n Go\n\n付款后请将收据/截图发送到这里，我们会确认！— Rainbow 🌈"
+        "en": "🏦 *Payment Info*\n\nBank: *Maybank*\nAccount: *5511 2865 2007*\nName: *Pelangi Capsule Hostel*\n\nPayment methods: DuitNow QR (Touch 'n Go, Boost, ShopeePay, GrabPay), Bank transfer, Cash\n\nAfter payment, please send your receipt/screenshot here and we'll confirm it! — Rainbow 🌈",
+        "ms": "🏦 *Info Pembayaran*\n\nBank: *Maybank*\nAkaun: *5511 2865 2007*\nNama: *Pelangi Capsule Hostel*\n\nKaedah bayaran: DuitNow QR (Touch 'n Go, Boost, ShopeePay, GrabPay), Pindahan bank, Tunai\n\nSelepas bayar, sila hantar resit/tangkap skrin di sini dan kami akan sahkan! — Rainbow 🌈",
+        "zh": "🏦 *付款信息*\n\n银行: *Maybank*\n账号: *5511 2865 2007*\n户名: *Pelangi Capsule Hostel*\n\n付款方式: DuitNow QR（Touch 'n Go、Boost、ShopeePay、GrabPay）、银行转账、现金\n\n付款后请将收据/截图发送到这里，我们会确认！— Rainbow 🌈"
       }
     },
     {
