@@ -17,11 +17,14 @@ import CheckOut from "./pages/check-out";
 import History from "./pages/history";
 import Cleaning from "./pages/cleaning";
 import Settings from "./pages/settings";
+import Help from "./pages/help";
 import Finance from "./pages/finance";
 import GuestCheckin from "./pages/guest-checkin";
 import GuestEdit from "./pages/guest-edit";
 import GuestSuccess from "./pages/guest-success";
 import GuestGuide from "./pages/guest-guide";
+import AdminRainbow from "./pages/admin-rainbow";
+import IntentManager from "./pages/intent-manager";
 import Header from "./components/header";
 import Navigation from "./components/navigation";
 import MobileBottomNav from "./components/mobile-bottom-nav";
@@ -36,15 +39,17 @@ import { OfflineIndicator } from "./components/ui/offline-indicator";
  */
 function Router() {
   const [location] = useLocation();
-  
-  // Hide navigation for guest-facing pages
+
+  // Hide navigation for guest-facing pages and admin pages
   const isGuestPage = location?.startsWith('/guest-') || false;
-  
+  const isAdminPage = location?.startsWith('/admin/') || false;
+  const shouldHideNavigation = isGuestPage || isAdminPage;
+
   return (
     <div className="min-h-screen bg-hostel-background">
       <GlobalTopProgress />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-24 md:pb-4 animate-fade-in">
-        {!isGuestPage && <Navigation />}
+        {!shouldHideNavigation && <Navigation />}
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard" component={Dashboard} />
@@ -72,6 +77,11 @@ function Router() {
               <Settings />
             </ProtectedRoute>
           </Route>
+          <Route path="/help">
+            <ProtectedRoute requireAuth={true}>
+              <Help />
+            </ProtectedRoute>
+          </Route>
           <Route path="/finance">
             <ProtectedRoute requireAuth={true}>
               <Finance />
@@ -82,11 +92,17 @@ function Router() {
               <GuestGuide />
             </ProtectedRoute>
           </Route>
+          <Route path="/admin/intent-manager">
+            <ProtectedRoute requireAuth={true}>
+              <IntentManager />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/rainbow/*?" component={AdminRainbow} />
           <Route path="/login" component={LoginForm} />
           <Route component={NotFound} />
         </Switch>
       </div>
-      <MobileBottomNav />
+      {!shouldHideNavigation && <MobileBottomNav />}
     </div>
   );
 }

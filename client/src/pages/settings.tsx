@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Settings, Clock, Save, RotateCcw, Wrench, Users, MessageSquare, Plus, Trash2, Edit, Building, Cog, UserCheck, BookOpen, TestTube, Eye, MapPin, Camera, Globe, Video, Smartphone, Monitor, Wifi, Printer, Send, FileText, CheckCircle, MoreHorizontal } from "lucide-react";
+import { Settings, Clock, Save, RotateCcw, Wrench, Users, MessageSquare, Plus, Trash2, Edit, Building, Cog, UserCheck, BookOpen, TestTube, Eye, MapPin, Camera, Globe, Video, Smartphone, Monitor, Wifi, Printer, Send, FileText, CheckCircle, MoreHorizontal, Bot } from "lucide-react";
+import { useLocation } from "wouter";
 import MaintenanceTab from "../components/settings/MaintenanceTab";
 import UsersTab from "../components/settings/UsersTab";
 import CapsulesTab from "../components/settings/CapsulesTab";
@@ -37,6 +38,7 @@ export default function SettingsPage() {
   const isAuthenticated = authContext?.isAuthenticated || false;
   const [activeTab, setActiveTab] = useState("general");
   const labels = useAccommodationLabels();
+  const [, setLocation] = useLocation();
 
   // General settings queries
   const { data: settings, isLoading } = useQuery<{ accommodationType?: string; selfCheckinSuccessMessage?: string }>({
@@ -259,6 +261,21 @@ export default function SettingsPage() {
               </Tooltip>
               <span>Tests</span>
             </TabsTrigger>
+            <Button
+              variant="ghost"
+              className="flex items-center justify-start gap-2 h-auto rounded-md px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+              onClick={() => setLocation('/admin/rainbow')}
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center h-5 w-5 rounded-full bg-cyan-100">
+                    <Bot className="h-3 w-3 text-cyan-600" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">AI Chatbot settings and management</TooltipContent>
+              </Tooltip>
+              <span>Chatbot</span>
+            </Button>
           </TabsList>
 
           {/* Mobile: Show 4 main tabs + More dropdown */}
@@ -330,6 +347,12 @@ export default function SettingsPage() {
                       <TestTube className="h-2.5 w-2.5 text-pink-600" />
                     </div>
                     <span>Tests</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setLocation('/admin/rainbow')} className="flex items-center gap-2">
+                    <div className="flex items-center justify-center h-4 w-4 rounded-full bg-cyan-100">
+                      <Bot className="h-2.5 w-2.5 text-cyan-600" />
+                    </div>
+                    <span>Chatbot</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
