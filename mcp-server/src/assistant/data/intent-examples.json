@@ -1,0 +1,235 @@
+{
+  "intents": [
+    {
+      "intent": "greeting",
+      "examples": [
+        "hi",
+        "hello",
+        "hey there",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "how are you",
+        "what's up",
+        "greetings",
+        "hi there",
+        "hello there"
+      ]
+    },
+    {
+      "intent": "thanks",
+      "examples": [
+        "thank you",
+        "thanks",
+        "thanks a lot",
+        "thank you so much",
+        "appreciate it",
+        "thanks for your help",
+        "much appreciated",
+        "that's helpful",
+        "thank you very much"
+      ]
+    },
+    {
+      "intent": "wifi",
+      "examples": [
+        "wifi password",
+        "wi-fi password",
+        "what's the wifi password",
+        "how do I connect to wifi",
+        "internet password",
+        "network password",
+        "wifi access",
+        "what's the internet code",
+        "how to get online",
+        "connect to internet",
+        "wireless password",
+        "network code",
+        "internet access code"
+      ]
+    },
+    {
+      "intent": "checkin_info",
+      "examples": [
+        "check in time",
+        "when can I check in",
+        "what time is check in",
+        "check in process",
+        "how to check in",
+        "when do I arrive",
+        "what's the arrival time",
+        "earliest check in",
+        "can I check in early",
+        "check in hours",
+        "when should I come"
+      ]
+    },
+    {
+      "intent": "checkout_info",
+      "examples": [
+        "check out time",
+        "when do I check out",
+        "what time is check out",
+        "checkout process",
+        "how to check out",
+        "when do I leave",
+        "what's the departure time",
+        "latest check out",
+        "can I check out late",
+        "checkout hours"
+      ]
+    },
+    {
+      "intent": "pricing",
+      "examples": [
+        "how much",
+        "what's the price",
+        "how much does it cost",
+        "price per night",
+        "daily rate",
+        "nightly rate",
+        "cost per day",
+        "what's the cost",
+        "room price",
+        "booking price",
+        "how much for one night",
+        "what's your rate"
+      ]
+    },
+    {
+      "intent": "availability",
+      "examples": [
+        "do you have rooms available",
+        "any vacancies",
+        "are there any rooms",
+        "still have space",
+        "any beds available",
+        "do you have availability",
+        "any capsules free",
+        "got any space",
+        "any rooms left",
+        "is there space"
+      ]
+    },
+    {
+      "intent": "booking",
+      "examples": [
+        "I want to book",
+        "make a reservation",
+        "book a room",
+        "reserve a bed",
+        "I'd like to stay",
+        "can I book",
+        "make a booking",
+        "reserve a capsule",
+        "I want to reserve",
+        "book for tonight"
+      ]
+    },
+    {
+      "intent": "directions",
+      "examples": [
+        "where are you located",
+        "what's your address",
+        "how do I get there",
+        "directions to your place",
+        "where is the hostel",
+        "what's the location",
+        "how to find you",
+        "send me the address",
+        "where exactly are you",
+        "location details"
+      ]
+    },
+    {
+      "intent": "facilities",
+      "examples": [
+        "what facilities do you have",
+        "is there a kitchen",
+        "do you have laundry",
+        "bathroom facilities",
+        "what amenities",
+        "is there parking",
+        "do you have lockers",
+        "shower facilities",
+        "what's included",
+        "available facilities"
+      ]
+    },
+    {
+      "intent": "complaint",
+      "examples": [
+        "I have a complaint",
+        "there's a problem",
+        "something is broken",
+        "the room is dirty",
+        "it's too noisy",
+        "not working properly",
+        "this is unacceptable",
+        "I'm not happy",
+        "need to report an issue",
+        "something's wrong"
+      ]
+    },
+    {
+      "intent": "contact_staff",
+      "examples": [
+        "talk to staff",
+        "speak to manager",
+        "contact reception",
+        "call someone",
+        "I need help",
+        "speak to a person",
+        "talk to human",
+        "get staff assistance",
+        "need to speak to someone",
+        "contact a real person"
+      ]
+    },
+    {
+      "intent": "rules",
+      "examples": [
+        "what are the rules",
+        "hostel policies",
+        "quiet hours",
+        "can I smoke",
+        "are pets allowed",
+        "what's not allowed",
+        "house rules",
+        "what are the regulations",
+        "policy on guests",
+        "is smoking permitted"
+      ]
+    },
+    {
+      "intent": "payment",
+      "examples": [
+        "how do I pay",
+        "payment methods",
+        "bank transfer details",
+        "can I pay cash",
+        "what payment options",
+        "how to make payment",
+        "bank account number",
+        "pay by card",
+        "payment process",
+        "how to transfer money"
+      ]
+    },
+    {
+      "intent": "farewell",
+      "examples": [
+        "goodbye",
+        "bye",
+        "see you",
+        "take care",
+        "have a good day",
+        "catch you later",
+        "see you later",
+        "farewell",
+        "until next time",
+        "bye bye"
+      ]
+    }
+  ]
+}

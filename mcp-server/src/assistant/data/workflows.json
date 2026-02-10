@@ -1,0 +1,93 @@
+{
+  "workflows": [
+    {
+      "id": "booking",
+      "name": "Start Booking",
+      "steps": [
+        {
+          "id": "s1",
+          "message": { "en": "How many guests?", "ms": "Berapa orang?", "zh": "几位客人？" },
+          "waitForReply": true
+        },
+        {
+          "id": "s2",
+          "message": { "en": "What dates?", "ms": "Tarikh?", "zh": "什么日期？" },
+          "waitForReply": true
+        }
+      ]
+    },
+    {
+      "id": "booking_payment_handler",
+      "name": "Booking & Payment Handler",
+      "steps": [
+        {
+          "id": "s1",
+          "message": {
+            "en": "I'll help you with your booking or payment. Let me gather some information first.",
+            "ms": "Saya akan membantu anda dengan tempahan atau pembayaran. Biar saya kumpul maklumat dahulu.",
+            "zh": "我会帮您处理预订或付款。让我先收集一些信息。"
+          },
+          "waitForReply": false
+        },
+        {
+          "id": "s2",
+          "message": {
+            "en": "How many guests will be staying?",
+            "ms": "Berapa orang tetamu?",
+            "zh": "有多少位客人入住？"
+          },
+          "waitForReply": true
+        },
+        {
+          "id": "s3",
+          "message": {
+            "en": "What are your check-in and check-out dates?",
+            "ms": "Apakah tarikh daftar masuk dan daftar keluar anda?",
+            "zh": "您的入住和退房日期是什么时候？"
+          },
+          "waitForReply": true
+        },
+        {
+          "id": "s4",
+          "message": {
+            "en": "If you have made a payment, please share your payment receipt. Otherwise, I'll forward this conversation to our admin at +60127088789 for further assistance.",
+            "ms": "Jika anda sudah buat pembayaran, sila kongsi resit pembayaran. Jika tidak, saya akan hantar perbualan ini ke admin kami di +60127088789 untuk bantuan lanjut.",
+            "zh": "如果您已付款，请分享您的付款收据。否则，我会将此对话转发给我们的管理员 +60127088789 以获得进一步帮助。"
+          },
+          "waitForReply": true
+        },
+        {
+          "id": "s5",
+          "message": {
+            "en": "Thank you! I'm forwarding your booking details and payment information to our admin at +60127088789. They will contact you shortly to confirm your reservation.",
+            "ms": "Terima kasih! Saya menghantar butiran tempahan dan maklumat pembayaran anda ke admin kami di +60127088789. Mereka akan hubungi anda tidak lama lagi untuk sahkan tempahan.",
+            "zh": "谢谢！我正在将您的预订详情和付款信息转发给我们的管理员 +60127088789。他们会尽快与您联系确认预订。"
+          },
+          "waitForReply": false
+        }
+      ]
+    },
+    {
+      "id": "escalate",
+      "name": "Escalate to Staff",
+      "steps": [
+        {
+          "id": "s1",
+          "message": { "en": "Let me connect you to our staff...", "ms": "Saya hubungkan anda ke staf...", "zh": "正在为您转接工作人员..." },
+          "waitForReply": false
+        }
+      ]
+    },
+    {
+      "id": "forward_payment",
+      "name": "Forward Payment",
+      "steps": [
+        {
+          "id": "s1",
+          "message": { "en": "Forwarding your payment details to admin...", "ms": "Menghantar butiran pembayaran anda ke admin...", "zh": "正在将您的付款信息转发给管理员..." },
+          "waitForReply": false
+        }
+      ]
+    }
+  ]
+}
