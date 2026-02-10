@@ -1,10 +1,26 @@
+// Catch silent crashes from Baileys / unhandled rejections
+process.on('uncaughtException', (err) => {
+  console.error('[CRASH] Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[CRASH] Unhandled rejection:', reason);
+});
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { createMCPHandler } from './server.js';
-import { apiClient, getApiBaseUrl } from './lib/http-client.js';
-import { initBaileys, getWhatsAppStatus } from './lib/baileys-client.js';
+import { apiClient, getApiBaseUrl, callAPI } from './lib/http-client.js';
+import { initBaileys, getWhatsAppStatus, registerMessageHandler, sendWhatsAppMessage } from './lib/baileys-client.js';
+import { initAssistant } from './assistant/index.js';
 import { startDailyReportScheduler } from './lib/daily-report.js';
+import adminRoutes from './routes/admin.js';
+
+const __filename_main = fileURLToPath(import.meta.url);
+const __dirname_main = dirname(__filename_main);
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +41,22 @@ app.get('/health', (req, res) => {
     whatsapp: getWhatsAppStatus().state,
     timestamp: new Date().toISOString()
   });
+});
+
+// Rainbow Admin Dashboard (wildcard for client-side tab routing)
+app.get('/admin/rainbow/:tab?', (_req, res) => {
+  try {
+    // Disable caching for better development experience
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+
+    const html = readFileSync(join(__dirname_main, 'public', 'rainbow-admin.html'), 'utf-8');
+    res.type('html').send(html);
+  } catch {
+    res.status(500).send('Dashboard file not found');
+  }
 });
 
 // WhatsApp QR code pairing endpoint (temporary - remove after pairing)
@@ -60,6 +92,9 @@ app.get('/admin/whatsapp-qr', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Rainbow Admin API
+app.use('/api/rainbow', adminRoutes);
 
 // MCP protocol endpoint
 app.post('/mcp', createMCPHandler());
@@ -97,6 +132,20 @@ app.listen(PORT, '0.0.0.0', () => {
     try {
       await initBaileys();
       console.log('WhatsApp (Baileys) initializing...');
+
+      // Initialize AI Assistant (auto-reply to WhatsApp messages)
+      try {
+        await initAssistant({
+          registerMessageHandler,
+          sendMessage: sendWhatsAppMessage,
+          callAPI,
+          getWhatsAppStatus
+        });
+        console.log('Pelangi Assistant initialized — WhatsApp auto-reply active');
+      } catch (assistantErr: any) {
+        console.warn(`Assistant init failed: ${assistantErr.message}`);
+        console.warn('WhatsApp auto-reply disabled. Manual tools still work.');
+      }
 
       // Start daily report scheduler (11:30 AM MYT)
       startDailyReportScheduler();
