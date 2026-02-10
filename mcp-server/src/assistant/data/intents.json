@@ -1,0 +1,130 @@
+{
+  "categories": [
+    {
+      "category": "greeting",
+      "patterns": [
+        "^(hi|hello|hey|helo|hai|apa khabar|你好|嗨|good\\s?(morning|afternoon|evening|night))",
+        "^(assalamualaikum|salam|selamat\\s?(pagi|petang|malam))"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "thanks",
+      "patterns": [
+        "\\b(thanks?|thank\\s?you|terima\\s?kasih|tq|ty|appreciate)\\b",
+        "(谢谢|感谢)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "wifi",
+      "patterns": [
+        "\\b(wifi|wi-fi|internet|password|ssid)\\b",
+        "(网络|密码|无线)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "directions",
+      "patterns": [
+        "\\b(direction|where|location|address|map|how\\s?to\\s?(get|go|reach|find)|google\\s?map|navigate|alamat|di\\s?mana|lokasi)\\b",
+        "(地址|位置|怎么走|在哪|路线)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "checkin_info",
+      "patterns": [
+        "\\b(check[\\s-]?in|daftar\\s?masuk|what\\s?time.*arrive|when.*come|masa\\s?masuk)\\b",
+        "(入住|几点.*入)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "checkout_info",
+      "patterns": [
+        "\\b(check[\\s-]?out|daftar\\s?keluar|what\\s?time.*leave|when.*leave|masa\\s?keluar)\\b",
+        "(退房|几点.*退)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "pricing",
+      "patterns": [
+        "\\b(price|pricing|rate|cost|how\\s?much|berapa|harga|kadar|rm\\s?\\d+)\\b",
+        "(价格|多少钱|费用)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "availability",
+      "patterns": [
+        "\\b(available|availability|any\\s?(room|capsule|bed)|vacancy|ada\\s?(bilik|katil|kosong))\\b",
+        "(有没有.*房|空房|还有.*位)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "booking",
+      "patterns": [
+        "\\b(book|booking|reserve|reservation|tempah|tempahan|i\\s?want\\s?to\\s?(book|stay|reserve))\\b",
+        "(预[订定]|我要.*[订定])"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "complaint",
+      "patterns": [
+        "\\b(complain|complaint|broken|dirty|noisy|loud|uncomfortable|issue|problem|not\\s?working|aduan|rosak|kotor|bising|masalah)\\b",
+        "(投诉|坏了|脏|太吵|有问题)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "contact_staff",
+      "patterns": [
+        "\\b(staff|manager|human|person|real\\s?person|talk\\s?to|speak\\s?to|contact|call|pekerja|pengurus|manusia)\\b",
+        "(联系|工作人员|找人|真人)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "facilities",
+      "patterns": [
+        "\\b(facilit\\w*|kitchen|laundry|bathroom|shower|towel|parking|locker|kemudahan|dapur|dobi|bilik\\s?air|tuala)\\b",
+        "(设施|厨房|洗衣|浴室|毛巾|停车)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "rules",
+      "patterns": [
+        "\\b(rules?|policy|regulation|smoking|quiet\\s?hours?|pet|peraturan|dasar|merokok)\\b",
+        "(规则|规定|可以吗|允许)"
+      ],
+      "flags": "i",
+      "enabled": true
+    },
+    {
+      "category": "payment",
+      "patterns": [
+        "\\b(pay|payment|bank\\s?(account|transfer|details)|transfer|bayar|bayaran|akaun\\s?bank|pindahan)\\b",
+        "(付款|银行|转账|怎么付|付钱)"
+      ],
+      "flags": "i",
+      "enabled": true
+    }
+  ]
+}

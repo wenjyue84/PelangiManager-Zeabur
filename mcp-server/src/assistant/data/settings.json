@@ -1,0 +1,192 @@
+{
+  "ai": {
+    "nvidia_model": "moonshotai/kimi-k2.5",
+    "nvidia_base_url": "https://integrate.api.nvidia.com/v1",
+    "groq_model": "llama-3.3-70b-versatile",
+    "max_classify_tokens": 200,
+    "max_chat_tokens": 800,
+    "classify_temperature": 0.1,
+    "chat_temperature": 0.7,
+    "providers": [
+      {
+        "id": "groq-llama",
+        "name": "Groq Llama 3.3 70B",
+        "description": "Balanced quality/speed (280 tok/s). Meta's workhorse 70B model with 131K context. Reliable for chat responses, good multilingual understanding. Proven stable fallback.",
+        "type": "groq",
+        "api_key_env": "GROQ_API_KEY",
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "llama-3.3-70b-versatile",
+        "enabled": true,
+        "priority": 0
+      },
+      {
+        "id": "ollama-local",
+        "name": "Ollama GPT-OSS 20B",
+        "description": "Fastest cloud model via Ollama (~3s). GPT-4 class quality with visible chain-of-thought. No rate limits, no API key needed. Best default for all tasks.",
+        "type": "ollama",
+        "api_key_env": "",
+        "base_url": "http://localhost:11434/v1",
+        "model": "gpt-oss:20b-cloud",
+        "enabled": true,
+        "priority": 1
+      },
+      {
+        "id": "groq-llama-8b",
+        "name": "Groq Llama 3.1 8B Instant",
+        "description": "Ultra-fast (560 tok/s) — fastest on Groq. Purpose-built for latency-critical apps. Small but reliable for structured JSON intent classification. Best as a quick classification fallback.",
+        "type": "groq",
+        "api_key_env": "GROQ_API_KEY",
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "llama-3.1-8b-instant",
+        "enabled": false,
+        "priority": 2
+      },
+      {
+        "id": "groq-qwen3-32b",
+        "name": "Groq Qwen3 32B",
+        "description": "Alibaba's trilingual specialist (400 tok/s). Native Chinese tokenization (3x more efficient than Llama for CJK). Trained on substantial Malay/Indonesian corpus. Supports thinking mode. Best for Chinese and Malay guest conversations.",
+        "type": "groq",
+        "api_key_env": "GROQ_API_KEY",
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "qwen3-32b",
+        "enabled": false,
+        "priority": 3
+      },
+      {
+        "id": "ollama-deepseek-v3.2",
+        "name": "Ollama DeepSeek V3.2",
+        "description": "~685B MoE reasoning model. Successor to V3.1 with balanced compute allocation — spends more effort on hard sub-questions, less on easy ones. Better at following complex multi-rule system prompts. Free via Ollama cloud.",
+        "type": "ollama",
+        "api_key_env": "",
+        "base_url": "http://localhost:11434/v1",
+        "model": "deepseek-v3.2:cloud",
+        "enabled": false,
+        "priority": 4
+      },
+      {
+        "id": "ollama-qwen3-80b",
+        "name": "Ollama Qwen3 80B",
+        "description": "Alibaba's parameter-efficient 80B general model. Redesigned transformer for 80B quality with less compute. Natively bilingual Chinese/English with strong Malay. Upgrade from Qwen3 32B for harder multilingual queries. Free via Ollama cloud.",
+        "type": "ollama",
+        "api_key_env": "",
+        "base_url": "http://localhost:11434/v1",
+        "model": "qwen3-next:80b-cloud",
+        "enabled": false,
+        "priority": 5
+      },
+      {
+        "id": "ollama-gemini-flash",
+        "name": "Ollama Gemini 3 Flash",
+        "description": "Google's speed-optimized frontier model. Trained on Google Translate corpus — excels at understanding casual/slang multilingual input ('eh bro wifi pass apa'). Different architecture from Llama/Qwen/DeepSeek, so may succeed when others fail. Free via Ollama cloud.",
+        "type": "ollama",
+        "api_key_env": "",
+        "base_url": "http://localhost:11434/v1",
+        "model": "gemini-3-flash-preview:cloud",
+        "enabled": true,
+        "priority": 6
+      },
+      {
+        "id": "groq-llama4-scout",
+        "name": "Groq Llama 4 Scout 17B",
+        "description": "Meta's newest Llama 4 (750 tok/s). First Llama with MoE — only ~4B params active per token despite 17B total. Near-8B speed with much better quality. Natively trained for multi-turn conversation. Best speed/quality ratio for chat.",
+        "type": "groq",
+        "api_key_env": "GROQ_API_KEY",
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "llama-4-scout-17b",
+        "enabled": false,
+        "priority": 7
+      },
+      {
+        "id": "groq-deepseek-r1",
+        "name": "Groq DeepSeek R1 Distill 70B",
+        "description": "70B model distilled from DeepSeek R1's 671B reasoning engine (~200 tok/s). Inherits chain-of-thought ability — naturally breaks complex problems into steps. Excels at multi-step logic (date calculations, price comparisons, booking availability). Best for complex guest queries.",
+        "type": "groq",
+        "api_key_env": "GROQ_API_KEY",
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "deepseek-r1-distill-llama-70b",
+        "enabled": false,
+        "priority": 8
+      },
+      {
+        "id": "nvidia-kimi",
+        "name": "NVIDIA Kimi 2.5",
+        "description": "Moonshot AI's 1T parameter thinking model via NVIDIA NIM. Visible chain-of-thought reasoning with dual output (thinking + answer). Premium quality for deep analysis. Requires NVIDIA API key (free tier available).",
+        "type": "openai-compatible",
+        "api_key_env": "NVIDIA_API_KEY",
+        "base_url": "https://integrate.api.nvidia.com/v1",
+        "model": "moonshotai/kimi-k2.5",
+        "enabled": false,
+        "priority": 9
+      },
+      {
+        "id": "openrouter-qwen-32b",
+        "name": "Qwen 2.5 32B (Free)",
+        "description": "Alibaba's Qwen 2.5 32B - Strong reasoning, multilingual support, free tier",
+        "type": "openai-compatible",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "qwen/qwen-2.5-32b-instruct",
+        "enabled": false,
+        "priority": 10
+      },
+      {
+        "id": "openrouter-gemma-9b",
+        "name": "Google Gemma 2 9B (Free)",
+        "description": "Google's Gemma 2 9B IT - Efficient, instruction-tuned, free tier",
+        "type": "openai-compatible",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "google/gemma-2-9b-it:free",
+        "enabled": false,
+        "priority": 11
+      },
+      {
+        "id": "openrouter-llama-8b",
+        "name": "Meta Llama 3.1 8B (Free)",
+        "description": "Meta's Llama 3.1 8B - Fast, capable, free tier",
+        "type": "openai-compatible",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "enabled": false,
+        "priority": 12
+      },
+      {
+        "id": "openrouter-mistral-7b",
+        "name": "Mistral 7B (Free)",
+        "description": "Mistral AI's 7B model - Efficient, high quality, free tier",
+        "type": "openai-compatible",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "mistralai/mistral-7b-instruct:free",
+        "enabled": false,
+        "priority": 13
+      },
+      {
+        "id": "openrouter-phi-3",
+        "name": "Microsoft Phi-3 Medium (Free)",
+        "description": "Microsoft Phi-3 Medium - Compact but powerful, free tier",
+        "type": "openai-compatible",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "microsoft/phi-3-medium-128k-instruct:free",
+        "enabled": false,
+        "priority": 14
+      }
+    ]
+  },
+  "system_prompt": "You are Rainbow, a friendly female AI assistant for Pelangi Capsule Hostel in Johor Bahru, Malaysia. You always clarify that you are an AI bot when introducing yourself. You help guests with check-in info, pricing, availability, bookings, and general hostel questions. Be warm, concise, and helpful. Reply in the same language as the guest (English, Malay, or Chinese). Keep responses under 300 characters when possible. Sign off with \"— Rainbow 🌈\" on important messages. If unsure, suggest contacting staff.",
+  "rate_limits": {
+    "per_minute": 20,
+    "per_hour": 100
+  },
+  "staff": {
+    "phones": [
+      "60167620815",
+      "60127088789",
+      "60103084289"
+    ],
+    "jay_phone": "60127088789",
+    "alston_phone": "60167620815"
+  }
+}

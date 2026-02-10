@@ -1,0 +1,53 @@
+{
+  "greeting": {
+    "action": "llm_reply"
+  },
+  "thanks": {
+    "action": "llm_reply"
+  },
+  "wifi": {
+    "action": "llm_reply"
+  },
+  "directions": {
+    "action": "llm_reply"
+  },
+  "checkin_info": {
+    "action": "llm_reply"
+  },
+  "checkout_info": {
+    "action": "llm_reply"
+  },
+  "pricing": {
+    "action": "llm_reply"
+  },
+  "availability": {
+    "action": "llm_reply"
+  },
+  "booking": {
+    "action": "workflow",
+    "workflow_id": "booking"
+  },
+  "complaint": {
+    "action": "workflow",
+    "workflow_id": "escalate"
+  },
+  "contact_staff": {
+    "action": "workflow",
+    "workflow_id": "escalate"
+  },
+  "facilities": {
+    "action": "llm_reply"
+  },
+  "rules": {
+    "action": "llm_reply"
+  },
+  "payment": {
+    "action": "llm_reply"
+  },
+  "general": {
+    "action": "llm_reply"
+  },
+  "unknown": {
+    "action": "llm_reply"
+  }
+}
