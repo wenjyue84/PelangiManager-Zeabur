@@ -23,7 +23,8 @@ import GuestCheckin from "./pages/guest-checkin";
 import GuestEdit from "./pages/guest-edit";
 import GuestSuccess from "./pages/guest-success";
 import GuestGuide from "./pages/guest-guide";
-import AdminRainbow from "./pages/admin-rainbow";
+// REMOVED: AdminRainbow - NO redirects from port 3000 to port 3002!
+// Rainbow admin is ONLY accessible at http://localhost:3002/admin/rainbow
 import IntentManager from "./pages/intent-manager";
 import Header from "./components/header";
 import Navigation from "./components/navigation";
@@ -97,7 +98,8 @@ function Router() {
               <IntentManager />
             </ProtectedRoute>
           </Route>
-          <Route path="/admin/rainbow/*?" component={AdminRainbow} />
+          {/* REMOVED: /admin/rainbow route - NO redirects from port 3000 to port 3002! */}
+          {/* Access Rainbow admin directly at http://localhost:3002/admin/rainbow */}
           <Route path="/login" component={LoginForm} />
           <Route component={NotFound} />
         </Switch>

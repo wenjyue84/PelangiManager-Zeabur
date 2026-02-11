@@ -15,6 +15,7 @@ const KB_FILES = [
   {
     id: "AGENTS.md",
     name: "AGENTS.md",
+    sequence: 1,
     icon: Sparkles,
     description: "Entry Point — LLM reads this FIRST (routing table)",
     color: "text-purple-600",
@@ -24,6 +25,7 @@ const KB_FILES = [
   {
     id: "soul.md",
     name: "soul.md",
+    sequence: 2,
     icon: Sparkles,
     description: "Rainbow's identity (personality, voice, boundaries)",
     color: "text-pink-600",
@@ -33,6 +35,7 @@ const KB_FILES = [
   {
     id: "users.md",
     name: "users.md",
+    sequence: 4,
     icon: Users,
     description: "Guest profiles, needs, and user journey",
     color: "text-blue-600",
@@ -42,6 +45,7 @@ const KB_FILES = [
   {
     id: "memory.md",
     name: "memory.md",
+    sequence: 3,
     icon: Brain,
     description: "Memory system architecture (how Rainbow remembers)",
     color: "text-indigo-600",
@@ -51,6 +55,7 @@ const KB_FILES = [
   {
     id: "houserules.md",
     name: "houserules.md",
+    sequence: 8,
     icon: Shield,
     description: "House rules and policies",
     color: "text-red-600",
@@ -60,6 +65,7 @@ const KB_FILES = [
   {
     id: "payment.md",
     name: "payment.md",
+    sequence: 5,
     icon: CreditCard,
     description: "Pricing, payment methods, and refunds",
     color: "text-green-600",
@@ -69,6 +75,7 @@ const KB_FILES = [
   {
     id: "checkin.md",
     name: "checkin.md",
+    sequence: 6,
     icon: CheckCircle,
     description: "Check-in process and procedures",
     color: "text-cyan-600",
@@ -78,6 +85,7 @@ const KB_FILES = [
   {
     id: "facilities.md",
     name: "facilities.md",
+    sequence: 7,
     icon: Home,
     description: "Facilities, amenities, and services",
     color: "text-orange-600",
@@ -87,6 +95,7 @@ const KB_FILES = [
   {
     id: "faq.md",
     name: "faq.md",
+    sequence: 9,
     icon: HelpCircle,
     description: "Frequently asked questions",
     color: "text-yellow-600",
@@ -275,7 +284,7 @@ export default function AdminRainbowKB() {
 
   const selectedFileInfo = KB_FILES.find(f => f.id === selectedFile);
   const isMemoryFile = selectedFile?.startsWith('memory/');
-  const memoryFileDisplay = isMemoryFile ? {
+  const memoryFileDisplay = isMemoryFile && selectedFile ? {
     icon: Calendar,
     color: "text-indigo-600",
     name: selectedFile.replace('memory/', ''),
@@ -406,14 +415,18 @@ export default function AdminRainbowKB() {
               LLM loads only what it needs:
             </p>
             <ul className="text-xs text-muted-foreground mt-2 space-y-1">
-              <li>1. Read AGENTS.md (routing table)</li>
-              <li>2. Load soul.md (voice)</li>
-              <li>3. Load specific files per question type</li>
-              <li>4. Answer in Rainbow's voice</li>
+              <li>[1] Read AGENTS.md (routing table)</li>
+              <li>[2] Load soul.md (voice)</li>
+              <li>[3] Load memory.md (internal)</li>
+              <li>[4-9] Load specific files per question type</li>
+              <li>Answer in Rainbow's voice</li>
             </ul>
             <div className="mt-3 p-2 bg-white rounded border border-purple-200">
               <p className="text-xs font-semibold text-purple-700">
                 Token Savings: ~60-70%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                [#] = Loading priority (lower first)
               </p>
             </div>
           </Card>
@@ -570,7 +583,10 @@ function FileListItem({ file, isSelected, onClick }: {
       <div className="flex items-start gap-2">
         <Icon className={`h-4 w-4 ${file.color} mt-0.5 shrink-0`} />
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm">{file.name}</div>
+          <div className="font-medium text-sm">
+            <span className="text-gray-400 mr-2">[{file.sequence}]</span>
+            {file.name}
+          </div>
           <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
             {file.description}
           </div>
@@ -613,10 +629,12 @@ function HelpContent() {
       <Section id="progressive" title="Progressive Disclosure">
         <p>Instead of loading ALL knowledge base files into every LLM prompt, Rainbow uses <strong>progressive disclosure</strong>:</p>
         <ul className="list-disc pl-4 space-y-1">
-          <li><strong>AGENTS.md</strong> is the entry point (always loaded with every message)</li>
-          <li><strong>soul.md</strong> defines Rainbow's personality (always loaded)</li>
-          <li>Topic files (payment.md, checkin.md, etc.) loaded <strong>ONLY when relevant</strong></li>
+          <li><strong>[1] AGENTS.md</strong> is the entry point (always loaded with every message)</li>
+          <li><strong>[2] soul.md</strong> defines Rainbow's personality (always loaded)</li>
+          <li><strong>[3] memory.md</strong> provides memory system architecture (internal)</li>
+          <li>Topic files [4-9] (payment.md, checkin.md, etc.) loaded <strong>ONLY when relevant</strong></li>
           <li>Keyword detection selects which files to load per message</li>
+          <li><strong>Sequence numbers</strong> show loading priority — lower numbers load first</li>
           <li>Result: <strong>60-70% fewer tokens</strong> per LLM call</li>
         </ul>
       </Section>
