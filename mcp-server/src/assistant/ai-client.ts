@@ -115,6 +115,16 @@ async function providerChat(
 
   if (res.status !== 200) {
     const errText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+
+    // Enhanced logging for rate limits (429) and quota errors
+    if (res.status === 429) {
+      console.error(`[AI] ⚠️  RATE LIMIT HIT - ${provider.name}`);
+      console.error(`[AI] Provider: ${provider.id} (${provider.type})`);
+      console.error(`[AI] Status: ${res.status} - Rate limit exceeded`);
+      console.error(`[AI] Details: ${errText.slice(0, 500)}`);
+      console.error(`[AI] 💡 Tip: Disable this provider or wait for limit reset (usually 24h)`);
+    }
+
     throw new Error(`${provider.name} ${res.status}: ${errText.slice(0, 200)}`);
   }
 
@@ -141,12 +151,22 @@ async function chatWithFallback(
   for (const provider of providers) {
     try {
       const content = await providerChat(provider, messages, maxTokens, temperature, jsonMode);
-      if (content) return { content, provider };
+      if (content) {
+        console.log(`[AI] ✅ Success using: ${provider.name} (${provider.id})`);
+        return { content, provider };
+      }
     } catch (err: any) {
-      console.warn(`[AI] ${provider.name} failed, trying next:`, err.message);
+      // Enhanced error logging with rate limit detection
+      const isRateLimit = err.message?.includes('429') || err.message?.toLowerCase().includes('rate limit');
+      if (isRateLimit) {
+        console.warn(`[AI] ⚠️  ${provider.name} RATE LIMITED — falling back to next provider`);
+      } else {
+        console.warn(`[AI] ${provider.name} failed, trying next:`, err.message);
+      }
     }
   }
 
+  console.error(`[AI] ❌ All providers failed - no response generated`);
   return { content: null, provider: null };
 }
 
@@ -437,8 +457,8 @@ export async function testProvider(providerId: string): Promise<{
   const startTime = Date.now();
   try {
     const messages = [{ role: 'user', content: 'Say OK' }];
-    // Use 100 tokens and 0.6 temp for better Kimi K2.5 compatibility
-    const content = await providerChat(provider, messages, 100, 0.6);
+    // Use 100 tokens and temperature 1.0 (required by Kimi K2.5)
+    const content = await providerChat(provider, messages, 100, 1.0);
     const elapsed = Date.now() - startTime;
     return { ok: true, model: provider.model, reply: content || '', responseTime: elapsed };
   } catch (e: any) {
