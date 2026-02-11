@@ -1,101 +1,42 @@
-# Pelangi Capsule Hostel — Facilities & Amenities (Knowledge Base)
+# Facilities — Quick Reference
+
+> **Detailed facilities info split into focused files for easy editing:**
+> - **Capsule Pods & Sleep:** → `facilities-capsules.md`
+> - **Bathrooms & Showers:** → `facilities-bathrooms.md`
+> - **Kitchen & Dining:** → `facilities-kitchen.md`
+> - **Common Areas & Social Spaces:** → `facilities-common.md`
 
 ## Quick List (At a Glance)
-- Capsule pods (private sleeping space)
-- Bedding & linen
-- Bathrooms & hot showers
-- Toiletries in bathroom
-- Shared kitchen (self-catering)
-- Drinking water station (hot & cold)
-- Coffee machine
-- Lounge / common area
-- Work-friendly / coworking space
-- Lockers & luggage storage
-- Free Wi-Fi
-- Power & charging points
-- Laundry access (24-hour option)
-- CCTV / security coverage
+
+### Sleep & Rest
+- Private capsule pods with privacy curtain
+- Fresh bedding & linen
+- Air-conditioning
+- Personal reading light & power outlets
+
+### Bathrooms
+- Hot showers (24/7)
+- Toiletries provided (shampoo, soap)
 - Hair dryer
 
----
-
-## Capsule Pods & Sleep Comfort
-
-### Capsule Pod Features
-- Private capsule pod (enclosed sleeping space)
-- Privacy door / curtain (pod privacy)
-- Personal reading light
-- Power outlet(s)
-- USB charging port
-- Air-conditioning in sleeping areas
-- Premium mattress
-- Small shelf / space for personal items
-- Clothes hook(s)
-- Personal locker (near or assigned to pod)
-
-### Bedding Provided
-- Fresh bed linen
-- Pillow
-- Blanket
-
----
-
-## Bathrooms & Showers
-- Private/shared bathrooms
-- Hot showers (hot water)
-- Toilets
-- Hand-wash basin / sink area
-
-### Bathroom Items Available
-- Shampoo
-- Body wash / soap
-- Hair dryer
-
----
-
-## Shared Kitchen (Self-Catering)
-- Shared kitchen for guest use
-- Refrigerator / freezer
-- Microwave
-- Electric kettle
-- Basic cookware (pots/pans)
-- Cooking utensils
-- Plates / bowls / cups
-- Cutlery
-
----
-
-## Water & Drinks
-- Hot & cold filtered water dispenser / drinking water station
+### Kitchen & Food
+- Shared self-catering kitchen
+- Microwave, kettle, cookware, utensils
+- Hot & cold water dispenser
 - Coffee machine
 
----
-
-## Common Areas
-### Lounge / Social Space
+### Social & Work
 - Common lounge / seating area
+- Work-friendly desks
+- Outdoor relaxation area
 
-### Work-Friendly Space
-- Tables / desks for work or study
-- Power access for devices
-
-### Outdoor / Relax Area (If Available)
-- Rooftop / terrace-style relaxation area
-
----
-
-## Storage
+### Utilities
+- Free WiFi (see `checkin-wifi.md`)
+- Power & USB charging in capsules
 - Lockers for valuables
-- Space for luggage storage (subject to available space)
+- Laundry (RM5/load, 24-hour)
+- Luggage storage
 
----
-
-## Internet & Power
-- Free Wi-Fi across the hostel
-- Charging access in pods (power + USB)
-- Additional power points in common areas
-
----
-
-## Laundry
-- Laundry access available (24-hour option)
+### Security
+- CCTV coverage
+- Key-card access

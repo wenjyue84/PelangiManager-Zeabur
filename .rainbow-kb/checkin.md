@@ -1,36 +1,26 @@
-# Pelangi Capsule Hostel — Check-in Guide
+# Check-in — Quick Reference
 
-Hi! 👋 Thanks for choosing Pelangi Capsule Hostel. Here’s everything you need for a smooth check-in.
+Hi! 👋 Thanks for choosing Pelangi Capsule Hostel. Everything you need for a smooth check-in:
 
-## ⏰ Check-in / Check-out
-- 🕑 **Check-in:** 2:00 PM (early check-in available at no extra fee, subject to availability)
-- 🕛 **Check-out:** 12:00 PM (late check-out available at no extra fee, subject to availability)
+> **Detailed check-in info split into focused files for easy editing:**
+> - **Check-in/out Times:** → `checkin-times.md`
+> - **Door Access & Entry:** → `checkin-access.md`
+> - **Self Check-in Procedure:** → `checkin-procedure.md`
+> - **WiFi Connection:** → `checkin-wifi.md`
 
-## 📍 Address
-**26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru**
+## Quick Summary
 
-## 🗺️ Navigate Here
-https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb
+| Item | Details |
+|------|---------|
+| Check-in Time | 2:00 PM (early available, free) |
+| Check-out Time | 12:00 PM (late available, free) |
+| Address | 26A Jalan Perang, Taman Pelangi, 80400 JB |
+| Door Password | **1270#** |
+| WiFi Network | pelangi capsule |
+| WiFi Password | ilovestaycapsule |
+| Help | WhatsApp: +60 12-708 8789 (Jay) |
 
-## 🔑 Door Access
-- **Door password:** **1270#**
-- Enter the code at the door keypad, then push/pull the door to enter.
-- ✅ **Security note:** Please keep the door password private and do not post it publicly.
-
-## ✅ Step-by-step Check-in (Self Check-in)
-1. **Arrive at the entrance** (use the map link above).
-2. **Enter the door password:** **1270#**
-3. **Go to your assigned capsule area** (as per your booking/check-in instructions).
-4. **Watch the capsule usage video ** (recommended for first-timers).
-5. **Connect to WiFi** (details below).
-6. If anything doesn’t work (door/capsule/WiFi), **reply to this chat immediately** and we’ll help you.
-
-## 📦 How to Use Your Capsule (Video)
-https://www.youtube.com/watch?v=6Ux11oBZaQQ
-
-## 📡 WiFi
-- **Network:** pelangi capsule  
-- **Password:** ilovestaycapsule
-
-## 📸 See Our Space (Reference)
-https://photos.app.goo.gl/NLJARWwjuLy5wdGn7
+## Useful Links
+- **Map:** https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb
+- **Capsule video:** https://www.youtube.com/watch?v=6Ux11oBZaQQ
+- **Photo tour:** https://photos.app.goo.gl/NLJARWwjuLy5wdGn7
