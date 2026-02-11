@@ -23,8 +23,11 @@ export function LoginForm() {
   const { login, loginWithGoogle, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
+  const [isStartingBackend, setIsStartingBackend] = useState(false);
+  const [backendStartError, setBackendStartError] = useState<string | null>(null);
+
   // Get storage info to determine if we should auto-fill credentials
-  const { data: storageInfo, isLoading: isStorageLoading, error: storageError } = useQuery<{type: string; isDatabase: boolean; label: string}>({
+  const { data: storageInfo, isLoading: isStorageLoading, error: storageError, refetch: refetchStorageInfo } = useQuery<{type: string; isDatabase: boolean; label: string}>({
     queryKey: ["/api/storage/info"],
     staleTime: 60000, // Cache for 1 minute
     retry: false // Don't retry if it fails
@@ -151,9 +154,9 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async (response: any) => {
     setIsLoading(true);
-    
+
     const result = await loginWithGoogle(response.credential);
-    
+
     if (result.success) {
       toast({
         title: "🎉 Google Login Successful!",
@@ -181,8 +184,54 @@ export function LoginForm() {
         variant: "destructive"
       });
     }
-    
+
     setIsLoading(false);
+  };
+
+  const handleStartBackend = async () => {
+    setIsStartingBackend(true);
+    setBackendStartError(null);
+
+    try {
+      const response = await fetch('/__dev/start-backend', {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "✅ Backend Server Started!",
+          description: data.alreadyRunning
+            ? "Backend was already running"
+            : "Backend server is now running on port 5000",
+          duration: 3000,
+          className: "border-green-500 bg-green-50 text-green-800"
+        });
+
+        // Refetch storage info to update UI
+        setTimeout(() => {
+          refetchStorageInfo();
+        }, 1000);
+      } else {
+        setBackendStartError(data.message || 'Failed to start backend server');
+        toast({
+          title: "Failed to Start Backend",
+          description: data.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setBackendStartError(errorMessage);
+      toast({
+        title: "Error Starting Backend",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsStartingBackend(false);
+    }
   };
 
   return (
@@ -191,12 +240,60 @@ export function LoginForm() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-orange-700">Pelangi Capsule Hostel</CardTitle>
           <CardDescription>Management System Login</CardDescription>
-          {storageInfo && !storageInfo.isDatabase && (
+
+          {/* Backend Connection Error with Start Button */}
+          {storageError && !isStartingBackend && (
+            <div className="mt-3 p-4 bg-red-50 rounded-lg border border-red-200 space-y-3">
+              <div className="space-y-1">
+                <div className="flex items-center justify-center gap-2 text-red-700 font-semibold">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  Backend Server Not Running
+                </div>
+                <p className="text-xs text-red-600">
+                  The backend server on port 5000 is not responding
+                </p>
+              </div>
+              <Button
+                onClick={handleStartBackend}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+                size="sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+                Start Backend Server
+              </Button>
+              {backendStartError && (
+                <p className="text-xs text-red-600 mt-2">{backendStartError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Backend Starting Indicator */}
+          {isStartingBackend && (
+            <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-center gap-2 text-blue-700">
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="font-semibold">Starting Backend Server...</span>
+              </div>
+              <p className="text-xs text-blue-600 text-center mt-2">
+                This may take up to 30 seconds
+              </p>
+            </div>
+          )}
+
+          {/* Development Mode Indicators (when backend is running) */}
+          {!storageError && storageInfo && !storageInfo.isDatabase && (
             <div className="mt-2 p-2 bg-green-50 rounded text-xs text-green-700 border border-green-200">
               <strong>Development Mode:</strong> Credentials auto-filled (Memory Storage)
             </div>
           )}
-          {typeof window !== 'undefined' &&
+          {!storageError && typeof window !== 'undefined' &&
             shouldShowDemoFeatures() &&
             (!storageInfo || storageInfo.isDatabase) && (
               <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-600">
