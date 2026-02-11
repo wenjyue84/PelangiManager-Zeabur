@@ -72,7 +72,8 @@ See `docs/API-CONTRACT.md` for full inter-module API reference.
 | `shared/schema.ts` | Drizzle table defs + Zod schemas + types |
 | `mcp-server/src/assistant/` | Rainbow AI engine |
 | `mcp-server/src/tools/` | MCP tool implementations |
-| `mcp-server/src/routes/admin.ts` | Rainbow admin API |
+| `mcp-server/src/routes/admin/` | Rainbow admin API (modular route files) |
+| `mcp-server/src/lib/` | Shared utilities (HTTP client, Baileys, supervisor) |
 | `docs/` | Documentation |
 | `scripts/` | Utility batch/shell scripts |
 | `archive/` | Archived files (gitignored) |
@@ -91,6 +92,8 @@ See `docs/API-CONTRACT.md` for full inter-module API reference.
 | Rainbow AI entry | `mcp-server/src/assistant/message-router.ts` |
 | MCP tools | `mcp-server/src/tools/registry.ts` |
 | WhatsApp client | `mcp-server/src/lib/baileys-client.ts` |
+| Baileys supervisor | `mcp-server/src/lib/baileys-supervisor.ts` |
+| Admin routes index | `mcp-server/src/routes/admin/index.ts` |
 | Rainbow dashboard | `mcp-server/src/public/rainbow-admin.html` |
 
 ## Dual Storage System
