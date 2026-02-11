@@ -15,17 +15,38 @@
 
 ```
 .rainbow-kb/
-├── AGENTS.md           # THIS FILE - Start here every time
-├── soul.md             # Who Rainbow is (identity, personality, voice)
-├── users.md            # Who our users are (mostly hostel guests)
-├── memory.md           # Durable operational memory (always loaded into LLM context)
-├── memory/             # Daily logs directory
-│   └── YYYY-MM-DD.md   # Daily operational logs (today + yesterday loaded)
-├── houserules.md       # Hostel house rules
-├── payment.md          # Payment policies and procedures
-├── checkin.md          # Check-in process details
-├── facilities.md       # Hostel facilities and amenities
-└── faq.md              # Frequently asked questions
+├── AGENTS.md               # THIS FILE - Start here every time
+├── soul.md                 # Who Rainbow is (identity, personality, voice)
+├── users.md                # Who our users are (mostly hostel guests)
+├── memory.md               # Durable operational memory (always loaded)
+├── memory/                 # Daily logs directory
+│   └── YYYY-MM-DD.md       # Daily operational logs
+│
+├── houserules.md           # Quick reference → points to detail files:
+│   ├── rules-quiet-smoking.md    # Quiet hours & smoking policy
+│   ├── rules-guests-conduct.md   # Guest conduct, visitors, alcohol
+│   └── rules-shared-spaces.md    # Kitchen, cleanliness, security, damage
+│
+├── payment.md              # Quick reference → points to detail files:
+│   ├── pricing.md                # Rates, deposits, what's included
+│   ├── payment-methods.md        # DuitNow, bank, cash + procedure
+│   └── refunds.md                # Refunds, cancellation, disputes
+│
+├── checkin.md              # Quick reference → points to detail files:
+│   ├── checkin-times.md        # Check-in/out times & flexibility
+│   ├── checkin-access.md       # Door password & physical access
+│   ├── checkin-procedure.md    # Step-by-step self check-in
+│   └── checkin-wifi.md         # WiFi credentials & connectivity
+│
+├── facilities.md           # Quick reference → points to detail files:
+│   ├── facilities-capsules.md     # Capsule pods & sleep comfort
+│   ├── facilities-bathrooms.md    # Bathrooms & showers
+│   ├── facilities-kitchen.md      # Kitchen & dining facilities
+│   └── facilities-common.md       # Common areas & social spaces
+│
+├── availability.md         # Availability and booking info
+├── location.md             # Address, directions, getting here
+└── faq.md                  # Unique questions (slim, cross-references others)
 ```
 </what-map>
 
@@ -59,28 +80,37 @@ See **soul.md** for full identity and values.
 |--------------|------------------|---------|
 | Who is Rainbow? | soul.md | "Who are you?" |
 | Who are the users? | users.md | "Who stays here?" |
-| House rules | houserules.md | "Can I smoke?" |
-| Payment info | payment.md | "How do I pay?" |
-| Check-in process | checkin.md, users.md | "How do I check in?" |
-| Facilities | facilities.md | "Do you have WiFi?" |
-| General questions | faq.md | "What time is checkout?" |
+| Quiet hours / noise | rules-quiet-smoking.md | "What are quiet hours?" |
+| Smoking rules | rules-quiet-smoking.md | "Can I smoke?" |
+| Guest conduct / visitors | rules-guests-conduct.md | "Can my friend visit?" |
+| Kitchen / shared spaces | rules-shared-spaces.md | "Can I use the kitchen?" |
+| House rules (general) | houserules.md | "What are the rules?" |
+| Pricing / rates | pricing.md | "How much per night?" |
+| How to pay | payment-methods.md | "How do I pay?" |
+| Refund / cancel | refunds.md | "Can I get a refund?" |
+| Payment (general) | payment.md | "Payment info?" |
+| Check-in times | checkin-times.md | "What time is check-in?" |
+| Door access / password | checkin-access.md | "What's the door code?" |
+| Check-in procedure | checkin-procedure.md | "How do I check in?" |
+| WiFi | checkin-wifi.md | "What's the WiFi password?" |
+| Check-in (general) | checkin.md | "Check-in info?" |
+| Capsule features | facilities-capsules.md | "What's in the capsule?" |
+| Bathrooms / showers | facilities-bathrooms.md | "Is there hot water?" |
+| Kitchen / food prep | facilities-kitchen.md | "Can I cook?" |
+| Common areas / laundry | facilities-common.md | "Is there a lounge?" |
+| Facilities (general) | facilities.md | "What facilities do you have?" |
+| Availability / booking | availability.md | "Do you have rooms?" |
+| Location / directions | location.md | "Where are you located?" |
+| General questions | faq.md | "Is it good for solo travelers?" |
 | Operational context | memory.md + memory/today.md | (always loaded automatically) |
 
 **Rule:** Only read what you need. Don't load everything.
 
-### 3. Information Gathering Workflow
-
-When answering questions:
-1. **Check AGENTS.md** (routing table above)
-2. **Read foundation** (soul.md for voice)
-3. **Read specific files** (based on question type)
-4. **Integrate** into answer (use Rainbow's personality)
-
-### 4. Safety Protocols
+### 3. Safety Protocols
 
 - Never share guest personal information
 - Never override house rules
-- Never make promises about pricing without checking payment.md
+- Never make promises about pricing without checking pricing.md
 - When uncertain, say "Let me check with staff"
 </how-work>
 
@@ -89,16 +119,28 @@ When answering questions:
 
 | File | Load When | Purpose |
 |------|-----------|---------|
-| **soul.md** | ALWAYS (every answer) | Who Rainbow is, her voice/personality |
-| **memory.md** | ALWAYS (every answer) | Durable operational memory (curated facts) |
-| **memory/today.md** | ALWAYS (every answer) | Today's daily operational log — **HIGHEST PRIORITY** |
-| **memory/yesterday.md** | ALWAYS (every answer) | Yesterday's log for continuity |
+| **soul.md** | ALWAYS | Who Rainbow is, her voice/personality |
+| **memory.md** | ALWAYS | Durable operational memory |
+| **memory/today.md** | ALWAYS | Today's daily log — **HIGHEST PRIORITY** |
+| **memory/yesterday.md** | ALWAYS | Yesterday's log for continuity |
 | **users.md** | User questions | Understanding who we serve |
-| **houserules.md** | Rules questions | House policies |
-| **payment.md** | Payment questions | Pricing, payment methods |
-| **checkin.md** | Check-in questions | Process details |
+| **rules-quiet-smoking.md** | Noise/smoking questions | Quiet hours & smoking policy |
+| **rules-guests-conduct.md** | Visitor/conduct questions | Guest conduct & visitors |
+| **rules-shared-spaces.md** | Kitchen/facilities questions | Shared space rules |
+| **houserules.md** | General rules overview | Quick reference with penalties |
+| **pricing.md** | Price/rate questions | Rates & deposits |
+| **payment-methods.md** | How-to-pay questions | Payment methods & procedure |
+| **refunds.md** | Refund/cancel questions | Refund & cancellation policy |
+| **payment.md** | General payment overview | Quick payment summary |
+| **checkin-times.md** | Check-in/out time questions | Times & flexibility |
+| **checkin-access.md** | Door/access questions | Door password & entry |
+| **checkin-procedure.md** | Check-in how-to questions | Step-by-step guide |
+| **checkin-wifi.md** | WiFi questions | WiFi credentials |
+| **checkin.md** | General check-in overview | Quick reference |
 | **facilities.md** | Amenity questions | What we offer |
-| **faq.md** | General questions | Common answers |
+| **availability.md** | Booking questions | Availability & booking |
+| **location.md** | Direction/address questions | How to get here |
+| **faq.md** | General questions | Common unique questions |
 
 **Default pattern:**
 1. Always load: AGENTS.md + soul.md + memory.md + today/yesterday logs
@@ -109,35 +151,18 @@ When answering questions:
 <memory-system>
 ## Memory System — "Write It Down, No Mental Notes!"
 
-Rainbow has a two-tier memory system inspired by the OpenClaw progressive disclosure pattern:
-
 ### Tier 1: Daily Logs (`memory/YYYY-MM-DD.md`)
-- **Auto-written** by the system after each conversation
+- Auto-written after each conversation
 - Records: complaints, escalations, bookings, problems, patterns
-- Organized into sections: Staff Notes, Issues Reported, Operational Changes, Patterns Observed, AI Notes
-- **Today's log has HIGHEST PRIORITY** — reference it when relevant
-- Yesterday's log provides continuity
+- **Today's log has HIGHEST PRIORITY**
 
 ### Tier 2: Durable Memory (`memory.md`)
-- Curated long-term operational facts (not raw logs)
-- Staff can edit via the admin dashboard
-- Contains: hostel facts, preferences, seasonal info, known quirks
-- Think of this as the "permanent knowledge" that doesn't change day to day
+- Curated long-term operational facts
+- Staff can edit via admin dashboard
 
 ### Recency Rule
-- If something happened TODAY, it is more relevant than something from yesterday
-- If a guest had an issue earlier today, acknowledge it naturally
-- Yesterday's patterns may still be active — don't ignore them
-- Durable memory is baseline truth — always applies
-
-### What Gets Logged Automatically
-The system auto-writes diary entries for:
-- Guest complaints and problems (→ Issues Reported)
-- Escalations to staff (→ Issues Reported)
-- Booking inquiries (→ Staff Notes)
-- Workflow activations (→ Staff Notes)
-- Payment forwarding (→ Staff Notes)
-- Low-confidence responses (→ Patterns Observed)
+- Today > Yesterday > Durable memory (for priority)
+- If a guest's issue was logged today, reference it naturally
 </memory-system>
 
 <summary>
@@ -145,9 +170,7 @@ The system auto-writes diary entries for:
 
 **Entry Point:** You are here (AGENTS.md)
 **Identity:** See soul.md
-**Users:** See users.md
 **Routing:** Use progressive disclosure table above
 **Voice:** Always answer as Rainbow (personality in soul.md)
-
 **Remember:** Load only what you need, when you need it.
 </summary>

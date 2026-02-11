@@ -1,0 +1,34 @@
+{
+  "phone": "60167620815@s.whatsapp.net",
+  "pushName": "Alston Foo",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "What dates?",
+      "timestamp": 1770775545540,
+      "action": "workflow_complete"
+    },
+    {
+      "role": "user",
+      "content": "14 feb",
+      "timestamp": 1770775553566
+    },
+    {
+      "role": "assistant",
+      "content": "How many guests?",
+      "timestamp": 1770775554187,
+      "intent": "booking",
+      "confidence": 0.8,
+      "action": "workflow"
+    },
+    {
+      "role": "assistant",
+      "content": "What dates?",
+      "timestamp": 1770775557135,
+      "action": "workflow"
+    }
+  ],
+  "createdAt": 1770775545540,
+  "updatedAt": 1770775557135,
+  "instanceId": "default"
+}
