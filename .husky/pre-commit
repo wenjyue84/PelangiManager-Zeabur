@@ -48,15 +48,16 @@ done
 # Check file contents for secrets
 STAGED_CONTENT=$(git diff --cached)
 
-# Patterns that suggest secrets in content
-if echo "$STAGED_CONTENT" | grep -qE "(nvapi-[A-Za-z0-9_-]{30,}|sk-[A-Za-z0-9]{20,}|Bearer [A-Za-z0-9_-]{40,})"; then
+# Patterns that suggest secrets in content (exclude template variables)
+# This filters out template strings like ${VAR} or process.env.VAR
+if echo "$STAGED_CONTENT" | grep -E "(nvapi-[A-Za-z0-9_-]{30,}|sk-[A-Za-z0-9]{20,}|Bearer [A-Za-z0-9_-]{40,})" | grep -qvE "(\$\{|process\.env\.|<your-|Bearer \$\{)"; then
   echo "❌ BLOCKED: Potential API key or token detected in staged changes"
   echo ""
   echo "Detected pattern in:"
   git diff --cached --name-only
   echo ""
   echo "💡 Review your changes for exposed secrets"
-  echo "   Run: git diff --cached | grep -E '(nvapi-|sk-|Bearer)'"
+  echo "   Run: git diff --cached | grep -E '(nvapi-|sk-|Bearer)' | grep -vE '\$\{'"
   echo ""
   exit 1
 fi
