@@ -13,11 +13,10 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createMCPHandler } from './server.js';
-import { apiClient, getApiBaseUrl, callAPI } from './lib/http-client.js';
-import { initBaileys, getWhatsAppStatus, registerMessageHandler, sendWhatsAppMessage } from './lib/baileys-client.js';
-import { initAssistant } from './assistant/index.js';
-import { startDailyReportScheduler } from './lib/daily-report.js';
-import adminRoutes from './routes/admin.js';
+import { apiClient, getApiBaseUrl } from './lib/http-client.js';
+import { getWhatsAppStatus } from './lib/baileys-client.js';
+import { startBaileysWithSupervision } from './lib/baileys-supervisor.js';
+import adminRoutes from './routes/admin/index.js';
 
 const __filename_main = fileURLToPath(import.meta.url);
 const __dirname_main = dirname(__filename_main);
@@ -128,30 +127,7 @@ app.listen(PORT, '0.0.0.0', () => {
       console.warn('');
     }
 
-    // Initialize WhatsApp (Baileys) connection
-    try {
-      await initBaileys();
-      console.log('WhatsApp (Baileys) initializing...');
-
-      // Initialize AI Assistant (auto-reply to WhatsApp messages)
-      try {
-        await initAssistant({
-          registerMessageHandler,
-          sendMessage: sendWhatsAppMessage,
-          callAPI,
-          getWhatsAppStatus
-        });
-        console.log('Pelangi Assistant initialized — WhatsApp auto-reply active');
-      } catch (assistantErr: any) {
-        console.warn(`Assistant init failed: ${assistantErr.message}`);
-        console.warn('WhatsApp auto-reply disabled. Manual tools still work.');
-      }
-
-      // Start daily report scheduler (11:30 AM MYT)
-      startDailyReportScheduler();
-    } catch (err: any) {
-      console.warn(`WhatsApp init failed: ${err.message}`);
-      console.warn('WhatsApp tools will fail. Run: node pair-whatsapp.cjs to pair.');
-    }
+    // Initialize WhatsApp (Baileys) with crash isolation supervisor
+    await startBaileysWithSupervision();
   });
 });
