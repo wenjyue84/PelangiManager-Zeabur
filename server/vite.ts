@@ -18,6 +18,9 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Add static file serving for reports BEFORE Vite middleware
+  app.use('/reports', express.static(path.join(process.cwd(), 'mcp-server/src/public/reports')));
+
   // Dynamic imports to avoid loading vite/plugin-react in production
   const { createServer: createViteServer, createLogger } = await import("vite");
   const { nanoid } = await import("nanoid");
@@ -45,7 +48,7 @@ export async function setupVite(app: Express, server: Server) {
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
-    
+
     // Skip API routes - let them be handled by the API routes middleware
     if (url.startsWith("/api")) {
       return next();
