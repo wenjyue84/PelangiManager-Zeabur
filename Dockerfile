@@ -34,8 +34,8 @@ USER nodeuser
 # Zeabur uses PORT environment variable (default 5000)
 EXPOSE 5000
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+# Health check endpoint - Relaxed settings for database initialization
+HEALTHCHECK --interval=60s --timeout=15s --start-period=90s --retries=5 \
   CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
 
 # Start the production server
