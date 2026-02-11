@@ -713,6 +713,22 @@ export const phoneUtils = {
    */
   cleanPhone: (phone: string): string => {
     return phone.replace(/[^\d+]/g, '');
+  },
+
+  /**
+   * Check if phone number is callable (has valid format for tel: link)
+   */
+  isCallable: (phone: string): boolean => {
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    return cleaned.startsWith('+') && cleaned.length >= 10;
+  },
+
+  /**
+   * Get tel: href for phone link
+   */
+  getTelHref: (phone: string): string => {
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    return `tel:${cleaned}`;
   }
 };
 

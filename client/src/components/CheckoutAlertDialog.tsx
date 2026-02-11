@@ -112,7 +112,7 @@ export default function CheckoutAlertDialog({ guest, open, onOpenChange }: Check
     onError: (error: any) => {
       console.error("Failed to save alert settings:", error);
       const errorDetails = extractDetailedError(error);
-      toast(createErrorToast("Failed to save alert settings", errorDetails));
+      toast(createErrorToast(errorDetails));
     },
   });
 

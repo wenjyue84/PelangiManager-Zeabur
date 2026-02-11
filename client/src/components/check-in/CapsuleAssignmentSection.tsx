@@ -190,7 +190,7 @@ export default function CapsuleAssignmentSection({
                             <span>{capsule.number}</span>
                             <div className="flex items-center gap-1">
                               {capsule.position === 'bottom' && <span title="Bottom bed">⭐</span>}
-                              {hasMaintenanceProblems && <span title={`${capsule.activeProblems.length} maintenance ${capsule.activeProblems.length === 1 ? 'problem' : 'problems'}`}>🔧</span>}
+                              {hasMaintenanceProblems && <span title={`${capsule.activeProblems?.length || 0} maintenance ${(capsule.activeProblems?.length || 0) === 1 ? 'problem' : 'problems'}`}>🔧</span>}
                               {hasWarning && <span title="Warning">⚠️</span>}
                               {!isRecommended && <span title="Not recommended">🚫</span>}
                             </div>
