@@ -250,9 +250,19 @@ const RealChat = (function() {
     const currentVal = select.value;
     let html = '<option value="">All Instances (' + _rcConversations.length + ')</option>';
     for (const id of instanceIds) {
-      const label = _rcInstances[id] || id;
+      const fullLabel = _rcInstances[id] || id;
       const count = _rcConversations.filter(c => c.instanceId === id).length;
-      html += '<option value="' + escapeHtml(id) + '">' + escapeHtml(label) + ' (' + count + ')</option>';
+
+      // Shorten label by removing phone number and keeping only name + instance type
+      // "Southern Homestay (60103084289) - Mainline" → "Southern Homestay - Mainline"
+      let shortLabel = fullLabel.replace(/\s*\([0-9]+\)\s*/g, ' ').trim();
+      // If still too long (>30 chars), truncate
+      if (shortLabel.length > 30) {
+        shortLabel = shortLabel.substring(0, 27) + '...';
+      }
+
+      html += '<option value="' + escapeHtml(id) + '" title="' + escapeAttr(fullLabel) + '">' +
+              escapeHtml(shortLabel) + ' (' + count + ')</option>';
     }
     // Add "Unknown" option for conversations without instanceId
     const unknownCount = _rcConversations.filter(c => !c.instanceId).length;
@@ -597,3 +607,18 @@ const RealChat = (function() {
     handleInputKeydown
   };
 })();
+
+// Expose RealChat functions to global scope for template onclick handlers
+window.loadRealChat = RealChat.loadRealChat;
+window.toggleDevMode = RealChat.toggleDevMode;
+window.toggleTranslateMode = RealChat.toggleTranslateMode;
+window.handleLangChange = RealChat.handleLangChange;
+window.closeTranslateModal = RealChat.closeTranslateModal;
+window.confirmTranslation = RealChat.confirmTranslation;
+window.filterConversations = RealChat.filterConversations;
+window.refreshActiveChat = RealChat.refreshActiveChat;
+window.deleteActiveChat = RealChat.deleteActiveChat;
+window.sendManualReply = RealChat.sendManualReply;
+window.autoResizeInput = RealChat.autoResizeInput;
+window.handleInputKeydown = RealChat.handleInputKeydown;
+window.openConversation = RealChat.openConversation;
