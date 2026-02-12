@@ -1,6 +1,6 @@
 /**
- * Workflow Management Module
- * Handles workflow configuration and step building
+ * @fileoverview Multi-step workflow configuration
+ * @module workflows
  */
 
 import { api } from '../api.js';

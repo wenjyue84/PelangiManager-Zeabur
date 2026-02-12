@@ -1,9 +1,5 @@
 /**
- * Testing Module
- *
- * Handles test execution, coverage reporting, and result rendering for the Rainbow AI dashboard.
- * Provides UI controls for running unit tests and generating coverage reports.
- *
+ * @fileoverview Module functionality
  * @module testing
  */
 

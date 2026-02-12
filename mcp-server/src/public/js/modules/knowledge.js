@@ -1,6 +1,6 @@
 /**
- * Static Knowledge Module
- * Manages static reply templates and knowledge base entries
+ * @fileoverview Static knowledge base reply management
+ * @module knowledge
  */
 
 import { api } from '../api.js';

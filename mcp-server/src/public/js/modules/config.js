@@ -1,6 +1,6 @@
 /**
- * Configuration Management Module
- * Handles config reload and initialization
+ * @fileoverview Configuration reload and initialization
+ * @module config
  */
 
 import { api } from '../api.js';

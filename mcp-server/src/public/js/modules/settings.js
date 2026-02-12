@@ -1,6 +1,6 @@
 /**
- * Settings Module
- * Manages LLM provider configuration and system settings
+ * @fileoverview LLM provider settings and configuration
+ * @module settings
  */
 
 import { api } from '../api.js';

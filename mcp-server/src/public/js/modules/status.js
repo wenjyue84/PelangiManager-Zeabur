@@ -1,6 +1,6 @@
 /**
- * Status Tab Module
- * Displays server status, WhatsApp instances, and AI provider availability
+ * @fileoverview Server status, WhatsApp instances, and AI provider monitoring
+ * @module status
  */
 
 import { api } from '../api.js';
