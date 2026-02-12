@@ -36,8 +36,7 @@ async function loadDashboard() {
       waStatusEl.innerHTML = `
         <div class="text-center py-4">
           <p class="text-sm text-neutral-400 mb-2">No WhatsApp instances connected</p>
-          <button onclick="loadTab('whatsapp-accounts'); setTimeout(() => { if (typeof showAddInstance === 'function') showAddInstance(); }, 500);"
-                  class="text-xs bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg transition">+ Add Number</button>
+          <a href="/admin/whatsapp-qr" class="text-xs bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg transition inline-block">Pair WhatsApp (QR)</a>
         </div>`;
     } else {
       waStatusEl.innerHTML = waInstances.map(inst => {
@@ -87,7 +86,7 @@ async function loadDashboard() {
               </div>
             </div>
             <div class="flex gap-1 flex-shrink-0">
-              ${inst.state !== 'open' ? `<button onclick="loadTab('whatsapp-accounts'); setTimeout(() => showInstanceQR('${esc(inst.id)}', '${esc(inst.label)}'), 500);" class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition">QR</button>` : ''}
+              ${inst.state !== 'open' ? `<a href="/admin/whatsapp-qr" class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition inline-block">QR</a>` : ''}
               ${inst.state === 'open' ? `<button onclick="logoutInstance('${esc(inst.id)}')" class="text-xs bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded transition">Logout</button>` : ''}
             </div>
           </div>`;
@@ -118,44 +117,56 @@ async function loadDashboard() {
       `;
     }
 
-    // Update Quick Stats with mock data (TODO: Implement real performance API)
-    // For now, show placeholder data based on WhatsApp connection status
-    const messagesHandled = connectedCount > 0 ? '1,247' : '0';
-    const intentAccuracy = connectedCount > 0 ? '94' : '-';
-    const avgResponseTime = connectedCount > 0 ? '340' : '-';
-    const satisfactionRate = connectedCount > 0 ? '92' : '-';
+    // Fetch real Quick Stats from API endpoints (parallel)
+    const statsEls = {
+      messages: document.getElementById('dashboard-stat-messages'),
+      accuracy: document.getElementById('dashboard-stat-accuracy'),
+      response: document.getElementById('dashboard-stat-response'),
+      satisfaction: document.getElementById('dashboard-stat-satisfaction'),
+    };
 
-    document.getElementById('dashboard-stat-messages').textContent = messagesHandled;
-    document.getElementById('dashboard-stat-accuracy').textContent = intentAccuracy === '-' ? '-' : `${intentAccuracy}%`;
-    document.getElementById('dashboard-stat-response').textContent = avgResponseTime === '-' ? '-' : `${avgResponseTime}ms`;
-    document.getElementById('dashboard-stat-satisfaction').textContent = satisfactionRate === '-' ? '-' : `${satisfactionRate}%`;
+    // Show loading state
+    Object.values(statsEls).forEach(el => { if (el) el.textContent = '...'; });
 
-    // Update Recent Activity with mock data (TODO: Implement real activity API)
-    const activityEl = document.getElementById('dashboard-recent-activity');
-    const mockActivities = connectedCount > 0 ? [
-      { icon: '💬', message: 'User sent message via WhatsApp', timestamp: '2 minutes ago' },
-      { icon: '🤖', message: 'AI classified intent as "booking_inquiry"', timestamp: '2 minutes ago' },
-      { icon: '✓', message: 'Response sent successfully', timestamp: '2 minutes ago' },
-      { icon: '📱', message: `${connectedCount} WhatsApp instance${connectedCount > 1 ? 's' : ''} connected`, timestamp: '5 minutes ago' },
-      { icon: '⚙️', message: 'Configuration reloaded', timestamp: '10 minutes ago' }
-    ] : [
-      { icon: '⚠️', message: 'No WhatsApp instances connected', timestamp: 'Now' },
-      { icon: '💡', message: 'Click "Add WhatsApp Number" to get started', timestamp: 'Now' }
-    ];
+    // Fetch all three endpoints in parallel, each with independent error handling
+    const [conversationsResult, accuracyResult, feedbackResult] = await Promise.allSettled([
+      api('/conversations'),
+      api('/intent/accuracy'),
+      api('/feedback/stats'),
+    ]);
 
-    activityEl.innerHTML = `
-      <div class="space-y-3">
-        ${mockActivities.map(activity => `
-          <div class="flex items-start gap-3 pb-3 border-b last:border-0">
-            <div class="text-xl">${activity.icon}</div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm text-neutral-700">${esc(activity.message)}</div>
-              <div class="text-xs text-neutral-400 mt-1">${activity.timestamp}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    // Messages Handled — sum messageCount from all conversations
+    if (conversationsResult.status === 'fulfilled' && Array.isArray(conversationsResult.value)) {
+      const totalMessages = conversationsResult.value.reduce((sum, c) => sum + (c.messageCount || 0), 0);
+      statsEls.messages.textContent = totalMessages.toLocaleString();
+    } else {
+      statsEls.messages.textContent = connectedCount > 0 ? '-' : '0';
+    }
+
+    // Intent Accuracy — from intent/accuracy API
+    if (accuracyResult.status === 'fulfilled' && accuracyResult.value?.accuracy?.overall) {
+      const rate = accuracyResult.value.accuracy.overall.accuracyRate;
+      statsEls.accuracy.textContent = rate != null ? `${Math.round(rate)}%` : '-';
+    } else {
+      statsEls.accuracy.textContent = '-';
+    }
+
+    // Avg Response Time & Satisfaction Rate — from feedback/stats API
+    if (feedbackResult.status === 'fulfilled' && feedbackResult.value?.stats?.overall) {
+      const overall = feedbackResult.value.stats.overall;
+
+      const avgTime = overall.avgResponseTime;
+      statsEls.response.textContent = avgTime != null ? `${Math.round(avgTime)}ms` : '-';
+
+      const satRate = parseFloat(overall.satisfactionRate);
+      statsEls.satisfaction.textContent = !isNaN(satRate) ? `${Math.round(satRate)}%` : '-';
+    } else {
+      statsEls.response.textContent = '-';
+      statsEls.satisfaction.textContent = '-';
+    }
+
+    // Initialize real-time activity feed via SSE
+    initActivityStream();
 
     // Load setup checklist items
     const setupEl = document.getElementById('setup-items');
@@ -201,12 +212,8 @@ function dismissChecklist() {
 }
 
 function quickActionAddWhatsApp() {
-  loadTab('whatsapp-accounts');
-  setTimeout(() => {
-    // Trigger add modal if available
-    const addBtn = document.querySelector('[onclick="openAddInstanceModal()"]');
-    if (addBtn) addBtn.click();
-  }, 500);
+  // WhatsApp Accounts page removed — redirect to QR pairing
+  window.location.href = '/admin/whatsapp-qr';
 }
 
 function quickActionTrainIntent() {
@@ -221,6 +228,179 @@ function refreshDashboard() {
   loadDashboard();
   toast('Dashboard refreshed');
 }
+
+// ═════════════════════════════════════════════════════════════════════
+// Real-time Activity Stream (SSE)
+// ═════════════════════════════════════════════════════════════════════
+
+let _activityEventSource = null;
+let _activityEvents = []; // Local cache of activity events (newest first)
+const MAX_DISPLAYED_ACTIVITIES = 30;
+
+/** Format a timestamp into relative time string */
+function formatRelativeTime(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 5) return 'Just now';
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  return `${diffDay}d ago`;
+}
+
+/** Get CSS color class for event type */
+function getActivityColor(type) {
+  switch (type) {
+    case 'message_received': return 'text-blue-600';
+    case 'intent_classified': return 'text-purple-600';
+    case 'response_sent': return 'text-success-600';
+    case 'whatsapp_connected': return 'text-success-600';
+    case 'whatsapp_disconnected': return 'text-orange-600';
+    case 'whatsapp_unlinked': return 'text-danger-600';
+    case 'escalation': return 'text-danger-600';
+    case 'emergency': return 'text-danger-700 font-semibold';
+    case 'error': return 'text-danger-600';
+    case 'workflow_started': return 'text-primary-600';
+    case 'booking_started': return 'text-primary-600';
+    case 'feedback': return 'text-success-600';
+    case 'rate_limited': return 'text-orange-600';
+    case 'config_reloaded': return 'text-neutral-600';
+    default: return 'text-neutral-700';
+  }
+}
+
+/** Render activity events to the DOM */
+function renderActivityEvents() {
+  const el = document.getElementById('dashboard-recent-activity');
+  if (!el) return;
+
+  if (_activityEvents.length === 0) {
+    el.innerHTML = `
+      <div class="text-center py-6">
+        <div class="text-3xl mb-2">🔍</div>
+        <div class="text-sm text-neutral-500">No activity yet — waiting for events...</div>
+        <div class="text-xs text-neutral-400 mt-1">Send a WhatsApp message to see real-time activity</div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="space-y-0">
+      ${_activityEvents.slice(0, MAX_DISPLAYED_ACTIVITIES).map((evt, idx) => `
+        <div class="flex items-start gap-3 py-2.5 ${idx < _activityEvents.length - 1 ? 'border-b border-neutral-100' : ''} ${idx === 0 ? 'activity-new-item' : ''}" data-event-id="${esc(evt.id)}">
+          <div class="text-lg flex-shrink-0 mt-0.5">${evt.icon}</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm ${getActivityColor(evt.type)}">${esc(evt.message)}</div>
+            <div class="text-xs text-neutral-400 mt-0.5 activity-timestamp" data-ts="${evt.timestamp}">${formatRelativeTime(evt.timestamp)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+/** Add a single activity event to the top of the list with animation */
+function addActivityEvent(event) {
+  // Deduplicate
+  if (_activityEvents.some(e => e.id === event.id)) return;
+
+  _activityEvents.unshift(event);
+
+  // Keep only the last MAX items
+  if (_activityEvents.length > MAX_DISPLAYED_ACTIVITIES + 10) {
+    _activityEvents = _activityEvents.slice(0, MAX_DISPLAYED_ACTIVITIES + 10);
+  }
+
+  renderActivityEvents();
+
+  // Pulse animation on the newest item
+  const newItem = document.querySelector('.activity-new-item');
+  if (newItem) {
+    newItem.style.animation = 'activitySlideIn 0.4s ease-out';
+    newItem.style.backgroundColor = '#f0fdf4';
+    setTimeout(() => {
+      newItem.style.transition = 'background-color 1s ease';
+      newItem.style.backgroundColor = 'transparent';
+    }, 800);
+  }
+}
+
+/** Initialize the SSE stream for real-time activity */
+function initActivityStream() {
+  // Don't reconnect if already connected
+  if (_activityEventSource && _activityEventSource.readyState !== EventSource.CLOSED) {
+    return;
+  }
+
+  const liveDot = document.getElementById('activity-live-dot');
+  const offlineDot = document.getElementById('activity-offline-dot');
+
+  // Show connecting state
+  if (offlineDot) offlineDot.classList.remove('hidden');
+  if (liveDot) liveDot.classList.add('hidden');
+
+  const baseUrl = window.location.origin;
+  _activityEventSource = new EventSource(`${baseUrl}/api/rainbow/activity/stream`);
+
+  _activityEventSource.addEventListener('init', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      _activityEvents = data.events || [];
+      renderActivityEvents();
+
+      // Show LIVE indicator
+      if (liveDot) liveDot.classList.remove('hidden');
+      if (offlineDot) offlineDot.classList.add('hidden');
+    } catch (err) {
+      console.error('[Activity] Failed to parse init data:', err);
+    }
+  });
+
+  _activityEventSource.addEventListener('activity', (e) => {
+    try {
+      const event = JSON.parse(e.data);
+      addActivityEvent(event);
+    } catch (err) {
+      console.error('[Activity] Failed to parse event:', err);
+    }
+  });
+
+  _activityEventSource.onerror = () => {
+    // Show offline indicator
+    if (liveDot) liveDot.classList.add('hidden');
+    if (offlineDot) {
+      offlineDot.classList.remove('hidden');
+      offlineDot.textContent = 'Reconnecting...';
+    }
+    // EventSource will auto-reconnect
+  };
+
+  _activityEventSource.onopen = () => {
+    if (liveDot) liveDot.classList.remove('hidden');
+    if (offlineDot) offlineDot.classList.add('hidden');
+  };
+}
+
+/** Disconnect the activity stream (call when leaving dashboard tab) */
+function disconnectActivityStream() {
+  if (_activityEventSource) {
+    _activityEventSource.close();
+    _activityEventSource = null;
+  }
+}
+
+// Update relative timestamps every 30s
+setInterval(() => {
+  document.querySelectorAll('.activity-timestamp').forEach(el => {
+    const ts = el.getAttribute('data-ts');
+    if (ts) el.textContent = formatRelativeTime(ts);
+  });
+}, 30000);
 
 // ─── Reload Config ──────────────────────────────────────────────────
 async function reloadConfig() {
@@ -7096,128 +7276,12 @@ function switchSimulatorTab(tabName) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Load WhatsApp Accounts tab (split from old Status tab)
+ * Load WhatsApp Accounts tab — REMOVED
+ * This page has been deprecated. The template shows a "Page Removed" notice.
+ * Kept as a no-op to avoid errors if called from old bookmarks/code.
  */
 async function loadWhatsappAccounts() {
-  try {
-    const statusData = await api('/status');
-    const instances = statusData.whatsappInstances || [];
-    const connectedCount = instances.filter(i => i.state === 'open').length;
-    const totalCount = instances.length;
-
-    // Update header badge
-    const badge = document.getElementById('wa-badge');
-    if (badge) {
-      if (totalCount === 0) {
-        badge.textContent = 'no instances';
-        badge.className = 'text-xs px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-600';
-      } else {
-        badge.textContent = `${connectedCount}/${totalCount} connected`;
-        badge.className = 'text-xs px-2 py-0.5 rounded-full ' +
-          (connectedCount === totalCount ? 'bg-success-100 text-success-700' :
-           connectedCount > 0 ? 'bg-warning-100 text-warning-700' : 'bg-danger-100 text-danger-700');
-      }
-    }
-
-    const container = document.getElementById('wa-instances');
-    if (!container) return;
-
-    if (instances.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-12 text-neutral-400">
-          <p class="text-lg mb-2">No WhatsApp instances connected</p>
-          <p class="text-sm">Click "+ Add Number" to connect your first WhatsApp number</p>
-        </div>
-      `;
-      return;
-    }
-
-    // Check for unlinked instances
-    const unlinkedInstances = instances.filter(i => i.unlinkedFromWhatsApp);
-    let html = '';
-
-    // Show unlinked warning banner if any
-    if (unlinkedInstances.length > 0) {
-      html += `
-        <div class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-          <div class="flex items-start gap-2">
-            <span class="text-orange-600 text-xl">⚠️</span>
-            <div class="flex-1">
-              <h4 class="font-semibold text-orange-800 mb-1">WhatsApp Instances Unlinked</h4>
-              <p class="text-sm text-orange-700 mb-2">
-                The following instance(s) were unlinked from WhatsApp (possibly by the user):
-              </p>
-              <ul class="text-sm text-orange-700 space-y-1">
-                ${unlinkedInstances.map(i => `
-                  <li class="flex items-center gap-1">
-                    <span class="font-medium">${esc(i.label)}</span>
-                    ${i.user ? `(${esc(i.user.phone || '')})` : `(${esc(i.id)})`}
-                    ${i.lastUnlinkedAt ? `<span class="text-xs text-orange-600">— ${new Date(i.lastUnlinkedAt).toLocaleString()}</span>` : ''}
-                  </li>
-                `).join('')}
-              </ul>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    html += instances.map(inst => {
-      // Format phone number
-      const phone = inst.user?.phone || inst.id || '';
-      const formattedPhone = phone ? '+' + phone.replace(/(\d{2})(\d{2})(\d{3,4})(\d{4})/, '$1 $2-$3 $4') : 'Not linked';
-
-      // Format last connected time
-      let lastConnectedText = '';
-      if (inst.lastConnectedAt) {
-        const lastConnected = new Date(inst.lastConnectedAt);
-        const now = new Date();
-        const diffMs = now.getTime() - lastConnected.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-        if (inst.state === 'open') {
-          lastConnectedText = '<span class="text-success-600">● Online</span>';
-        } else if (diffMins < 1) {
-          lastConnectedText = 'Just now';
-        } else if (diffMins < 60) {
-          lastConnectedText = `${diffMins}m ago`;
-        } else if (diffHours < 24) {
-          lastConnectedText = `${diffHours}h ago`;
-        } else {
-          lastConnectedText = `${diffDays}d ago`;
-        }
-      } else {
-        lastConnectedText = inst.state === 'open' ? '<span class="text-success-600">● Online</span>' : 'Never';
-      }
-
-      return `
-        <div class="flex items-center justify-between py-3 border-b last:border-0 ${inst.unlinkedFromWhatsApp ? 'bg-orange-50 px-2 rounded' : ''}">
-          <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full flex-shrink-0 ${inst.state === 'open' ? 'bg-success-400' : inst.unlinkedFromWhatsApp ? 'bg-orange-500' : 'bg-warning-400'}"></span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-medium text-neutral-800">${esc(inst.label || inst.id)}</span>
-                ${inst.unlinkedFromWhatsApp ? '<span class="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Unlinked</span>' : ''}
-              </div>
-              <div class="text-xs text-neutral-500">${esc(formattedPhone)}${inst.user?.name ? ' — ' + esc(inst.user.name) : ''}</div>
-              <div class="text-xs text-neutral-400 mt-0.5">ID: ${esc(inst.id)} · Last: ${lastConnectedText}</div>
-            </div>
-          </div>
-          <div class="flex gap-1 flex-shrink-0">
-            ${inst.state !== 'open' ? `<button onclick="showInstanceQR('${esc(inst.id)}', '${esc(inst.label)}')" class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition">QR</button>` : ''}
-            ${inst.state === 'open' ? `<button onclick="logoutInstance('${esc(inst.id)}')" class="text-xs bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded transition">Logout</button>` : ''}
-            <button onclick="removeInstance('${esc(inst.id)}')" class="text-xs bg-danger-500 hover:bg-danger-600 text-white px-2 py-1 rounded transition">Remove</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    container.innerHTML = html;
-  } catch (err) {
-    console.error('[WhatsApp Accounts] Failed to load:', err);
-    toast(err.message, 'error');
-  }
+  console.log('[WhatsApp Accounts] Page removed — showing deprecation notice');
 }
 
 /**
@@ -7334,7 +7398,7 @@ async function loadSystemStatus() {
       const totalServers = Object.keys(d.servers || {}).length;
 
       runtimeEl.innerHTML = `
-        <div class="bg-neutral-50 rounded-2xl p-4 text-center cursor-pointer hover:bg-primary-50 hover:shadow-md transition-all duration-200 group" onclick="window.location.hash='whatsapp-accounts'; loadTab('whatsapp-accounts');" title="View WhatsApp Accounts">
+        <div class="bg-neutral-50 rounded-2xl p-4 text-center cursor-pointer hover:bg-primary-50 hover:shadow-md transition-all duration-200 group" onclick="window.location.hash='dashboard'; loadTab('dashboard');" title="View Dashboard">
           <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">💬</div>
           <div class="text-2xl font-bold ${waColor}">${waText}</div>
           <div class="text-xs text-neutral-500 mt-1 group-hover:text-primary-600">WhatsApp Instances</div>
