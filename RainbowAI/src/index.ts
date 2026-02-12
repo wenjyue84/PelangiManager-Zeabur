@@ -102,7 +102,7 @@ app.use('/api/rainbow', adminRoutes);
 // Dashboard tab routes (SPA client-side routing)
 const dashboardTabs = [
   // Connect
-  'dashboard', 'whatsapp-accounts', 'system-status',
+  'dashboard', 'system-status',
   // Train
   'understanding', 'responses', 'intents',
   // Test
@@ -111,8 +111,9 @@ const dashboardTabs = [
   'performance', 'settings',
   // Standalone
   'help',
-  // Legacy (keep for old bookmarks)
+  // Legacy (keep for old bookmarks — they show deprecation notices in the SPA)
   'status', 'intent-manager', 'static-replies', 'kb', 'preview', 'real-chat', 'workflow',
+  'whatsapp-accounts', // removed from nav but URL still works (shows "Page Removed" notice)
 ];
 app.get(`/:tab(${dashboardTabs.join('|')})`, (_req, res) => {
   try {

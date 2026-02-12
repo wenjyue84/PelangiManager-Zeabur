@@ -40,6 +40,11 @@ import {
   isSentimentAnalysisEnabled
 } from './sentiment-tracker.js';
 import { applyConversationSummarization } from './conversation-summarizer.js';
+import {
+  trackMessageReceived, trackIntentClassified, trackResponseSent,
+  trackEscalation, trackWorkflowStarted, trackBookingStarted,
+  trackError, trackFeedback, trackRateLimited, trackEmergency
+} from '../lib/activity-tracker.js';
 
 let sendMessage: SendMessageFn;
 let callAPI: CallAPIFn;
@@ -83,6 +88,9 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
 
   console.log(`[Router] ${phone} (${msg.pushName}): ${text.slice(0, 100)}`);
 
+  // Track incoming message for real-time activity feed
+  trackMessageReceived(phone, msg.pushName, text);
+
   try {
     // ─── Staff Commands & Escalation Tracking ──────────────────────
     if (isStaffPhone(phone)) {
@@ -107,6 +115,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     // Rate limit check
     const rateResult = checkRate(phone);
     if (!rateResult.allowed) {
+      trackRateLimited(phone);
       const lang = detectLanguage(text);
       const response = getTemplate('rate_limited', lang);
       if (rateResult.reason === 'per-minute limit exceeded') {
@@ -146,6 +155,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       if (feedbackRating !== null) {
         // User is providing feedback!
         console.log(`[Feedback] ${feedbackRating === 1 ? '👍' : '👎'} from ${phone}`);
+        trackFeedback(phone, msg.pushName, feedbackRating);
 
         const feedbackData = buildFeedbackData(phone, feedbackRating, processText);
         if (feedbackData) {
@@ -229,6 +239,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     // ─── EMERGENCY CHECK (regex, instant) ────────────────────────
     if (isEmergency(processText)) {
       console.log(`[Router] EMERGENCY detected for ${phone}`);
+      trackEmergency(phone, msg.pushName);
       await escalateToStaff({
         phone,
         pushName: msg.pushName,
@@ -488,6 +499,9 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       const repeatCheck = checkRepeatIntent(phone, result.intent);
       console.log(`[Router] Intent: ${result.intent} | Action: ${result.action} | Routed: ${routedAction} | msgType: ${messageType} | repeat: ${repeatCheck.count} | Confidence: ${result.confidence.toFixed(2)}${ackSent ? ' | ack sent' : ''}${isSplitModel ? ' | split-model' : ''}`);
 
+      // Track intent classification for real-time activity
+      trackIntentClassified(result.intent, result.confidence, _devMetadata.source || 'unknown');
+
       // Populate diary event with classification results
       _diaryEvent.intent = result.intent;
       _diaryEvent.action = routedAction;
@@ -561,6 +575,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
         case 'start_booking': {
           resetUnknown(phone);
           _diaryEvent.bookingStarted = true;
+          trackBookingStarted(phone, msg.pushName);
           const bookingState = createBookingState();
           const bookingResult = await handleBookingStep(bookingState, text, lang, convo.messages);
           updateBookingState(phone, bookingResult.newState);
@@ -571,6 +586,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
         case 'escalate': {
           // Send AI's empathetic response + notify staff
           _diaryEvent.escalated = true;
+          trackEscalation(phone, msg.pushName, 'complaint');
           response = result.response;
           await escalateToStaff({
             phone,
@@ -619,6 +635,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
 
           console.log(`[Router] Starting workflow: ${workflow.name} (${workflowId})`);
           _diaryEvent.workflowStarted = true;
+          trackWorkflowStarted(phone, msg.pushName, workflow.name);
           const workflowState = createWorkflowState(workflowId);
           const workflowResult = await executeWorkflowStep(workflowState, null, lang, phone, msg.pushName, msg.instanceId);
 
@@ -758,6 +775,9 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       }).catch(() => {});
       await sendMessage(phone, response, msg.instanceId);
 
+      // Track response sent for real-time activity
+      trackResponseSent(phone, msg.pushName, _devMetadata.routedAction, _devMetadata.responseTime);
+
       // ─── FEEDBACK PROMPT ─────────────────────────────────────────────
       // Ask for feedback if conditions are met
       if (shouldAskFeedback(phone, _diaryEvent.intent, _diaryEvent.action)) {
@@ -791,6 +811,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     }
   } catch (err: any) {
     console.error(`[Router] Error processing message from ${phone}:`, err.message);
+    trackError('message-router', err.message);
     try {
       const lang = detectLanguage(text);
       await sendMessage(phone, getTemplate('error', lang), msg.instanceId);
