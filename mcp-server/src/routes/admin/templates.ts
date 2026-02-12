@@ -1,0 +1,35 @@
+/**
+ * Template API Routes
+ * Serves HTML templates for dynamic loading
+ */
+
+import { Router } from 'express';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+const router = Router();
+
+/**
+ * GET /api/rainbow/templates/:name
+ * Serve HTML template by name
+ */
+router.get('/:name', (req, res) => {
+  const { name } = req.params;
+
+  // Sanitize template name (prevent directory traversal)
+  const safeName = name.replace(/[^a-z0-9_-]/gi, '');
+  const templatePath = join(__dirname, '../../public/templates/tabs', `${safeName}.html`);
+
+  if (!existsSync(templatePath)) {
+    return res.status(404).json({ error: 'Template not found' });
+  }
+
+  try {
+    const template = readFileSync(templatePath, 'utf-8');
+    res.type('html').send(template);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load template' });
+  }
+});
+
+export default router;

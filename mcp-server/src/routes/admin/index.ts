@@ -12,6 +12,7 @@ import intentManagerRoutes from './intent-manager.js';
 import feedbackRoutes from './feedback.js';
 import feedbackSettingsRoutes from './feedback-settings.js';
 import intentAnalyticsRoutes from './intent-analytics.js';
+import templatesRoutes from './templates.js';
 
 const router = Router();
 
@@ -58,5 +59,6 @@ router.use(intentManagerRoutes);
 router.use(feedbackRoutes);
 router.use(feedbackSettingsRoutes);
 router.use(intentAnalyticsRoutes);
+router.use('/templates', templatesRoutes);
 
 export default router;
