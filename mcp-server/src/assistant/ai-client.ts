@@ -68,6 +68,16 @@ export function isAIAvailable(): boolean {
   return getProviders().some(p => resolveApiKey(p) !== null);
 }
 
+// ─── Timeout wrapper helper ──────────────────────────────────────────
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMsg)), timeoutMs)
+    )
+  ]);
+}
+
 // ─── Generic provider chat call ──────────────────────────────────────
 async function providerChat(
   provider: AIProvider,
@@ -89,7 +99,13 @@ async function providerChat(
       temperature
     };
     if (jsonMode) body.response_format = { type: 'json_object' };
-    const response = await groq.chat.completions.create(body);
+
+    // Wrap Groq SDK call with 60-second timeout (same as axios)
+    const response = await withTimeout(
+      groq.chat.completions.create(body),
+      60000,
+      `${provider.name} request timeout after 60s`
+    );
     return response.choices[0]?.message?.content?.trim() || null;
   }
 
