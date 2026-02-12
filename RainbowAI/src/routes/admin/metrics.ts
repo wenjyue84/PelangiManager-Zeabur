@@ -4,6 +4,7 @@ import { configStore } from '../../assistant/config-store.js';
 import { getWhatsAppStatus, whatsappManager } from '../../lib/baileys-client.js';
 import { isAIAvailable } from '../../assistant/ai-client.js';
 import { checkServerHealth } from './utils.js';
+import { trackConfigReloaded } from '../../lib/activity-tracker.js';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const router = Router();
 
 router.post('/reload', (_req: Request, res: Response) => {
   configStore.forceReload();
+  trackConfigReloaded('all');
   res.json({ ok: true, message: 'All config reloaded from disk' });
 });
 

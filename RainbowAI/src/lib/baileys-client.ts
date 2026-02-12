@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import type { IncomingMessage, MessageType } from '../assistant/types.js';
+import { trackWhatsAppConnected, trackWhatsAppDisconnected, trackWhatsAppUnlinked } from './activity-tracker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.WHATSAPP_DATA_DIR || path.resolve(__dirname, '../../whatsapp-data');
@@ -166,6 +167,7 @@ class WhatsAppInstance {
         if (statusCode !== DisconnectReason.loggedOut) {
           const delay = this.reconnectTimeout ? 5000 : 2000;
           console.log(`[Baileys:${this.id}] Disconnected (code: ${statusCode}), reconnecting in ${delay}ms...`);
+          trackWhatsAppDisconnected(this.id, `code ${statusCode}, reconnecting`);
           if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
           this.reconnectTimeout = setTimeout(() => {
             this.reconnectTimeout = null;
@@ -173,6 +175,7 @@ class WhatsAppInstance {
           }, delay);
         } else {
           console.error(`[Baileys:${this.id}] Logged out from WhatsApp (user unlinked). Remove auth dir and re-pair.`);
+          trackWhatsAppUnlinked(this.id);
           // Mark as unlinked from WhatsApp side
           this.unlinkedFromWhatsApp = true;
           this.lastUnlinkedAt = new Date().toISOString();
@@ -192,6 +195,7 @@ class WhatsAppInstance {
         this.lastConnectedAt = new Date().toISOString();
         const user = (this.sock as any)?.user;
         console.log(`[Baileys:${this.id}] Connected: ${user?.name || 'Unknown'} (${user?.id?.split(':')[0] || '?'})`);
+        trackWhatsAppConnected(this.id, user?.name, user?.id?.split(':')[0]);
       }
     });
 
