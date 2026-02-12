@@ -104,14 +104,24 @@
 <!-- Recent Activity -->
 <div class="bg-white rounded-2xl border overflow-hidden">
   <div class="bg-neutral-50 px-4 py-3 border-b flex items-center justify-between">
-    <h3 class="font-semibold text-neutral-700">📊 Recent Activity</h3>
+    <div class="flex items-center gap-2">
+      <h3 class="font-semibold text-neutral-700">📊 Recent Activity</h3>
+      <span id="activity-live-dot" class="flex items-center gap-1 text-xs text-success-600 font-medium hidden">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-success-500"></span>
+        </span>
+        LIVE
+      </span>
+      <span id="activity-offline-dot" class="text-xs text-neutral-400 hidden">Connecting...</span>
+    </div>
     <button onclick="refreshDashboard()" class="text-xs text-primary-500 hover:text-primary-600 font-medium">Refresh</button>
   </div>
-  <div id="dashboard-recent-activity" class="p-4">
+  <div id="dashboard-recent-activity" class="p-4 max-h-96 overflow-y-auto">
     <!-- Loading state -->
     <div class="text-center py-6">
       <div class="inline-block animate-spin rounded-full h-6 w-6 border-3 border-primary-500 border-t-transparent mb-2"></div>
-      <div class="text-sm text-neutral-500">Loading recent activity...</div>
+      <div class="text-sm text-neutral-500">Connecting to live feed...</div>
     </div>
   </div>
 </div>
