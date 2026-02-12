@@ -1,0 +1,233 @@
+    <!-- Shared Date Range Filter -->
+    <div class="mb-4 bg-white rounded-2xl border p-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-neutral-800">Performance Analytics</h2>
+          <p class="text-sm text-neutral-500">User feedback satisfaction and intent classification accuracy</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <input type="date" id="performance-date-from" class="text-sm border rounded-lg px-3 py-2">
+          <input type="date" id="performance-date-to" class="text-sm border rounded-lg px-3 py-2">
+          <button onclick="refreshPerformanceData()" class="text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition font-medium">
+            Apply Filter
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- LEFT COLUMN: Feedback Stats -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-neutral-700">Feedback Analytics</h3>
+          <button onclick="refreshFeedbackStats()" class="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-3 py-1.5 rounded-lg transition font-medium">
+            Refresh
+          </button>
+        </div>
+
+        <!-- Overall Stats Cards -->
+        <div id="feedback-overall-stats" class="grid grid-cols-2 gap-3">
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="feedback-total" class="text-2xl font-bold text-neutral-800">0</div>
+            <div class="text-xs text-neutral-500 mt-1">Total Feedback</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="feedback-thumbs-up" class="text-2xl font-bold text-green-600">0</div>
+            <div class="text-xs text-neutral-500 mt-1">👍 Thumbs Up</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="feedback-thumbs-down" class="text-2xl font-bold text-red-500">0</div>
+            <div class="text-xs text-neutral-500 mt-1">👎 Thumbs Down</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="feedback-satisfaction" class="text-2xl font-bold text-primary-500">0%</div>
+            <div class="text-xs text-neutral-500 mt-1">Satisfaction Rate</div>
+          </div>
+        </div>
+
+        <!-- By Intent Table -->
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="bg-neutral-50 px-4 py-3 border-b">
+            <h4 class="font-semibold text-neutral-700 text-sm">Feedback by Intent</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-neutral-50 text-left text-neutral-600">
+                  <th class="px-4 py-2 font-medium">Intent</th>
+                  <th class="px-4 py-2 font-medium text-right">Total</th>
+                  <th class="px-4 py-2 font-medium text-right">👍</th>
+                  <th class="px-4 py-2 font-medium text-right">👎</th>
+                  <th class="px-4 py-2 font-medium text-right">Rate</th>
+                </tr>
+              </thead>
+              <tbody id="feedback-by-intent-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- By Tier Table -->
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="bg-neutral-50 px-4 py-3 border-b">
+            <h4 class="font-semibold text-neutral-700 text-sm">Feedback by Tier</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-neutral-50 text-left text-neutral-600">
+                  <th class="px-4 py-2 font-medium">Tier</th>
+                  <th class="px-4 py-2 font-medium text-right">Total</th>
+                  <th class="px-4 py-2 font-medium text-right">👍</th>
+                  <th class="px-4 py-2 font-medium text-right">👎</th>
+                  <th class="px-4 py-2 font-medium text-right">Rate</th>
+                </tr>
+              </thead>
+              <tbody id="feedback-by-tier-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Feedback -->
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="bg-neutral-50 px-4 py-3 border-b">
+            <h4 class="font-semibold text-neutral-700 text-sm">Recent Feedback (Last 20)</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-neutral-50 text-left text-neutral-600">
+                  <th class="px-4 py-2 font-medium">Time</th>
+                  <th class="px-4 py-2 font-medium">Phone</th>
+                  <th class="px-4 py-2 font-medium">Intent</th>
+                  <th class="px-4 py-2 font-medium">Tier</th>
+                  <th class="px-4 py-2 font-medium text-center">Rating</th>
+                </tr>
+              </thead>
+              <tbody id="feedback-recent-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="feedback-loading" class="hidden bg-white rounded-2xl border p-8 text-center">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent mb-3"></div>
+          <div class="text-neutral-700 font-medium">Loading feedback data...</div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="feedback-empty" class="hidden bg-white rounded-2xl border p-8 text-center">
+          <div class="text-4xl mb-3">📊</div>
+          <div class="text-neutral-500 font-medium">No feedback data available</div>
+          <div class="text-sm text-neutral-400 mt-1">Feedback will appear here as users interact with the bot</div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Intent Accuracy -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-neutral-700">Intent Classification Accuracy</h3>
+          <button onclick="refreshIntentAccuracy()" class="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-3 py-1.5 rounded-lg transition font-medium">
+            Refresh
+          </button>
+        </div>
+
+        <!-- Overall Stats Cards -->
+        <div id="intent-accuracy-overall-stats" class="grid grid-cols-2 gap-3">
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="intent-accuracy-total" class="text-2xl font-bold text-neutral-800">0</div>
+            <div class="text-xs text-neutral-500 mt-1">Total Predictions</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="intent-accuracy-correct" class="text-2xl font-bold text-green-600">0</div>
+            <div class="text-xs text-neutral-500 mt-1">✓ Correct</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="intent-accuracy-incorrect" class="text-2xl font-bold text-red-500">0</div>
+            <div class="text-xs text-neutral-500 mt-1">✗ Incorrect</div>
+          </div>
+          <div class="bg-white rounded-2xl border p-4 text-center">
+            <div id="intent-accuracy-rate" class="text-2xl font-bold text-primary-500">0%</div>
+            <div class="text-xs text-neutral-500 mt-1">Accuracy Rate</div>
+          </div>
+        </div>
+
+        <!-- Accuracy by Intent Table -->
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="bg-neutral-50 px-4 py-3 border-b">
+            <h4 class="font-semibold text-neutral-700 text-sm">Accuracy by Intent</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-neutral-50 text-left text-neutral-600">
+                  <th class="px-4 py-2 font-medium">Intent</th>
+                  <th class="px-4 py-2 font-medium text-right">Total</th>
+                  <th class="px-4 py-2 font-medium text-right">✓</th>
+                  <th class="px-4 py-2 font-medium text-right">✗</th>
+                  <th class="px-4 py-2 font-medium text-right">Rate</th>
+                  <th class="px-4 py-2 font-medium text-right">Conf</th>
+                </tr>
+              </thead>
+              <tbody id="intent-accuracy-by-intent-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Accuracy by Tier Table -->
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="bg-neutral-50 px-4 py-3 border-b">
+            <h4 class="font-semibold text-neutral-700 text-sm">Accuracy by Tier</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-neutral-50 text-left text-neutral-600">
+                  <th class="px-4 py-2 font-medium">Tier</th>
+                  <th class="px-4 py-2 font-medium text-right">Total</th>
+                  <th class="px-4 py-2 font-medium text-right">✓</th>
+                  <th class="px-4 py-2 font-medium text-right">✗</th>
+                  <th class="px-4 py-2 font-medium text-right">Rate</th>
+                  <th class="px-4 py-2 font-medium text-right">Conf</th>
+                </tr>
+              </thead>
+              <tbody id="intent-accuracy-by-tier-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Accuracy by Model Table -->
+        <div class="bg-white rounded-2xl border overflow-hidden">
+          <div class="bg-neutral-50 px-4 py-3 border-b">
+            <h4 class="font-semibold text-neutral-700 text-sm">Accuracy by LLM Model (T4 Only)</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-neutral-50 text-left text-neutral-600">
+                  <th class="px-4 py-2 font-medium">Model</th>
+                  <th class="px-4 py-2 font-medium text-right">Total</th>
+                  <th class="px-4 py-2 font-medium text-right">✓</th>
+                  <th class="px-4 py-2 font-medium text-right">✗</th>
+                  <th class="px-4 py-2 font-medium text-right">Rate</th>
+                </tr>
+              </thead>
+              <tbody id="intent-accuracy-by-model-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="intent-accuracy-loading" class="hidden bg-white rounded-2xl border p-8 text-center">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent mb-3"></div>
+          <div class="text-neutral-700 font-medium">Loading intent accuracy data...</div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="intent-accuracy-empty" class="hidden bg-white rounded-2xl border p-8 text-center">
+          <div class="text-4xl mb-3">🎯</div>
+          <div class="text-neutral-500 font-medium">No intent accuracy data available</div>
+          <div class="text-sm text-neutral-400 mt-1">Data will appear here as users validate intent predictions</div>
+        </div>
+      </div>
+    </div>

@@ -1,0 +1,333 @@
+    <div class="mb-4">
+      <h2 class="text-lg font-semibold text-neutral-800">Chat Simulator</h2>
+      <p class="text-sm text-neutral-500">Test AI responses with Quick Test (ChatGPT-style) or Live Simulation (WhatsApp conversations)</p>
+    </div>
+
+    <!-- Tabbed Interface -->
+    <div class="bg-white border rounded-2xl overflow-hidden mb-4">
+      <div class="flex border-b">
+        <button id="tab-quick-test" onclick="switchSimulatorTab('quick-test')" class="flex-1 px-4 py-3 text-sm font-medium text-primary-600 border-b-2 border-primary-500 bg-primary-50 transition">
+          💬 Quick Test
+        </button>
+        <button id="tab-live-simulation" onclick="switchSimulatorTab('live-simulation')" class="flex-1 px-4 py-3 text-sm font-medium text-neutral-600 hover:text-neutral-800 hover:bg-neutral-50 transition">
+          📱 Live Simulation
+        </button>
+        <button onclick="testIntentClassifier()" class="px-4 py-3 text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white transition flex items-center gap-2">
+          <span>🎯</span>
+          <span>Test Intent Classifier</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab 1: Quick Test (ChatGPT-style) -->
+    <div id="quick-test-content" class="simulator-tab-content">
+      <!-- Autotest Panel (hidden by default) -->
+      <div id="autotest-panel" class="hidden">
+        <!-- Autotest Header -->
+        <div class="bg-indigo-50 border rounded-2xl p-4 mb-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🧪</span>
+              <div>
+                <h3 class="font-semibold text-neutral-800">Autotest Suite</h3>
+                <p class="text-xs text-neutral-500">58 scenarios across 6 guest journey phases</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <!-- View History Button -->
+              <button id="view-history-btn" onclick="showAutotestHistory()" class="hidden text-sm bg-white border border-neutral-300 hover:bg-neutral-50 px-3 py-1.5 rounded-2xl transition flex items-center gap-1">
+                <span>📋</span>
+                <span>History</span>
+              </button>
+              <!-- Export Report Dropdown -->
+              <div id="export-report-dropdown" class="hidden relative">
+                <button onclick="toggleExportDropdown()" class="text-sm bg-white border border-neutral-300 hover:bg-neutral-50 px-3 py-1.5 rounded-2xl transition flex items-center gap-1">
+                  Export Report
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <div id="export-dropdown-menu" class="hidden absolute right-0 mt-1 w-72 bg-white border border-neutral-300 rounded-xl shadow-lg z-50">
+                  <button onclick="exportAutotestReport(lastAutotestResults, 'all')" class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 rounded-t-xl">
+                    <span class="text-lg">📊</span>
+                    <span>Export All Results</span>
+                  </button>
+                  <button onclick="exportAutotestReport(lastAutotestResults, 'warnings-failed')" class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-200">
+                    <span class="text-lg">⚠️</span>
+                    <span>Export Warnings & Failed Only</span>
+                  </button>
+                  <button onclick="exportAutotestReport(lastAutotestResults, 'failed')" class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-200 rounded-b-xl">
+                    <span class="text-lg">❌</span>
+                    <span>Export Failed Only</span>
+                  </button>
+                </div>
+              </div>
+              <button id="run-all-btn" onclick="runAutotest()" class="text-sm bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1.5 rounded-2xl transition">Run All</button>
+              <button onclick="toggleAutotest()" class="text-sm bg-white border border-neutral-300 hover:bg-neutral-50 px-3 py-1.5 rounded-2xl transition">Back to Chat</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div id="autotest-summary" class="grid grid-cols-5 gap-3 mb-4 hidden">
+          <div class="bg-white border rounded-2xl p-3 text-center">
+            <div class="text-2xl font-bold text-neutral-800" id="at-total">0</div>
+            <div class="text-xs text-neutral-500">Total</div>
+          </div>
+          <div class="bg-white border rounded-2xl p-3 text-center">
+            <div class="text-2xl font-bold text-green-600" id="at-passed">0</div>
+            <div class="text-xs text-neutral-500">Passed</div>
+          </div>
+          <div class="bg-white border rounded-2xl p-3 text-center">
+            <div class="text-2xl font-bold text-yellow-600" id="at-warnings">0</div>
+            <div class="text-xs text-neutral-500">Warnings</div>
+          </div>
+          <div class="bg-white border rounded-2xl p-3 text-center">
+            <div class="text-2xl font-bold text-red-600" id="at-failed">0</div>
+            <div class="text-xs text-neutral-500">Failed</div>
+          </div>
+          <div class="bg-white border rounded-2xl p-3 text-center">
+            <div class="text-2xl font-bold text-indigo-600" id="at-time">0s</div>
+            <div class="text-xs text-neutral-500">Time</div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="autotest-progress" class="hidden mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-3">
+              <div class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+              <span id="at-progress-text" class="text-sm text-neutral-600">Running...</span>
+            </div>
+            <div id="at-live-counters" class="flex items-center gap-3 text-xs font-medium">
+              <span class="text-green-600"><span id="at-live-pass">0</span> Pass</span>
+              <span class="text-yellow-600"><span id="at-live-warn">0</span> Warn</span>
+              <span class="text-red-600"><span id="at-live-fail">0</span> Fail</span>
+            </div>
+          </div>
+          <div class="w-full bg-neutral-200 rounded-full h-2">
+            <div id="at-progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="autotest-results" class="space-y-2" style="max-height: calc(100vh - 420px); overflow-y: auto;">
+          <div class="text-center text-neutral-400 text-sm py-12">
+            <p>Click "Run All" to execute <span id="scenario-count">0</span> test scenarios</p>
+            <p class="text-xs mt-1">Tests check intent detection, multilingual support, edge cases, and more</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Autotest History Modal -->
+      <div id="autotest-history-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-neutral-800">Test History</h3>
+            <button onclick="closeAutotestHistory()" class="text-neutral-500 hover:text-neutral-700">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- History List -->
+          <div id="autotest-history-list" class="flex-1 overflow-y-auto space-y-2">
+            <div class="text-center text-neutral-400 text-sm py-12">
+              <p>No test history yet</p>
+              <p class="text-xs mt-1">Run tests to see results here</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ChatGPT-style Layout -->
+      <div id="chat-layout" class="bg-white border rounded-2xl overflow-hidden flex" style="height: calc(100vh - 340px); min-height: 600px;">
+
+        <!-- Sidebar: Chat Sessions -->
+        <div class="w-64 border-r bg-neutral-50 flex flex-col">
+          <!-- Sidebar Header -->
+          <div class="px-4 py-3 border-b bg-white">
+            <button onclick="createNewChat()" class="w-full bg-primary-500 hover:bg-primary-600 text-white px-3 py-2 rounded-2xl text-sm transition flex items-center justify-center gap-2">
+              <span>➕</span>
+              <span>New Chat</span>
+            </button>
+          </div>
+
+          <!-- Chat Sessions List -->
+          <div id="chat-sessions" class="flex-1 overflow-y-auto p-2">
+            <!-- Sessions will be populated here -->
+          </div>
+
+          <!-- Info Footer -->
+          <div class="px-3 py-2 border-t text-xs text-neutral-500">
+            <p class="font-medium mb-1">💡 Tips:</p>
+            <p>• Sessions auto-save</p>
+            <p>• Click to switch</p>
+          </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col">
+          <!-- Chat Header -->
+          <div class="bg-primary-50 border-b px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">💬</span>
+              <div>
+                <h3 class="font-semibold text-neutral-800">Guest Simulation</h3>
+                <p class="text-xs text-neutral-500">Messages use current Rainbow config</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button id="view-history-btn-preview" onclick="showAutotestHistory()" class="text-sm bg-white border border-neutral-300 hover:bg-neutral-50 px-3 py-1.5 rounded-2xl transition flex items-center gap-1">
+                <span>📋</span>
+                <span>History</span>
+              </button>
+              <button onclick="toggleAutotest()" class="text-sm bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-2xl transition">Autotest</button>
+              <button onclick="clearCurrentChat()" class="text-sm bg-white border border-neutral-300 hover:bg-neutral-50 px-3 py-1.5 rounded-2xl transition">Clear Chat</button>
+            </div>
+          </div>
+
+          <!-- Chat Input (Right below header) -->
+          <div class="border-b bg-white px-4 py-3">
+            <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+              <input
+                type="text"
+                id="chat-input"
+                placeholder="Type a guest message to test the AI agent..."
+                class="flex-1 px-4 py-2 border border-neutral-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                autocomplete="off"
+              />
+              <button type="submit" id="send-btn" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-2xl transition flex items-center gap-2">
+                <span>Send</span>
+                <span>➤</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Chat Messages Container -->
+          <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-neutral-50">
+            <!-- Welcome message -->
+            <div class="text-center text-neutral-500 text-sm py-8">
+              <p class="text-2xl mb-2">👋</p>
+              <p class="font-medium mb-1">Welcome to AI Agent Preview</p>
+              <p class="text-xs">Type a message to test how the AI responds</p>
+            </div>
+          </div>
+
+          <!-- Metadata Footer -->
+          <div id="chat-meta" class="border-t bg-neutral-50 px-4 py-2 text-xs text-neutral-600">
+            <!-- Metadata will be populated here after AI responses -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Live Simulation (WhatsApp-style) -->
+    <div id="live-simulation-content" class="simulator-tab-content hidden">
+      <div class="rc-container">
+        <!-- Sidebar: Conversation List -->
+        <div class="rc-sidebar" id="rc-sidebar">
+          <div class="rc-sidebar-header">
+            <select class="rc-instance-filter" id="rc-instance-filter" onchange="filterConversations()">
+              <option value="">All Instances</option>
+            </select>
+            <input type="text" class="rc-search" id="rc-search" placeholder="Search conversations..." oninput="filterConversations()">
+          </div>
+          <div class="rc-chat-list" id="rc-chat-list">
+            <div class="rc-sidebar-empty" id="rc-sidebar-empty">
+              <p>No conversations yet.</p>
+              <p style="margin-top:4px;font-size:12px;">Real WhatsApp chats will appear here once guests message your AI bot.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main: Chat View -->
+        <div class="rc-main" id="rc-main">
+          <div class="rc-empty-state" id="rc-empty-state">
+            <svg viewBox="0 0 303 172" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M229.565 160.229C262.212 149.245 286.931 118.241 283.39 73.4194C278.009 5.31929 210.79 -13.3636 152.068 7.57783C93.347 28.5765 44.1521 24.4094 20.1704 45.7478C-3.81149 67.0862 -4.63543 121.735 37.3013 148.288C79.2381 174.841 191.585 173.17 229.565 160.229Z" fill="#DAF7E3"/>
+              <rect x="54" y="28" width="195" height="130" rx="10" fill="white" stroke="#E0E0E0" stroke-width="2"/>
+              <rect x="54" y="28" width="65" height="130" rx="10" fill="#F7F8FC"/>
+              <circle cx="86" cy="56" r="8" fill="#CBD5E1"/>
+              <rect x="66" y="70" width="40" height="4" rx="2" fill="#CBD5E1"/>
+              <circle cx="86" cy="88" r="8" fill="#CBD5E1"/>
+              <rect x="66" y="102" width="40" height="4" rx="2" fill="#CBD5E1"/>
+              <rect x="135" y="50" width="90" height="16" rx="6" fill="#E8F5E9"/>
+              <rect x="145" y="76" width="80" height="16" rx="6" fill="#F3F4F6"/>
+              <rect x="135" y="102" width="90" height="16" rx="6" fill="#E8F5E9"/>
+            </svg>
+            <h3>Real Chat Monitor</h3>
+            <p>Select a conversation from the sidebar to view the chat between your AI assistant and guests.</p>
+          </div>
+
+          <!-- Active chat view (hidden until conversation selected) -->
+          <div id="rc-active-chat" style="display:none;flex-direction:column;height:100%;">
+            <div class="rc-main-header">
+              <div class="rc-avatar" id="rc-active-avatar">?</div>
+              <div class="rc-header-info">
+                <div class="rc-header-name" id="rc-active-name">Guest</div>
+                <div class="rc-header-phone" id="rc-active-phone">+60... <span id="rc-active-instance" class="rc-instance-badge" style="margin-left:4px;"></span></div>
+              </div>
+              <div class="rc-header-actions">
+                <button class="rc-dev-toggle" id="rc-dev-toggle" onclick="toggleDevMode()" title="Toggle Developer Mode">
+                  🔧 Dev
+                </button>
+                <button class="rc-translate-toggle" id="rc-translate-toggle" onclick="toggleTranslateMode()" title="Toggle Translation Mode">
+                  🌐 Translate
+                </button>
+                <select class="rc-lang-selector" id="rc-lang-selector" title="Target Language" style="display:none;" onchange="handleLangChange()">
+                  <option value="en">English</option>
+                  <option value="ms">Malay</option>
+                  <option value="zh">Chinese</option>
+                  <option value="id">Indonesian</option>
+                  <option value="th">Thai</option>
+                  <option value="vi">Vietnamese</option>
+                </select>
+                <button onclick="refreshActiveChat()" title="Refresh">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0115-6.7L21 8M3 22v-6h6M21 12a9 9 0 01-15 6.7L3 16"/></svg>
+                </button>
+                <button onclick="deleteActiveChat()" title="Delete conversation">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="rc-messages" id="rc-messages"></div>
+            <div class="rc-input-area">
+              <textarea class="rc-input-box" id="rc-input-box" placeholder="Type a manual reply..." rows="1" oninput="autoResizeInput(this)" onkeydown="handleInputKeydown(event)"></textarea>
+              <button class="rc-send-btn" id="rc-send-btn" onclick="sendManualReply()" title="Send message">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+            <div class="rc-stats-bar" id="rc-stats-bar">
+              <span id="rc-stat-total">0 messages</span>
+              <span id="rc-stat-started">Started: —</span>
+              <span id="rc-stat-last">Last active: —</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Translation Confirmation Modal -->
+      <div id="rc-translate-modal" class="rc-translate-modal" style="display:none;" onclick="if(event.target===this) closeTranslateModal()">
+        <div class="rc-translate-content">
+          <div class="rc-translate-title">🌐 Confirm Translation</div>
+          <div style="margin-bottom:12px;">
+            <strong style="color:#6b7280;font-size:12px;">Original:</strong>
+            <div class="rc-translate-text" id="rc-translate-original"></div>
+          </div>
+          <div style="margin-bottom:16px;">
+            <strong style="color:#6b7280;font-size:12px;">Translated (<span id="rc-translate-lang-name"></span>):</strong>
+            <div class="rc-translate-text" id="rc-translate-translated"></div>
+          </div>
+          <div class="rc-translate-buttons">
+            <button class="rc-translate-btn cancel" onclick="closeTranslateModal()">Cancel</button>
+            <button class="rc-translate-btn send" onclick="confirmTranslation()">Send Translation</button>
+          </div>
+        </div>
+      </div>
+    </div>
