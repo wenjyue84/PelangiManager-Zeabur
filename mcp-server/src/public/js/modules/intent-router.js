@@ -1,6 +1,6 @@
 /**
- * Intent Routing Module
- * Manages intent routing configuration, templates, and classification testing
+ * @fileoverview Intent routing configuration and template management
+ * @module intent-router
  */
 
 import { api } from '../api.js';

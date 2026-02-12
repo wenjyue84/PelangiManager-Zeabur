@@ -8,14 +8,16 @@
     "dev": "tsx src/index.ts",
     "build": "tsc && node -e \"require('fs').cpSync('src/assistant/data','dist/assistant/data',{recursive:true});require('fs').cpSync('src/public','dist/public',{recursive:true})\"",
     "start": "node dist/index.js",
-    "test": "vitest run --project unit",
+    "test": "vitest",
     "test:watch": "vitest --project unit",
     "test:all": "vitest run",
     "test:integration": "vitest run --project integration",
     "test:semantic": "vitest run --project semantic",
-    "test:coverage": "vitest run --project unit --coverage",
+    "test:coverage": "vitest --coverage",
     "test:eval": "npx promptfoo eval -c tests/promptfoo/promptfooconfig.yaml",
-    "test:eval:view": "npx promptfoo view"
+    "test:eval:view": "npx promptfoo view",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
   },
   "keywords": [
     "mcp",
@@ -51,6 +53,9 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/ui": "^4.0.18",
+    "happy-dom": "^20.6.1",
+    "jsdom": "^28.0.0",
     "promptfoo": "^0.120.23",
     "tsx": "^4.7.0",
     "vitest": "^4.0.18"

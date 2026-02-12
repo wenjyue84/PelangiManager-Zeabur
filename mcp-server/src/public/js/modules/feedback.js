@@ -1,6 +1,6 @@
 /**
- * Feedback Analytics Module
- * Displays user feedback and sentiment tracking
+ * @fileoverview User feedback and sentiment analytics
+ * @module feedback
  */
 
 import { api } from '../api.js';

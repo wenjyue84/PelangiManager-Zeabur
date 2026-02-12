@@ -1,6 +1,6 @@
 /**
- * Preview Module
- * Chat simulator for testing AI responses
+ * @fileoverview Chat preview and message testing simulator
+ * @module preview
  */
 
 import { api } from '../api.js';

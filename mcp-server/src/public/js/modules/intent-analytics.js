@@ -1,6 +1,6 @@
 /**
- * Intent Analytics Module
- * Displays intent accuracy metrics and analytics
+ * @fileoverview Intent accuracy metrics and reporting
+ * @module intent-analytics
  */
 
 import { api } from '../api.js';

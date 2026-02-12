@@ -1,6 +1,6 @@
 /**
- * WhatsApp Instance Management Module
- * Handles adding, removing, and managing WhatsApp instances
+ * @fileoverview WhatsApp instance lifecycle management (add, remove, pair)
+ * @module instances
  */
 
 import { api } from '../api.js';

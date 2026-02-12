@@ -1,6 +1,6 @@
 /**
- * Intent Classification Module
- * Manages intent keywords, examples, and classification
+ * @fileoverview Intent classification manager and keyword configuration
+ * @module intent-classifier
  */
 
 import { api } from '../api.js';
