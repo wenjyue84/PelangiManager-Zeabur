@@ -20,8 +20,8 @@ router.use((req, res, next) => {
   next();
 });
 
-// Base path for KB files
-const KB_BASE_PATH = path.join(process.cwd(), '.rainbow-kb');
+// Base path for KB files (canonical location inside RainbowAI)
+const KB_BASE_PATH = path.join(process.cwd(), 'RainbowAI', '.rainbow-kb');
 const MEMORY_PATH = path.join(KB_BASE_PATH, 'memory');
 
 // ─── Timezone helpers (MYT) ──────────────────────────────────────────
