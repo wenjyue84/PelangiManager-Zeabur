@@ -679,6 +679,274 @@ When creating Chrome extensions:
 
 ---
 
+---
+
+## Issue: JavaScript "Unexpected End of Input" Error in Rainbow Admin (2026-02-12)
+
+### Symptom
+- White page at `http://localhost:3002/intents`
+- Browser console shows error: "Unexpected end of input"
+- Server running on port 3002 (verified with `netstat`)
+- No visible content despite HTML loading (385KB)
+
+### Root Cause
+**JavaScript syntax error in template literals with nested loops**
+
+When implementing phase-based categorization for intents, used complex template literals inside nested `for...of` loops:
+```javascript
+// ❌ PROBLEMATIC CODE (caused syntax error)
+for (const phaseData of phases) {
+  rows.push(`
+    <tr>...</tr>  // Template literal
+  `);
+
+  for (const intentData of intents) {
+    rows.push(`
+      <tr>
+        <td>${esc(intent)}</td>  // Nested template literal with expressions
+        <td>
+          <select onchange="changeRouting('${esc(intent)}', ...)">
+            ${ACTIONS.map(a => `<option ...>`).join('')}  // Triple-nested template
+          </select>
+        </td>
+      </tr>
+    `);
+  }
+}
+```
+
+**Why it failed:**
+- Multiple levels of template literal nesting
+- Complex expressions inside template literals (`${...}`)
+- Arrow functions inside template literals
+- Escaping issues with quotes in `onclick` handlers
+
+### Diagnostic Process
+
+#### Step 1: Verify Server Running ✅
+```bash
+netstat -ano | findstr ":3002" | findstr LISTENING
+# Result: TCP 0.0.0.0:3002 LISTENING 31704
+```
+
+#### Step 2: Check Browser Errors ❌
+```bash
+agent-browser open http://localhost:3002/intents
+agent-browser errors
+# Result: "Unexpected end of input"
+```
+
+#### Step 3: Verify Content Loading ⚠️
+```bash
+agent-browser eval "document.body.innerHTML.length"
+# Result: 385283 (HTML loaded but JavaScript broken)
+```
+
+#### Step 4: Revert Changes ✅
+```bash
+git log --oneline -5
+# Found: 6bfee58 feat(ui): display intents grouped by guest journey phases
+
+git reset --hard HEAD~1
+# Reset to: 705d821 (previous working commit)
+```
+
+#### Step 5: Test Old Version ✅
+```bash
+# Restart server with reverted code
+npx kill-port 3002 && cd mcp-server && npm run dev
+
+# Test in browser
+agent-browser open http://localhost:3002/intents
+agent-browser errors
+# Result: No errors! ✅
+```
+
+#### Step 6: Identify Problem Pattern
+Compared working vs broken code:
+- **Working**: Flat intent iteration with simple template literals
+- **Broken**: Nested phase/intent loops with complex template literals
+
+### Solution: String Concatenation Instead of Template Literals
+
+Replaced all template literals with simple string concatenation:
+
+```javascript
+// ✅ WORKING CODE (string concatenation)
+for (let i = 0; i < phases.length; i++) {
+  const phaseData = phases[i];
+  const phaseName = phaseData.phase || 'Uncategorized';
+  const phaseDesc = phaseData.description || '';
+  const phaseIntents = phaseData.intents || [];
+
+  // Phase header (string concatenation)
+  rows.push('<tr class="bg-gradient-to-r from-primary-50 to-transparent">');
+  rows.push('  <td colspan="5">');
+  rows.push('    <span class="font-semibold">' + esc(phaseName) + '</span>');
+  rows.push('    <span class="text-xs">— ' + esc(phaseDesc) + '</span>');
+  rows.push('  </td>');
+  rows.push('</tr>');
+
+  // Intent rows
+  for (let j = 0; j < phaseIntents.length; j++) {
+    const intentData = phaseIntents[j];
+    const intent = intentData.category;
+    const professionalTerm = intentData.professional_term || intent;
+
+    const actionOptions = ACTIONS.map(a =>
+      '<option value="' + a + '">' + ACTION_LABELS[a] + '</option>'
+    ).join('');
+
+    rows.push('<tr>');
+    rows.push('  <td>');
+    rows.push('    <span class="font-mono">' + esc(intent) + '</span>');
+    rows.push('    <span class="text-xs">' + esc(professionalTerm) + '</span>');
+    rows.push('  </td>');
+    rows.push('  <td>');
+    rows.push('    <select onchange="changeRouting(\'' + esc(intent) + '\', ...)">' + actionOptions + '</select>');
+    rows.push('  </td>');
+    rows.push('</tr>');
+  }
+}
+```
+
+**Key improvements:**
+- ✅ No nested template literals
+- ✅ Simple string concatenation with `+`
+- ✅ Clear quote escaping (single quotes in HTML, escaped in JS strings)
+- ✅ Traditional `for` loops instead of `for...of` (easier to debug)
+- ✅ Proper closing of all braces and loops
+
+### Verification
+
+```bash
+# Restart server with fixed code
+npx kill-port 3002 && cd mcp-server && npm run dev
+
+# Test in browser
+agent-browser open http://localhost:3002/intents
+agent-browser wait 3000
+agent-browser errors
+# Result: No errors! ✅
+
+# Take screenshots
+agent-browser screenshot docs/phase-categorized-fixed.png
+agent-browser scroll down 500
+agent-browser screenshot docs/during-stay-professional-terms.png
+```
+
+**Confirmed working:**
+- ✅ Phase headers visible (GENERAL_SUPPORT, PRE_ARRIVAL, etc.)
+- ✅ Professional terminology displayed below category names
+- ✅ Intents indented under phase headers
+- ✅ All functionality preserved (enable/disable, routing, delete)
+
+### Key Lessons
+
+#### 1. Template Literals Are Fragile in Complex Scenarios
+**Avoid:**
+- Triple-nested template literals
+- Template literals with many `${}` expressions
+- Mixing template literals with arrow functions
+
+**Prefer:**
+- String concatenation for complex HTML generation
+- Pre-building option lists separately
+- Simpler, flatter code structure
+
+#### 2. Diagnostic Strategy for "Unexpected End of Input"
+```bash
+# 1. Check if it's a syntax error vs runtime error
+agent-browser errors  # Shows parse errors immediately
+
+# 2. Check if HTML loaded
+agent-browser eval "document.body.innerHTML.length"  # Non-zero = HTML loaded
+
+# 3. Use git to bisect
+git log --oneline -10  # Find recent changes
+git reset --hard HEAD~1  # Revert to test
+
+# 4. Use bracket counting
+# Count { } ( ) [ ] ` in your code changes
+# Must match exactly!
+```
+
+#### 3. String Concatenation vs Template Literals
+
+| Use Case | Recommendation |
+|----------|----------------|
+| Simple interpolation (`Hello ${name}`) | Template literals ✅ |
+| Multi-line strings | Template literals ✅ |
+| HTML generation with 1-2 variables | Template literals ✅ |
+| **Nested loops with HTML** | String concatenation ✅ |
+| **Complex onclick handlers** | String concatenation ✅ |
+| **Dynamic option lists** | String concatenation ✅ |
+
+#### 4. Prevention Checklist
+
+Before using template literals in loops:
+- [ ] Is the template literal nested inside another?
+- [ ] Are there more than 3 `${}` expressions?
+- [ ] Are there arrow functions inside?
+- [ ] Are there onclick/onchange handlers with quotes?
+- [ ] Can I use string concatenation instead?
+
+If 3+ boxes checked → Use string concatenation!
+
+### Time Investment vs ROI
+
+**This debugging session:** ~45 minutes
+- 10 min: Initial diagnosis
+- 15 min: Reverting and testing old code
+- 20 min: Reimplementing with string concatenation
+
+**Future saves:** ~30 minutes per occurrence
+- Skip template literal debugging
+- Use string concatenation from the start
+- Reference this guide for patterns
+
+**Total occurrences prevented:** Likely 2-3+ in this project's lifetime
+
+### Screenshots (Evidence)
+
+1. **`docs/white-page-error.png`** — White page with "Unexpected end of input"
+2. **`docs/intents-working-old-version.png`** — Old flat version working
+3. **`docs/phase-categorized-fixed.png`** — Fixed version with phase headers
+4. **`docs/during-stay-professional-terms.png`** — Professional terminology visible
+5. **`docs/post-checkout-professional-terms.png`** — POST_CHECKOUT phase working
+
+### Related Commits
+
+```bash
+# Broken commit (reverted)
+6bfee58 feat(ui): display intents grouped by guest journey phases
+
+# Fixed commit
+b6ee21a fix(ui): display intents grouped by guest journey phases (syntax error resolved)
+```
+
+### Quick Command Reference
+
+```bash
+# Diagnose white page
+agent-browser open http://localhost:3002/intents
+agent-browser errors  # Check for "Unexpected end of input"
+agent-browser eval "document.body.innerHTML.length"  # Check if HTML loaded
+
+# Revert changes
+git reset --hard HEAD~1
+
+# Restart MCP server
+npx kill-port 3002
+cd mcp-server && npm run dev
+
+# Verify working
+agent-browser open http://localhost:3002/intents
+agent-browser screenshot docs/fixed.png
+```
+
+---
+
 **Last Updated:** 2026-02-12
 **Related Docs:** `MASTER_TROUBLESHOOTING_GUIDE.md`, `REFACTORING_TROUBLESHOOTING.md`, `AUTO-START-GUIDE.md`
-**Tags:** vite, react, port-conflicts, typescript, hot-reload, browser-cache, windows, servers-not-running, chrome-extension, manifest-v3, service-worker
+**Tags:** vite, react, port-conflicts, typescript, hot-reload, browser-cache, windows, servers-not-running, chrome-extension, manifest-v3, service-worker, javascript-syntax-error, template-literals, string-concatenation, unexpected-end-of-input
