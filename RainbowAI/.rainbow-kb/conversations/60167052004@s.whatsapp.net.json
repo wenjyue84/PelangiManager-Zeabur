@@ -120,10 +120,33 @@
       "content": "where are you?",
       "timestamp": 1770967610314,
       "manual": true
+    },
+    {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 1770968339653
     }
   ],
   "createdAt": 1770818094458,
-  "updatedAt": 1770967658639,
+  "updatedAt": 1770968339653,
+  "instanceId": "default",
+  "lastReadAt": 1770967610314,
+  "favourite": false,
+  "pinned": false
+}     "model": "none (tiered)",
+      "responseTime": 9,
+      "kbFiles": [
+        "AGENTS.md",
+        "soul.md",
+        "memory.md",
+        "faq.md"
+      ],
+      "messageType": "info",
+      "routedAction": "static_reply"
+    }
+  ],
+  "createdAt": 1770818094458,
+  "updatedAt": 1770968339687,
   "instanceId": "default",
   "lastReadAt": 1770967610314,
   "favourite": false,

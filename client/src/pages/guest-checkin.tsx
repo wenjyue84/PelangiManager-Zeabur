@@ -18,7 +18,8 @@ import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 // Lazy load heavy data and assets
 const lazyLoadNationalities = () => import("@/lib/nationalities").then(m => m.NATIONALITIES);
-const lazyLoadQrCode = () => import("@assets/WhatsApp Image 2025-08-08 at 19.49.44_5bbbcb18_1754653834112.jpg");
+// QR code is now in public/assets and can be referenced directly
+const QR_CODE_PATH = "/assets/payment-qr.jpg";
 
 import type { UploadResult } from "@uppy/core";
 import { getHolidayLabel, hasPublicHoliday } from "@/lib/holidays";
