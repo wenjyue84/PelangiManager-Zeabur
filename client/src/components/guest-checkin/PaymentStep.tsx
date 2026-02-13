@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { UseFormReturn } from "react-hook-form";
 import { GuestSelfCheckin } from "@shared/schema";
 import { ValidationHelpers } from "./shared/ValidationHelpers";
-import qrCodeImage from "@assets/WhatsApp Image 2025-08-08 at 19.49.44_5bbbcb18_1754653834112.jpg";
+// QR code is now in public/assets
+const qrCodeImage = "/assets/payment-qr.jpg";
 
 interface PaymentStepProps {
   form: UseFormReturn<GuestSelfCheckin>;
