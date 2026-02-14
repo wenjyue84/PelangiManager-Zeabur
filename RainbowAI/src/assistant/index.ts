@@ -28,7 +28,7 @@ export async function initAssistant(deps: AssistantDependencies): Promise<void> 
   initIntents();
   initKnowledgeBase();
   initRateLimiter();
-  initConversations();
+  await initConversations();
   initKnowledge(callAPI);
   initPricing();
   initBooking(callAPI);
