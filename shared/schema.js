@@ -1331,6 +1331,23 @@ export const insertIntentPredictionSchema = createInsertSchema(intentPredictions
     confidence: z.number().min(0).max(1),
     tier: z.string().min(1),
 });
+// Rainbow Conversation State Persistence (survive restarts)
+export const rainbowConversationState = pgTable("rainbow_conversation_state", {
+    phone: varchar("phone", { length: 32 }).primaryKey(),
+    pushName: text("push_name").notNull(),
+    language: varchar("language", { length: 2 }).notNull().default('en'),
+    bookingStateJson: text("booking_state_json"),
+    workflowStateJson: text("workflow_state_json"),
+    unknownCount: integer("unknown_count").notNull().default(0),
+    lastIntent: text("last_intent"),
+    lastIntentConfidence: real("last_intent_confidence"),
+    lastIntentTimestamp: timestamp("last_intent_timestamp"),
+    slotsJson: text("slots_json"),
+    repeatCount: integer("repeat_count").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    lastActiveAt: timestamp("last_active_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 export const validationUtils = {
     isValidEmail: (email) => {
         try {
