@@ -1,9 +1,15 @@
+import { createModuleLogger } from './lib/logger.js';
+
+const crashLogger = createModuleLogger('CRASH');
+const startupLogger = createModuleLogger('Startup');
+const shutdownLogger = createModuleLogger('SHUTDOWN');
+
 // Catch silent crashes from Baileys / unhandled rejections
 process.on('uncaughtException', (err) => {
-  console.error('[CRASH] Uncaught exception:', err);
+  crashLogger.error('Uncaught exception', { error: err.message, stack: err.stack });
 });
-process.on('unhandledRejection', (reason) => {
-  console.error('[CRASH] Unhandled rejection:', reason);
+process.on('unhandledRejection', (reason: any) => {
+  crashLogger.error('Unhandled rejection', { reason: reason?.message || reason, stack: reason?.stack });
 });
 
 import express from 'express';
@@ -33,10 +39,10 @@ dotenv.config();
 // This prevents "Cannot read properties of undefined" errors when API endpoints are called before WhatsApp init completes
 try {
   configStore.init();
-  console.log('[Startup] ConfigStore initialized successfully');
+  startupLogger.info('ConfigStore initialized successfully');
 } catch (err: any) {
-  console.error('[Startup] Failed to initialize ConfigStore:', err.message);
-  console.error('[Startup] Admin API may not function correctly until config files are fixed');
+  startupLogger.error('Failed to initialize ConfigStore', { error: err.message, stack: err.stack });
+  startupLogger.error('Admin API may not function correctly until config files are fixed');
 }
 
 const app = express();
@@ -180,10 +186,13 @@ app.post('/mcp', createMCPHandler());
 const server = app.listen(PORT, '0.0.0.0', () => {
   const apiUrl = getApiBaseUrl();
   setupHotReload(server);
-  console.log(`Pelangi MCP Server running on http://0.0.0.0:${PORT}`);
-  console.log(`MCP endpoint: http://0.0.0.0:${PORT}/mcp`);
-  console.log(`Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`API URL: ${apiUrl}${process.env.PELANGI_MANAGER_HOST ? ' (internal host)' : ''}`);
+  startupLogger.info('Pelangi MCP Server running', { url: `http://0.0.0.0:${PORT}`, port: PORT });
+  startupLogger.info('MCP endpoint', { url: `http://0.0.0.0:${PORT}/mcp` });
+  startupLogger.info('Health check', { url: `http://0.0.0.0:${PORT}/health` });
+  startupLogger.info('API URL configured', {
+    url: apiUrl,
+    isInternalHost: !!process.env.PELANGI_MANAGER_HOST
+  });
 
   // Startup connectivity check: warn if PelangiManager API is unreachable
   setImmediate(async () => {
@@ -193,17 +202,19 @@ const server = app.listen(PORT, '0.0.0.0', () => {
       } catch {
         await apiClient.get('/api/occupancy');
       }
-      console.log('PelangiManager API reachable');
+      startupLogger.info('PelangiManager API reachable');
     } catch (err: any) {
       const status = err.response?.status;
       const url = `${apiUrl}/api/health`;
-      console.warn('');
-      console.warn('PelangiManager API not reachable.');
-      console.warn(`   URL: ${url}`);
-      if (status) console.warn(`   Response: ${status} ${err.response?.statusText || ''}`);
-      console.warn('   Set PELANGI_API_URL in Zeabur to your deployed PelangiManager URL.');
-      console.warn('   MCP tools will fail until the API is reachable.');
-      console.warn('');
+      startupLogger.warn('');
+      startupLogger.warn('PelangiManager API not reachable', {
+        url,
+        status,
+        statusText: err.response?.statusText || '',
+        hint: 'Set PELANGI_API_URL in Zeabur to your deployed PelangiManager URL',
+        impact: 'MCP tools will fail until the API is reachable'
+      });
+      startupLogger.warn('');
     }
 
     // Initialize feedback settings defaults
@@ -219,15 +230,15 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 
 // Graceful shutdown handlers
 const shutdown = (signal: string) => {
-  console.log(`\n[SHUTDOWN] Received ${signal}. Closing server...`);
+  shutdownLogger.info('Received signal, closing server...', { signal });
   server.close(() => {
-    console.log('[SHUTDOWN] HTTP server closed.');
+    shutdownLogger.info('HTTP server closed');
     process.exit(0);
   });
 
   // Force exit if server.close() hangs
   setTimeout(() => {
-    console.error('[SHUTDOWN] Force exiting...');
+    shutdownLogger.error('Force exiting (server.close() timeout)');
     process.exit(1);
   }, 5000);
 };

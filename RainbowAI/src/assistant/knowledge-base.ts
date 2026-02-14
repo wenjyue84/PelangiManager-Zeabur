@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, existsSync, watch, mkdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { configStore } from './config-store.js';
+import { notifyAdminKBFailure } from '../lib/admin-notifier.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,6 +14,11 @@ const DURABLE_MEMORY_FILE = 'memory.md';
 
 // In-memory cache of all KB files
 let kbCache: Map<string, string> = new Map();
+
+// KB Health Tracking
+let kbHealthy = false;        // true if KB loaded successfully
+let kbFailureCount = 0;       // consecutive load failures
+let lastKBCheckAt = 0;        // timestamp of last health check
 
 // Always injected into every prompt
 const CORE_FILES = ['AGENTS.md', 'soul.md'];
@@ -183,28 +189,125 @@ export function reloadKBFile(filename: string): void {
 }
 
 export function reloadAllKB(): void {
-  if (!existsSync(RAINBOW_KB_DIR)) {
-    console.warn(`[KnowledgeBase] .rainbow-kb/ not found at ${RAINBOW_KB_DIR}`);
-    return;
-  }
-  const files = readdirSync(RAINBOW_KB_DIR).filter(f => f.endsWith('.md'));
-  for (const file of files) {
-    kbCache.set(file, readFileSync(join(RAINBOW_KB_DIR, file), 'utf-8'));
-  }
+  try {
+    if (!existsSync(RAINBOW_KB_DIR)) {
+      console.warn(`[KnowledgeBase] .rainbow-kb/ not found at ${RAINBOW_KB_DIR}`);
+      kbHealthy = false;
+      kbFailureCount++;
+      console.warn(`[KnowledgeBase] ⚠️ KB unavailable (failure #${kbFailureCount}) — static fallback active`);
 
-  // Also load today + yesterday daily logs from memory/
-  if (existsSync(MEMORY_DIR)) {
-    const today = getTodayDate();
-    const yesterday = getYesterdayDate();
-    for (const date of [today, yesterday]) {
-      const memFile = join(MEMORY_DIR, `${date}.md`);
-      if (existsSync(memFile)) {
-        kbCache.set(`memory/${date}.md`, readFileSync(memFile, 'utf-8'));
+      // Notify admin after 3 consecutive failures
+      if (kbFailureCount >= 3) {
+        notifyAdminKBFailure(kbFailureCount, kbCache.size).catch(err => {
+          console.warn(`[KnowledgeBase] Failed to send KB failure notification:`, err.message);
+        });
+      }
+
+      return;
+    }
+
+    const files = readdirSync(RAINBOW_KB_DIR).filter(f => f.endsWith('.md'));
+    for (const file of files) {
+      kbCache.set(file, readFileSync(join(RAINBOW_KB_DIR, file), 'utf-8'));
+    }
+
+    // Also load today + yesterday daily logs from memory/
+    if (existsSync(MEMORY_DIR)) {
+      const today = getTodayDate();
+      const yesterday = getYesterdayDate();
+      for (const date of [today, yesterday]) {
+        const memFile = join(MEMORY_DIR, `${date}.md`);
+        if (existsSync(memFile)) {
+          kbCache.set(`memory/${date}.md`, readFileSync(memFile, 'utf-8'));
+        }
       }
     }
-  }
 
-  console.log(`[KnowledgeBase] Loaded ${kbCache.size} KB files from .rainbow-kb/`);
+    // Mark KB as healthy if we loaded files successfully
+    if (kbCache.size > 0) {
+      kbHealthy = true;
+      if (kbFailureCount > 0) {
+        console.log(`[KnowledgeBase] ✅ KB recovered after ${kbFailureCount} failures`);
+        kbFailureCount = 0;
+      }
+    } else {
+      kbHealthy = false;
+      kbFailureCount++;
+      console.warn(`[KnowledgeBase] ⚠️ KB empty (failure #${kbFailureCount}) — static fallback active`);
+
+      // Notify admin after 3 consecutive failures
+      if (kbFailureCount >= 3) {
+        notifyAdminKBFailure(kbFailureCount, kbCache.size).catch(err => {
+          console.warn(`[KnowledgeBase] Failed to send KB failure notification:`, err.message);
+        });
+      }
+    }
+
+    console.log(`[KnowledgeBase] Loaded ${kbCache.size} KB files from .rainbow-kb/`);
+  } catch (err: any) {
+    kbHealthy = false;
+    kbFailureCount++;
+    console.error(`[KnowledgeBase] ❌ Failed to load KB (failure #${kbFailureCount}):`, err.message);
+    console.error(`[KnowledgeBase] Static fallback active`);
+
+    // Notify admin after 3 consecutive failures
+    if (kbFailureCount >= 3) {
+      notifyAdminKBFailure(kbFailureCount, kbCache.size).catch(err => {
+        console.warn(`[KnowledgeBase] Failed to send KB failure notification:`, err.message);
+      });
+    }
+  }
+}
+
+/**
+ * Check if knowledge base is healthy and available.
+ * Returns false if KB failed to load or is empty.
+ */
+export function isKBHealthy(): boolean {
+  return kbHealthy && kbCache.size > 0;
+}
+
+/**
+ * Get KB health status for monitoring.
+ */
+export function getKBHealth(): { healthy: boolean; filesLoaded: number; failureCount: number; lastCheckAt: number } {
+  return {
+    healthy: kbHealthy,
+    filesLoaded: kbCache.size,
+    failureCount: kbFailureCount,
+    lastCheckAt: lastKBCheckAt
+  };
+}
+
+/**
+ * Get static fallback reply for an intent from knowledge.json.
+ * Used when dynamic KB is unavailable.
+ */
+export function getStaticFallback(intent: string, language: 'en' | 'ms' | 'zh' = 'en'): string | null {
+  try {
+    const knowledge = configStore.getKnowledge();
+    const staticReplies = knowledge.static || [];
+    const reply = staticReplies.find((r: any) => r.intent === intent);
+    if (reply && reply.response && reply.response[language]) {
+      return reply.response[language];
+    }
+    return null;
+  } catch (err: any) {
+    console.warn(`[KnowledgeBase] Failed to get static fallback for ${intent}:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Get minimal hardcoded fallback when both KB and static replies fail.
+ */
+export function getMinimalFallback(language: 'en' | 'ms' | 'zh' = 'en'): string {
+  const fallbacks = {
+    en: "I'm currently operating in minimal mode. Please contact our staff for assistance:\n+60127088789 (Jay)\n+60167620815 (Alston)",
+    ms: "Saya beroperasi dalam mod minimum. Sila hubungi kakitangan kami:\n+60127088789 (Jay)\n+60167620815 (Alston)",
+    zh: "我目前处于最小模式。请联系我们的工作人员寻求帮助:\n+60127088789 (Jay)\n+60167620815 (Alston)"
+  };
+  return fallbacks[language] || fallbacks.en;
 }
 
 function watchKBDirectory(): void {
@@ -270,6 +373,22 @@ export function setKnowledgeMarkdown(content: string): void {
 // ─── System Prompt Builder ──────────────────────────────────────────
 
 export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []): string {
+  // Check KB health - use static fallback mode if KB unavailable
+  if (!isKBHealthy()) {
+    console.warn('[KnowledgeBase] ⚠️ KB unhealthy — using static fallback mode for system prompt');
+    return `${basePersona}
+
+**OPERATING IN STATIC FALLBACK MODE** - Knowledge Base unavailable.
+
+INSTRUCTIONS:
+- Provide only basic information using pre-loaded static replies
+- For complex queries, politely ask guests to contact staff directly
+- Be helpful and professional despite limited information
+- Staff contacts: +60127088789 (Jay), +60167620815 (Alston)
+
+Note: This is a temporary fallback mode. The full knowledge base will be restored soon.`;
+  }
+
   // Build intent list + routing rules from config
   const routing = configStore.getRouting();
   const intents = Object.keys(routing);

@@ -164,7 +164,7 @@ export async function notifyAdminServerStartup(): Promise<void> {
 
   const settings = await loadAdminNotificationSettings();
   if (!settings.enabled || !settings.notifyOnReconnect) {
-    console.log('[AdminNotifier] Server startup notifications disabled in settings');
+    logger.info('Server startup notifications disabled in settings');
     return;
   }
 
@@ -177,7 +177,7 @@ export async function notifyAdminServerStartup(): Promise<void> {
   }
 
   if (entry.count >= MAX_SERVER_STARTUP_PER_DAY) {
-    console.log(`[AdminNotifier] Server startup notification skipped (max ${MAX_SERVER_STARTUP_PER_DAY}/day for +${phone})`);
+    logger.info('Server startup notification skipped (max daily limit)', { phone, maxPerDay: MAX_SERVER_STARTUP_PER_DAY });
     return;
   }
 
@@ -195,10 +195,14 @@ export async function notifyAdminServerStartup(): Promise<void> {
 
   try {
     await notificationContext.sendMessage(phone, message);
-    console.log(`[AdminNotifier] Sent server startup notification to +${phone} (${entry.count}/${MAX_SERVER_STARTUP_PER_DAY} today)`);
+    logger.info('Sent server startup notification', {
+      toPhone: phone,
+      count: entry.count,
+      maxPerDay: MAX_SERVER_STARTUP_PER_DAY
+    });
   } catch (err: any) {
     entry.count -= 1; // rollback on failure so they can still get up to 3
-    console.error(`[AdminNotifier] Failed to send startup notification:`, err.message);
+    logger.error('Failed to send startup notification', { error: err.message, stack: err.stack });
   }
 }
 
@@ -208,7 +212,7 @@ export async function notifyAdminServerStartup(): Promise<void> {
  */
 export async function notifyAdminConfigCorruption(corruptedFiles: string[]): Promise<void> {
   if (!notificationContext) {
-    console.warn('[AdminNotifier] Not initialized — cannot send config corruption notification');
+    logger.warn('Not initialized — cannot send config corruption notification');
     return;
   }
 
@@ -218,7 +222,7 @@ export async function notifyAdminConfigCorruption(corruptedFiles: string[]): Pro
 
   const settings = await loadAdminNotificationSettings();
   if (!settings.enabled) {
-    console.log('[AdminNotifier] Admin notifications disabled in settings');
+    logger.info('Admin notifications disabled in settings');
     return;
   }
 
@@ -239,9 +243,9 @@ export async function notifyAdminConfigCorruption(corruptedFiles: string[]): Pro
 
   try {
     await notificationContext.sendMessage(settings.systemAdminPhone, message);
-    console.log(`[AdminNotifier] ✅ Sent config corruption notification to +${settings.systemAdminPhone}`);
+    logger.info('✅ Sent config corruption notification', { toPhone: settings.systemAdminPhone });
   } catch (err: any) {
-    console.error(`[AdminNotifier] Failed to send config corruption notification:`, err.message);
+    logger.error('Failed to send config corruption notification', { error: err.message, stack: err.stack });
   }
 }
 
@@ -256,13 +260,13 @@ export async function notifyAdminRateLimit(
   totalErrors: number
 ): Promise<void> {
   if (!notificationContext) {
-    console.warn('[AdminNotifier] Not initialized — cannot send rate limit notification');
+    logger.warn('Not initialized — cannot send rate limit notification');
     return;
   }
 
   const settings = await loadAdminNotificationSettings();
   if (!settings.enabled) {
-    console.log('[AdminNotifier] Admin notifications disabled in settings');
+    logger.info('Admin notifications disabled in settings');
     return;
   }
 
@@ -288,8 +292,70 @@ export async function notifyAdminRateLimit(
 
   try {
     await notificationContext.sendMessage(settings.systemAdminPhone, message);
-    console.log(`[AdminNotifier] ✅ Sent rate limit notification to +${settings.systemAdminPhone}`);
+    logger.info('✅ Sent rate limit notification', { toPhone: settings.systemAdminPhone });
   } catch (err: any) {
-    console.error(`[AdminNotifier] Failed to send rate limit notification:`, err.message);
+    logger.error('Failed to send rate limit notification', { error: err.message, stack: err.stack });
+  }
+}
+
+/** Cooldown: only one KB failure notification per hour */
+const KB_FAILURE_NOTIFY_COOLDOWN_MS = 60 * 60 * 1000;
+let lastKBFailureNotifyAt = 0;
+
+/**
+ * Send knowledge base failure alert to system admin
+ * Notifies when KB fails to load and system falls back to static replies
+ */
+export async function notifyAdminKBFailure(
+  failureCount: number,
+  filesLoaded: number
+): Promise<void> {
+  if (!notificationContext) {
+    logger.warn('Not initialized — cannot send KB failure notification');
+    return;
+  }
+
+  // Check cooldown
+  const now = Date.now();
+  if (now - lastKBFailureNotifyAt < KB_FAILURE_NOTIFY_COOLDOWN_MS) {
+    logger.debug('KB failure notification skipped (cooldown)');
+    return;
+  }
+  lastKBFailureNotifyAt = now;
+
+  const settings = await loadAdminNotificationSettings();
+  if (!settings.enabled) {
+    logger.debug('Admin notifications disabled in settings');
+    return;
+  }
+
+  const message = `⚠️ *Knowledge Base Load Failure*\n\n` +
+    `The Rainbow AI knowledge base failed to load.\n\n` +
+    `**Status:**\n` +
+    `Consecutive failures: ${failureCount}\n` +
+    `Files loaded: ${filesLoaded}\n` +
+    `Time: ${new Date().toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}\n\n` +
+    `**Action Taken:**\n` +
+    `✅ System activated static fallback mode\n` +
+    `✅ Basic responses still working\n` +
+    `⚠️ Limited information available to guests\n\n` +
+    `**Impact:**\n` +
+    `- Guests can still get basic info (WiFi, check-in, etc.)\n` +
+    `- Complex queries will be directed to staff\n` +
+    `- No access to recent memory or detailed KB topics\n\n` +
+    `**What You Need to Do:**\n` +
+    `1. Check .rainbow-kb/ directory exists and is readable\n` +
+    `2. Verify KB markdown files are not corrupted\n` +
+    `3. Check server logs for specific error messages\n` +
+    `4. Restart MCP server to reload KB\n\n` +
+    `💡 *Tip:* Monitor KB health via:\n` +
+    `http://localhost:3002/dashboard\n\n` +
+    `_You'll receive at most 1 notification per hour._`;
+
+  try {
+    await notificationContext.sendMessage(settings.systemAdminPhone, message);
+    logger.info('✅ Sent KB failure notification', { toPhone: settings.systemAdminPhone });
+  } catch (err: any) {
+    logger.error('Failed to send KB failure notification', { error: err.message, stack: err.stack });
   }
 }

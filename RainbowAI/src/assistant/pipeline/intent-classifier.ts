@@ -13,6 +13,9 @@ import { fileURLToPath } from 'url';
 import type { RouterContext, PipelineState } from './types.js';
 import { ensureResponseText } from './input-validator.js';
 import { configStore } from '../config-store.js';
+import { createModuleLogger } from '../../lib/logger.js';
+
+const logger = createModuleLogger('Router');
 import { classifyMessageWithContext } from '../intents.js';
 import { getStaticReply } from '../knowledge.js';
 import {
@@ -77,15 +80,16 @@ export async function classifyAndRoute(
   const contextMessages = summarizationResult.messages;
 
   if (summarizationResult.wasSummarized) {
-    console.log(
-      `[Router] 📝 Conversation summarized: ${summarizationResult.originalCount} → ${summarizationResult.reducedCount} messages ` +
-      `(${Math.round((1 - summarizationResult.reducedCount / summarizationResult.originalCount) * 100)}% reduction)`
-    );
+    logger.info('📝 Conversation summarized', {
+      originalCount: summarizationResult.originalCount,
+      reducedCount: summarizationResult.reducedCount,
+      reductionPercent: Math.round((1 - summarizationResult.reducedCount / summarizationResult.originalCount) * 100)
+    });
   }
 
   const topicFiles = guessTopicFiles(processText);
   devMetadata.kbFiles = ['AGENTS.md', 'soul.md', 'memory.md', ...topicFiles];
-  console.log(`[Router] KB files: [${topicFiles.join(', ')}]`);
+  logger.info('KB files loaded', { files: topicFiles });
   const systemPrompt = buildSystemPrompt(configStore.getSettings().system_prompt, topicFiles);
 
   // Ack timer: send "thinking" message if LLM takes >3s
@@ -97,7 +101,7 @@ export async function classifyAndRoute(
       const ackText = getTemplate('thinking', lang);
       await ctx.sendMessage(phone, ackText, msg.instanceId);
       logMessage(phone, msg.pushName ?? 'Guest', 'assistant', ackText, { action: 'thinking', instanceId: msg.instanceId }).catch(() => {});
-      console.log(`[Router] Sent thinking ack to ${phone} (LLM taking >3s)`);
+      logger.info('Sent thinking ack (LLM taking >3s)', { phone });
     } catch { /* non-fatal */ }
   }, 3000);
 
@@ -132,7 +136,11 @@ export async function classifyAndRoute(
         detectedLanguage: tierResult.detectedLanguage
       };
       devMetadata.source = tierResult.source;
-      console.log(`[Router] T5 fast path: ${tierResult.source} → ${tierResult.category} (${classifyTime}ms, zero LLM)`);
+      logger.info('T5 fast path (zero LLM)', {
+        source: tierResult.source,
+        intent: tierResult.category,
+        timeMs: classifyTime
+      });
     } else {
       if (caughtByFastTier) {
         const timeSensitiveSet = configStore.getTimeSensitiveIntentSet();
@@ -228,22 +236,27 @@ export async function classifyAndRoute(
   const layer2Threshold = llmSettings.thresholds?.layer2 ?? 0.80;
 
   if (result.confidence < layer2Threshold && isAIAvailable()) {
-    console.log(
-      `[Router] 🔸 Layer 2: confidence ${result.confidence.toFixed(2)} < ${layer2Threshold.toFixed(2)} → retrying with smart fallback`
-    );
+    logger.info('🔸 Layer 2: retrying with smart fallback', {
+      confidence: result.confidence.toFixed(2),
+      threshold: layer2Threshold.toFixed(2)
+    });
 
     const fallbackResult = await classifyAndRespondWithSmartFallback(systemPrompt, contextMessages, processText);
 
     if (fallbackResult.confidence > result.confidence) {
-      console.log(
-        `[Router] ✅ Layer 2 improved confidence: ${result.confidence.toFixed(2)} → ${fallbackResult.confidence.toFixed(2)} (${fallbackResult.model})`
-      );
+      logger.info('✅ Layer 2 improved confidence', {
+        before: result.confidence.toFixed(2),
+        after: fallbackResult.confidence.toFixed(2),
+        model: fallbackResult.model
+      });
       result = fallbackResult;
       devMetadata.source = (devMetadata.source || 'llm') + '+layer2';
       devMetadata.model = fallbackResult.model;
       devMetadata.responseTime = (result.responseTime || 0) + (fallbackResult.responseTime || 0);
     } else {
-      console.log(`[Router] ⚠️ Layer 2 fallback did not improve confidence (${fallbackResult.confidence.toFixed(2)})`);
+      logger.info('⚠️ Layer 2 fallback did not improve confidence', {
+        confidence: fallbackResult.confidence.toFixed(2)
+      });
     }
   }
 
@@ -254,7 +267,16 @@ export async function classifyAndRoute(
 
   const messageType = detectMessageType(processText);
   const repeatCheck = checkRepeatIntent(phone, result.intent);
-  console.log(`[Router] Intent: ${result.intent} | Action: ${result.action} | Routed: ${routedAction} | msgType: ${messageType} | repeat: ${repeatCheck.count} | Confidence: ${result.confidence.toFixed(2)}${ackSent ? ' | ack sent' : ''}${isSplitModel ? ' | split-model' : ''}`);
+  logger.info('Intent classified', {
+    intent: result.intent,
+    action: result.action,
+    routedAction,
+    messageType,
+    repeatCount: repeatCheck.count,
+    confidence: result.confidence.toFixed(2),
+    ackSent,
+    isSplitModel
+  });
 
   trackIntentClassified(result.intent, result.confidence, devMetadata.source || 'unknown');
 
@@ -282,7 +304,7 @@ export async function classifyAndRoute(
       result.detectedLanguage === 'ms' ||
       result.detectedLanguage === 'zh')) {
       updatedConvo.language = result.detectedLanguage as 'en' | 'ms' | 'zh';
-      console.log(`[Router] 🔄 Updated conversation language: ${lang} → ${result.detectedLanguage}`);
+      logger.info('🔄 Updated conversation language', { from: lang, to: result.detectedLanguage });
     }
   }
 
@@ -294,7 +316,7 @@ export async function classifyAndRoute(
       if (messageType === 'complaint') {
         const replyLang = resolveResponseLanguage(result.detectedLanguage, lang, result.confidence);
         if (replyLang !== lang && result.detectedLanguage !== 'unknown') {
-          console.log(`[Router] 🌍 Language resolved (complaint): '${lang}' → '${replyLang}'`);
+          logger.info('🌍 Language resolved (complaint)', { from: lang, to: replyLang });
         }
         state.response = result.response || getStaticReply(result.intent, replyLang);
         await escalateToStaff({
@@ -303,18 +325,18 @@ export async function classifyAndRoute(
           originalMessage: text, instanceId: msg.instanceId
         });
         diaryEvent.escalated = true;
-        console.log(`[Router] Complaint override: ${result.intent} → LLM + escalate`);
+        logger.info('Complaint override: LLM + escalate', { intent: result.intent });
       } else if (messageType === 'problem') {
         const replyLang = resolveResponseLanguage(result.detectedLanguage, lang, result.confidence);
         if (replyLang !== lang && result.detectedLanguage !== 'unknown') {
-          console.log(`[Router] 🌍 Language resolved (problem): '${lang}' → '${replyLang}'`);
+          logger.info('🌍 Language resolved (problem)', { from: lang, to: replyLang });
         }
         state.response = result.response || getStaticReply(result.intent, replyLang);
-        console.log(`[Router] Problem override: ${result.intent} → LLM response`);
+        logger.info('Problem override: LLM response', { intent: result.intent });
       } else if (repeatCheck.isRepeat && repeatCheck.count >= 2) {
         const replyLang = resolveResponseLanguage(result.detectedLanguage, lang, result.confidence);
         if (replyLang !== lang && result.detectedLanguage !== 'unknown') {
-          console.log(`[Router] 🌍 Language resolved (3rd+ repeat): '${lang}' → '${replyLang}'`);
+          logger.info('🌍 Language resolved (3rd+ repeat)', { from: lang, to: replyLang });
         }
         state.response = result.response || getStaticReply(result.intent, replyLang);
         await escalateToStaff({
@@ -322,24 +344,28 @@ export async function classifyAndRoute(
           recentMessages: convo.messages.map(m => `${m.role}: ${m.content}`),
           originalMessage: text, instanceId: msg.instanceId
         });
-        console.log(`[Router] Repeat escalation: ${result.intent} (${repeatCheck.count + 1}x)`);
+        logger.info('Repeat escalation', { intent: result.intent, count: repeatCheck.count + 1 });
       } else if (repeatCheck.isRepeat) {
         const replyLang = resolveResponseLanguage(result.detectedLanguage, lang, result.confidence);
         if (replyLang !== lang && result.detectedLanguage !== 'unknown') {
-          console.log(`[Router] 🌍 Language resolved (2nd repeat): '${lang}' → '${replyLang}'`);
+          logger.info('🌍 Language resolved (2nd repeat)', { from: lang, to: replyLang });
         }
         state.response = result.response || getStaticReply(result.intent, replyLang);
-        console.log(`[Router] Repeat override: ${result.intent} → LLM response (2nd time)`);
+        logger.info('Repeat override: LLM response (2nd time)', { intent: result.intent });
       } else {
         const replyLang = resolveResponseLanguage(result.detectedLanguage, lang, result.confidence);
         if (replyLang !== lang && result.detectedLanguage !== 'unknown') {
-          console.log(`[Router] 🌍 Language resolved: state='${lang}' → tier='${replyLang}' (confidence ${(result.confidence * 100).toFixed(0)}%)`);
+          logger.info('🌍 Language resolved', {
+            from: lang,
+            to: replyLang,
+            confidencePercent: (result.confidence * 100).toFixed(0)
+          });
         }
         const staticResponse = getStaticReply(result.intent, replyLang);
         if (staticResponse) {
           state.response = staticResponse;
         } else {
-          console.warn(`[Router] No static reply for "${result.intent}", using LLM response`);
+          logger.warn('No static reply, using LLM response', { intent: result.intent });
           state.response = result.response;
         }
       }
@@ -375,9 +401,9 @@ export async function classifyAndRoute(
       const forwardMsg = `💳 *Payment notification from ${msg.pushName}*\nPhone: ${phone}\nMessage: ${text}`;
       try {
         await ctx.sendMessage(forwardTo, forwardMsg, msg.instanceId);
-        console.log(`[Router] Payment receipt forwarded to ${forwardTo} for ${phone}`);
+        logger.info('Payment receipt forwarded', { forwardTo, from: phone });
       } catch (err: any) {
-        console.error(`[Router] Failed to forward payment:`, err.message);
+        logger.error('Failed to forward payment', { error: err.message, stack: err.stack });
       }
       state.response = result.response || getTemplate('payment_forwarded', lang);
       break;
@@ -387,7 +413,7 @@ export async function classifyAndRoute(
       resetUnknown(phone);
       const workflowId = route?.workflow_id;
       if (!workflowId) {
-        console.error(`[Router] No workflow_id configured for intent "${result.intent}"`);
+        logger.error('No workflow_id configured for intent', { intent: result.intent });
         state.response = result.response;
         break;
       }
@@ -395,12 +421,12 @@ export async function classifyAndRoute(
       const workflows = configStore.getWorkflows();
       const workflow = workflows.workflows.find(w => w.id === workflowId);
       if (!workflow) {
-        console.error(`[Router] Workflow "${workflowId}" not found`);
+        logger.error('Workflow not found', { workflowId });
         state.response = result.response;
         break;
       }
 
-      console.log(`[Router] Starting workflow: ${workflow.name} (${workflowId})`);
+      logger.info('Starting workflow', { name: workflow.name, id: workflowId });
       diaryEvent.workflowStarted = true;
       trackWorkflowStarted(phone, msg.pushName, workflow.name);
       const workflowState = createWorkflowState(workflowId);

@@ -5,6 +5,9 @@ import { listConversations, getConversation, deleteConversation, getResponseTime
 import { whatsappManager } from '../../lib/baileys-client.js';
 import { translateText } from '../../assistant/ai-client.js';
 import { ok, badRequest, notFound, serverError } from './http-utils.js';
+import { createModuleLogger } from '../../lib/logger.js';
+
+const logger = createModuleLogger('Admin');
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
@@ -133,12 +136,12 @@ router.post('/conversations/:phone/send', async (req: Request, res: Response) =>
     if (instanceId) {
       const status = whatsappManager.getInstanceStatus(instanceId);
       if (!status || status.state !== 'open') {
-        console.warn(`[Admin] Instance "${instanceId}" not connected, finding fallback...`);
+        logger.warn('Instance not connected, finding fallback...', { instanceId });
         const instances = whatsappManager.getAllStatuses();
         const connectedInstance = instances.find(i => i.state === 'open');
         if (connectedInstance) {
           targetInstanceId = connectedInstance.id;
-          console.log(`[Admin] Using fallback instance: ${targetInstanceId}`);
+          logger.info('Using fallback instance', { fallbackId: targetInstanceId });
         } else {
           res.status(503).json({ error: 'No WhatsApp instances connected. Please check WhatsApp connection.' });
           return;
@@ -152,10 +155,14 @@ router.post('/conversations/:phone/send', async (req: Request, res: Response) =>
     const { logMessage } = await import('../../assistant/conversation-logger.js');
     await logMessage(phone, pushName, 'assistant', message, { manual: true, instanceId: targetInstanceId });
 
-    console.log(`[Admin] Manual message sent to ${phone} via ${targetInstanceId || 'default'}: ${message.substring(0, 50)}...`);
+    logger.info('Manual message sent', {
+      phone,
+      instanceId: targetInstanceId || 'default',
+      preview: message.substring(0, 50) + (message.length > 50 ? '...' : '')
+    });
     ok(res, { message: 'Message sent successfully', usedInstance: targetInstanceId });
   } catch (err: any) {
-    console.error('[Admin] Failed to send manual message:', err);
+    logger.error('Failed to send manual message', { error: err.message, stack: err.stack });
     serverError(res, err);
   }
 });
@@ -204,10 +211,15 @@ router.post('/conversations/:phone/send-media', upload.single('file'), async (re
     const { logMessage } = await import('../../assistant/conversation-logger.js');
     await logMessage(phone, pushName, 'assistant', logText, { manual: true, instanceId: targetInstanceId });
 
-    console.log(`[Admin] Sent ${mediaType} to ${phone}: ${file.originalname} (${(file.size / 1024).toFixed(1)} KB)`);
+    logger.info('Sent media', {
+      mediaType,
+      phone,
+      fileName: file.originalname,
+      sizeKB: (file.size / 1024).toFixed(1)
+    });
     ok(res, { mediaType, fileName: file.originalname, size: file.size });
   } catch (err: any) {
-    console.error('[Admin] Failed to send media:', err);
+    logger.error('Failed to send media', { error: err.message, stack: err.stack });
     serverError(res, err);
   }
 });
@@ -246,10 +258,14 @@ router.post('/translate', async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(`[Admin] Translated text to ${targetLangName}: ${text.substring(0, 50)}... -> ${translated.substring(0, 50)}...`);
+    logger.info('Translated text', {
+      targetLang: targetLangName,
+      originalPreview: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+      translatedPreview: translated.substring(0, 50) + (translated.length > 50 ? '...' : '')
+    });
     res.json({ translated, targetLang });
   } catch (err: any) {
-    console.error('[Admin] Translation error:', err);
+    logger.error('Translation error', { error: err.message, stack: err.stack });
     serverError(res, err);
   }
 });
@@ -304,10 +320,10 @@ router.post('/conversations/:phone/approvals/:id/approve', async (req: Request, 
     // Remove from queue
     approveAndSend(id, editedResponse);
 
-    console.log(`[Copilot] Approved and sent response for ${phone} (approval: ${id})`);
+    logger.info('[Copilot] Approved and sent response', { phone, approvalId: id });
     ok(res, { sent: finalResponse });
   } catch (err: any) {
-    console.error('[Copilot] Approval failed:', err);
+    logger.error('[Copilot] Approval failed', { error: err.message, stack: err.stack });
     serverError(res, err);
   }
 });
@@ -323,7 +339,7 @@ router.post('/conversations/:phone/approvals/:id/reject', async (req: Request, r
       return;
     }
 
-    console.log(`[Copilot] Rejected approval: ${id}`);
+    logger.info('[Copilot] Rejected approval', { approvalId: id });
     ok(res);
   } catch (err: any) {
     serverError(res, err);
@@ -376,7 +392,7 @@ router.post('/conversations/:phone/suggest', async (req: Request, res: Response)
 
     const result = await callAI(chatMessages, 'chat', providerHint);
 
-    console.log(`[Manual Mode] Generated AI suggestion for ${phone}`);
+    logger.info('[Manual Mode] Generated AI suggestion', { phone });
     res.json({
       suggestion: result.response,
       metadata: {
@@ -386,7 +402,7 @@ router.post('/conversations/:phone/suggest', async (req: Request, res: Response)
       }
     });
   } catch (err: any) {
-    console.error('[Manual Mode] Suggestion failed:', err);
+    logger.error('[Manual Mode] Suggestion failed', { error: err.message, stack: err.stack });
     serverError(res, err);
   }
 });
@@ -435,7 +451,7 @@ router.post('/conversations/:phone/mode', async (req: Request, res: Response) =>
       }
 
       configStore.setSettings(settings);
-      console.log(`[Mode Change] Set global default to ${mode} mode`);
+      logger.info('[Mode Change] Set global default', { mode });
     }
 
     // Always update per-conversation mode (in-memory + disk)
@@ -447,7 +463,11 @@ router.post('/conversations/:phone/mode', async (req: Request, res: Response) =>
     // Persist to disk so mode survives navigation and restarts
     await updateConversationMode(phone, mode);
 
-    console.log(`[Mode Change] Set ${phone} to ${mode} mode${setAsGlobalDefault ? ' (and global default)' : ''}`);
+    logger.info('[Mode Change] Set conversation mode', {
+      phone,
+      mode,
+      isGlobalDefault: !!setAsGlobalDefault
+    });
     ok(res, { mode, globalDefaultUpdated: !!setAsGlobalDefault });
   } catch (err: any) {
     serverError(res, err);

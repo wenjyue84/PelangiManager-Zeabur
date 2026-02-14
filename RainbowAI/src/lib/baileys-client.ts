@@ -5,6 +5,10 @@ import { fileURLToPath } from 'url';
 import type { IncomingMessage, MessageType } from '../assistant/types.js';
 import { trackWhatsAppConnected, trackWhatsAppDisconnected, trackWhatsAppUnlinked } from './activity-tracker.js';
 import { notifyAdminDisconnection, notifyAdminUnlink, notifyAdminReconnect } from './admin-notifier.js';
+import { createModuleLogger } from './logger.js';
+
+const logger = createModuleLogger('Baileys');
+const managerLogger = createModuleLogger('WhatsAppManager');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.WHATSAPP_DATA_DIR || path.resolve(__dirname, '../../whatsapp-data');
@@ -92,10 +96,10 @@ class WhatsAppInstance {
         }
       }
       if (loaded > 0) {
-        console.log(`[Baileys:${this.id}] Loaded ${loaded} LID→phone mappings from auth state`);
+        logger.info('Loaded LID→phone mappings from auth state', { instanceId: this.id, count: loaded });
       }
     } catch (err: any) {
-      console.warn(`[Baileys:${this.id}] Failed to load LID mappings: ${err.message}`);
+      logger.warn('Failed to load LID mappings', { instanceId: this.id, error: err.message });
     }
   }
 
@@ -117,7 +121,7 @@ class WhatsAppInstance {
         if (typeof pnUser === 'string' && pnUser.length > 0) {
           const resolvedJid = `${pnUser}@s.whatsapp.net`;
           this.lidToPhone.set(normalized, resolvedJid); // cache it
-          console.log(`[Baileys:${this.id}] LID resolved from disk: ${normalized} → ${resolvedJid}`);
+          logger.info('LID resolved from disk', { instanceId: this.id, from: normalized, to: resolvedJid });
           return resolvedJid;
         }
       }
@@ -135,7 +139,7 @@ class WhatsAppInstance {
     // Defer notification to WhatsAppManager to avoid circular dependency
     setTimeout(() => {
       whatsappManager.notifyUnlinkedInstance(this.id, this.label).catch(err => {
-        console.error(`[Baileys:${this.id}] Failed to send unlink notification:`, err.message);
+        logger.error('Failed to send unlink notification', { instanceId: this.id, error: err.message });
       });
     }, 1000);
   }
@@ -164,7 +168,7 @@ class WhatsAppInstance {
 
       if (qr) {
         this.qr = qr;
-        console.log(`[Baileys:${this.id}] QR code available. Visit /admin/rainbow/dashboard to scan.`);
+        logger.info('QR code available. Visit /admin/rainbow/dashboard to scan.', { instanceId: this.id });
       }
 
       if (connection) this.state = connection;
@@ -175,9 +179,13 @@ class WhatsAppInstance {
           this.reconnectAttempts++;
           if (this.reconnectAttempts > WhatsAppInstance.MAX_RECONNECT_ATTEMPTS) {
             const reason = `code ${statusCode}, stopped after ${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS} attempts`;
-            console.warn(`[Baileys:${this.id}] ${reason}. Please visit dashboard to restart.`);
+            logger.warn(`${reason}. Please visit dashboard to restart.`, {
+              instanceId: this.id,
+              statusCode,
+              maxAttempts: WhatsAppInstance.MAX_RECONNECT_ATTEMPTS
+            });
             notifyAdminDisconnection(this.id, this.label, reason).catch(err => {
-              console.error(`[Baileys:${this.id}] Failed to notify admin of disconnection:`, err.message);
+              logger.error('Failed to notify admin of disconnection', { instanceId: this.id, error: err.message });
             });
             this.reconnectTimeout = null;
             return;
@@ -188,7 +196,13 @@ class WhatsAppInstance {
           const baseDelay = this.reconnectTimeout ? 5000 : (is408 ? 30000 : 2000);
           const delay = Math.min(baseDelay * this.reconnectAttempts, 60000);
 
-          console.log(`[Baileys:${this.id}] Disconnected (code: ${statusCode}), reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS})...`);
+          logger.info('Disconnected, reconnecting...', {
+            instanceId: this.id,
+            statusCode,
+            delayMs: delay,
+            attempt: this.reconnectAttempts,
+            maxAttempts: WhatsAppInstance.MAX_RECONNECT_ATTEMPTS
+          });
           trackWhatsAppDisconnected(this.id, `code ${statusCode}, reconnecting (${this.reconnectAttempts}/${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS})`);
 
           if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
@@ -197,7 +211,7 @@ class WhatsAppInstance {
             this.start();
           }, delay);
         } else {
-          console.error(`[Baileys:${this.id}] Logged out from WhatsApp (user unlinked). Remove auth dir and re-pair.`);
+          logger.error('Logged out from WhatsApp (user unlinked). Remove auth dir and re-pair.', { instanceId: this.id });
           trackWhatsAppUnlinked(this.id);
           // Mark as unlinked from WhatsApp side
           this.unlinkedFromWhatsApp = true;
@@ -221,12 +235,16 @@ class WhatsAppInstance {
         this.onFirstConnect?.(); // Persist firstConnectedAt in config if not yet set
         const user = (this.sock as any)?.user;
         const userPhone = user?.id?.split(':')[0] || '?';
-        console.log(`[Baileys:${this.id}] Connected: ${user?.name || 'Unknown'} (${userPhone})`);
+        logger.info('Connected', {
+          instanceId: this.id,
+          userName: user?.name || 'Unknown',
+          phone: userPhone
+        });
         trackWhatsAppConnected(this.id, user?.name, userPhone);
         // Notify admin of reconnection (only if this was a reconnect, not initial connect)
         if (wasReconnecting) {
           notifyAdminReconnect(this.id, this.label, userPhone).catch(err => {
-            console.error(`[Baileys:${this.id}] Failed to notify admin of reconnection:`, err.message);
+            logger.error('Failed to notify admin of reconnection', { instanceId: this.id, error: err.message });
           });
         }
       }
@@ -240,7 +258,7 @@ class WhatsAppInstance {
           const lidJid = jidNormalizedUser(contact.lid);
           if (!this.lidToPhone.has(lidJid)) {
             this.lidToPhone.set(lidJid, phoneJid);
-            console.log(`[Baileys:${this.id}] LID mapped: ${lidJid} → ${phoneJid}`);
+            logger.info('LID mapped', { instanceId: this.id, from: lidJid, to: phoneJid });
           }
         }
       }
@@ -262,7 +280,11 @@ class WhatsAppInstance {
           }
         }
         if (mapped > 0) {
-          console.log(`[Baileys:${this.id}] History sync: ${mapped} LID→phone mappings loaded (total: ${this.lidToPhone.size})`);
+          logger.info('History sync: LID→phone mappings loaded', {
+            instanceId: this.id,
+            mapped,
+            total: this.lidToPhone.size
+          });
         }
       }
     });
@@ -306,9 +328,9 @@ class WhatsAppInstance {
           // Resolve @lid JIDs to @s.whatsapp.net for reliable reply delivery
           const from = this.resolveToPhoneJid(remoteJid);
           if (from !== remoteJid) {
-            console.log(`[Baileys:${this.id}] Resolved LID: ${remoteJid} → ${from}`);
+            logger.info('Resolved LID', { instanceId: this.id, from: remoteJid, to: from });
           } else if (isLidUser(remoteJid)) {
-            console.warn(`[Baileys:${this.id}] Unresolved LID: ${remoteJid} (no phone mapping yet)`);
+            logger.warn('Unresolved LID (no phone mapping yet)', { instanceId: this.id, lid: remoteJid });
           }
 
           const incoming: IncomingMessage = {
@@ -326,7 +348,7 @@ class WhatsAppInstance {
             await this.messageHandler(incoming);
           }
         } catch (err: any) {
-          console.error(`[Baileys:${this.id}] Error processing incoming message:`, err.message);
+          logger.error('Error processing incoming message', { instanceId: this.id, error: err.message, stack: err.stack });
         }
       }
     });
@@ -354,7 +376,7 @@ class WhatsAppInstance {
     await this.sock.logout();
     this.state = 'close';
     this.qr = null;
-    console.log(`[Baileys:${this.id}] Logged out — session cleared`);
+    logger.info('Logged out — session cleared', { instanceId: this.id });
   }
 
   async sendTypingIndicator(jid: string): Promise<void> {
@@ -364,7 +386,7 @@ class WhatsAppInstance {
       await this.sock.sendPresenceUpdate('composing', resolvedJid);
     } catch (err: any) {
       // Non-fatal — typing indicator is best-effort
-      console.warn(`[Baileys:${this.id}] Typing indicator failed for ${resolvedJid}: ${err.message}`);
+      logger.warn('Typing indicator failed', { instanceId: this.id, jid: resolvedJid, error: err.message });
     }
   }
 
@@ -375,17 +397,21 @@ class WhatsAppInstance {
     // Resolve @lid JID to phone JID for reliable delivery
     const resolvedJid = this.resolveToPhoneJid(jid);
     if (resolvedJid !== jid) {
-      console.log(`[Baileys:${this.id}] Send: resolved ${jid} → ${resolvedJid}`);
+      logger.info('Send: resolved JID', { instanceId: this.id, from: jid, to: resolvedJid });
     }
     try {
       const result = await this.sock.sendMessage(resolvedJid, { text });
-      console.log(`[Baileys:${this.id}] Sent to ${resolvedJid}: ${text.slice(0, 60)}${text.length > 60 ? '...' : ''}`);
+      logger.info('Sent message', {
+        instanceId: this.id,
+        to: resolvedJid,
+        preview: text.slice(0, 60) + (text.length > 60 ? '...' : '')
+      });
       return result;
     } catch (err: any) {
-      console.error(`[Baileys:${this.id}] SEND FAILED to ${resolvedJid}: ${err.message}`);
+      logger.error('SEND FAILED', { instanceId: this.id, to: resolvedJid, error: err.message, stack: err.stack });
       // If we tried a @lid JID and it failed, the message won't be delivered
       if (isLidUser(resolvedJid)) {
-        console.error(`[Baileys:${this.id}] Cannot deliver to @lid JID — no phone mapping available`);
+        logger.error('Cannot deliver to @lid JID — no phone mapping available', { instanceId: this.id, jid: resolvedJid });
       }
       throw err;
     }
@@ -409,10 +435,16 @@ class WhatsAppInstance {
     try {
       const result = await this.sock.sendMessage(resolvedJid, content);
       const type = mimetype.startsWith('image/') ? 'image' : mimetype.startsWith('video/') ? 'video' : 'document';
-      console.log(`[Baileys:${this.id}] Sent ${type} to ${resolvedJid}: ${fileName}`);
+      logger.info('Sent media', { instanceId: this.id, type, to: resolvedJid, fileName });
       return result;
     } catch (err: any) {
-      console.error(`[Baileys:${this.id}] SEND MEDIA FAILED to ${resolvedJid}: ${err.message}`);
+      logger.error('SEND MEDIA FAILED', {
+        instanceId: this.id,
+        to: resolvedJid,
+        fileName,
+        error: err.message,
+        stack: err.stack
+      });
       throw err;
     }
   }
@@ -466,7 +498,7 @@ class WhatsAppManager {
 
   private async migrateFromSingleInstance(): Promise<void> {
     if (fs.existsSync(LEGACY_AUTH_DIR) && fs.readdirSync(LEGACY_AUTH_DIR).length > 0) {
-      console.log('[WhatsAppManager] Migrating legacy single instance to multi-instance config');
+      managerLogger.info('Migrating legacy single instance to multi-instance config');
       const config: InstancesFile = {
         instances: [{
           id: 'default',
@@ -481,7 +513,7 @@ class WhatsAppManager {
     } else {
       // Fresh install — empty config
       this.saveConfig({ instances: [] });
-      console.log('[WhatsAppManager] Fresh install — no instances configured');
+      managerLogger.info('Fresh install — no instances configured');
     }
   }
 
@@ -544,7 +576,7 @@ class WhatsAppManager {
       config.instances = config.instances.filter(i => i.id !== id);
       this.saveConfig(config);
     }
-    console.log(`[WhatsAppManager] Removed instance "${id}" (auth dir preserved)`);
+    managerLogger.info('Removed instance (auth dir preserved)', { instanceId: id });
   }
 
   /** Update display label for an instance (persisted + in-memory). No restart needed. */
@@ -674,7 +706,7 @@ class WhatsAppManager {
     for (const instance of this.instances.values()) {
       instance.setMessageHandler(handler);
     }
-    console.log('[WhatsAppManager] Message handler registered');
+    managerLogger.info('Message handler registered');
   }
 
   async notifyUnlinkedInstance(unlinkedId: string, unlinkedLabel: string): Promise<void> {
@@ -685,29 +717,29 @@ class WhatsAppManager {
     const unlinkedUser = (unlinkedInstance as any).sock?.user;
     const unlinkedPhone = unlinkedUser?.id?.split(':')[0];
     if (!unlinkedPhone) {
-      console.warn(`[WhatsAppManager] Cannot notify unlink: no phone number for instance "${unlinkedId}"`);
+      managerLogger.warn('Cannot notify unlink: no phone number for instance', { instanceId: unlinkedId });
       return;
     }
 
     // Try mainline first, then fallback to any connected instance
     let notifierInstance = this.instances.get(MAINLINE_ID);
     if (!notifierInstance || notifierInstance.state !== 'open') {
-      console.log(`[WhatsAppManager] Mainline "${MAINLINE_ID}" not available, finding fallback...`);
+      managerLogger.info('Mainline not available, finding fallback...', { mainlineId: MAINLINE_ID });
       // Find any connected instance except the unlinked one
       for (const instance of this.instances.values()) {
         if (instance.id !== unlinkedId && instance.state === 'open') {
           notifierInstance = instance;
-          console.log(`[WhatsAppManager] Using fallback instance: ${instance.id}`);
+          managerLogger.info('Using fallback instance', { fallbackId: instance.id });
           break;
         }
       }
     }
 
     if (!notifierInstance || notifierInstance.state !== 'open') {
-      console.error(`[WhatsAppManager] No connected instance available to send unlink notification for "${unlinkedId}"`);
+      managerLogger.error('No connected instance available to send unlink notification', { unlinkedId });
       // Still notify admin via admin notifier (will use any available instance)
       notifyAdminUnlink(unlinkedId, unlinkedLabel, unlinkedPhone).catch(err => {
-        console.error(`[WhatsAppManager] Failed to notify admin of unlink:`, err.message);
+        managerLogger.error('Failed to notify admin of unlink', { error: err.message });
       });
       return;
     }
@@ -720,14 +752,18 @@ class WhatsAppManager {
 
     try {
       await notifierInstance.sendMessage(`${unlinkedPhone}@s.whatsapp.net`, message);
-      console.log(`[WhatsAppManager] Sent unlink notification for "${unlinkedId}" via "${notifierInstance.id}"`);
+      managerLogger.info('Sent unlink notification', {
+        unlinkedId,
+        viaInstanceId: notifierInstance.id,
+        phone: unlinkedPhone
+      });
     } catch (err: any) {
-      console.error(`[WhatsAppManager] Failed to send unlink notification:`, err.message);
+      managerLogger.error('Failed to send unlink notification', { error: err.message, stack: err.stack });
     }
 
     // Also notify system admin
     notifyAdminUnlink(unlinkedId, unlinkedLabel, unlinkedPhone).catch(err => {
-      console.error(`[WhatsAppManager] Failed to notify admin of unlink:`, err.message);
+      managerLogger.error('Failed to notify admin of unlink', { error: err.message });
     });
   }
 

@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { configStore } from '../../assistant/config-store.js';
 import { circuitBreakerRegistry } from '../../assistant/circuit-breaker.js';
 import { rateLimitManager } from '../../assistant/rate-limit-manager.js';
+import { getKBHealth, isKBHealthy } from '../../assistant/knowledge-base.js';
 import type { IntentEntry, RoutingAction, RoutingData, WorkflowDefinition, AIProvider } from '../../assistant/config-store.js';
 import { deepMerge } from './utils.js';
 import { ok, badRequest, notFound, conflict, serverError } from './http-utils.js';
@@ -506,6 +507,26 @@ router.post('/rate-limit/reset/:providerId', (req: Request, res: Response) => {
 router.post('/rate-limit/reset-all', (_req: Request, res: Response) => {
   rateLimitManager.resetAll();
   ok(res, { status: 'all rate limits reset' });
+});
+
+// ─── Knowledge Base Health (Monitoring) ────────────────────────────────
+
+/**
+ * GET /api/rainbow/kb/health
+ * Returns knowledge base health status
+ */
+router.get('/kb/health', (_req: Request, res: Response) => {
+  const health = getKBHealth();
+  const healthy = isKBHealthy();
+
+  res.json({
+    healthy,
+    ...health,
+    status: healthy ? 'operational' : 'static_fallback',
+    message: healthy
+      ? 'Knowledge base loaded successfully'
+      : 'Knowledge base unavailable — using static fallback mode'
+  });
 });
 
 export default router;
