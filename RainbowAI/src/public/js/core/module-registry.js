@@ -189,6 +189,17 @@ import {
   saveInlineEdit
 } from '/public/js/modules/inline-edit.js';
 
+// Phase 22: Workflow Testing Module
+import {
+  loadWorkflowTestSteps,
+  resetWorkflowTest,
+  beginWorkflowTest,
+  executeWorkflowStep,
+  sendTestMessage,
+  appendTestMessage,
+  updateWorkflowTestSelect
+} from '/public/js/modules/workflow-testing.js';
+
 // ─── Expose to global scope ────────────────────────────────────────
 // Required by tabs.js and onclick handlers in HTML templates
 
@@ -298,3 +309,11 @@ window.loadStaticReplies = loadStaticReplies;
 // Phase 20: Inline Edit
 window.toggleInlineEdit = toggleInlineEdit;
 window.saveInlineEdit = saveInlineEdit;
+// Phase 22: Workflow Testing
+window.loadWorkflowTestSteps = loadWorkflowTestSteps;
+window.resetWorkflowTest = resetWorkflowTest;
+window.beginWorkflowTest = beginWorkflowTest;
+window.executeWorkflowStep = executeWorkflowStep;
+window.sendTestMessage = sendTestMessage;
+window.appendTestMessage = appendTestMessage;
+window.updateWorkflowTestSelect = updateWorkflowTestSelect;
