@@ -8,7 +8,7 @@
         <div class="flex flex-wrap gap-2">
           <input type="date" id="performance-date-from" class="text-sm border rounded-lg px-3 py-2">
           <input type="date" id="performance-date-to" class="text-sm border rounded-lg px-3 py-2">
-          <button onclick="refreshPerformanceData()" class="text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition font-medium">
+          <button onclick="refreshPerformanceData()" class="text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition font-medium" title="Reload feedback analytics for the selected date range">
             Apply Filter
           </button>
         </div>
@@ -63,7 +63,7 @@
 
           <!-- Row 2: Skip Intents -->
           <div>
-            <label class="block text-xs font-medium text-neutral-600 mb-2">Skip Feedback For (don't ask for these intents)</label>
+            <label class="block text-xs font-medium text-neutral-600 mb-2" title="Checked intents will never prompt guests with 'Was this helpful?' — useful for greetings, thanks, and other intents where feedback adds no value">Skip Feedback For (don't ask for these intents)</label>
             <div id="fb-skip-intents" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-1.5"></div>
           </div>
 

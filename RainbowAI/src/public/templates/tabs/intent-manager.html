@@ -19,7 +19,7 @@
       </div>
       <div class="bg-white border rounded-2xl p-4">
         <div class="text-sm text-neutral-500 mb-1">System</div>
-        <div class="text-xs font-mono text-neutral-600">Fuzzy + Semantic + LLM</div>
+        <div class="text-xs font-mono text-neutral-600">Regex + Fuzzy + Semantic + LLM</div>
       </div>
     </div>
 
@@ -86,7 +86,7 @@
         <span class="text-neutral-500">Current:</span>
         <span id="current-template-label" class="font-semibold text-primary-600">T3 Balanced</span>
         <span class="text-neutral-300">·</span>
-        <button onclick="saveCurrentAsCustom()" class="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+        <button onclick="saveCurrentAsCustom()" class="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1" title="Snapshot your current tier thresholds and model settings as a reusable custom template">
           <span>💾</span> Save as Custom
         </button>
       </div>
@@ -201,8 +201,8 @@
             <input type="checkbox" id="tier2-enabled" class="tier-toggle w-10 h-6 bg-neutral-200 rounded-full relative appearance-none cursor-pointer checked:bg-primary-500 transition" checked />
           </label>
           <div class="flex gap-2">
-            <button onclick="exportIntentData('json')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition">Export JSON</button>
-            <button onclick="exportIntentData('csv')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition">Export CSV</button>
+            <button onclick="exportIntentData('json')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition" title="Download all intents, keywords, and examples as a JSON file for backup or migration">Export JSON</button>
+            <button onclick="exportIntentData('csv')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition" title="Download all keywords as a CSV spreadsheet (one row per keyword per language)">Export CSV</button>
           </div>
         </div>
       </div>

@@ -18,9 +18,15 @@ export function renderContextWindowsCard(cw) {
     + '</div>'
     + '</div>'
     + '<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">'
-    + renderInput('cw-classify', 'Classification', vals.classify, 'T4 intent detection + workflow eval')
-    + renderInput('cw-reply', 'Reply Generation', vals.reply, 'Reply-only after fast-tier classify')
-    + renderInput('cw-combined', 'Combined (Classify + Reply)', vals.combined, 'T5 full classify+reply, chat, smart fallback')
+    + renderInput('cw-classify', 'Classification', vals.classify,
+        'T4 intent detection + workflow eval',
+        'How many past messages the LLM sees when deciding what the guest is asking about (e.g. pricing, wifi, complaint). Lower is faster — intent detection rarely needs deep history. Used by: classifyIntent, classifyOnly, evaluateWorkflowStep')
+    + renderInput('cw-reply', 'Reply Generation', vals.reply,
+        'Reply-only after fast-tier classify',
+        'How many past messages the LLM sees when writing a reply after the intent is already known from a fast tier (regex/fuzzy/semantic). Needs more context than classification for conversational continuity. Used by: generateReplyOnly')
+    + renderInput('cw-combined', 'Combined', vals.combined,
+        'Classify + reply in one LLM call',
+        'How many past messages the LLM sees when it must both figure out the intent AND write a reply in a single call. This happens when all fast tiers (T1-T3) fail. Needs the most context since it does double duty. Used by: classifyAndRespond, chat, smartFallback')
     + '</div>'
     + '<div class="flex items-center gap-3 mt-4">'
     + '<button type="button" onclick="saveContextWindows()" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-xl transition">Save</button>'
@@ -30,9 +36,20 @@ export function renderContextWindowsCard(cw) {
     + '</div>';
 }
 
-function renderInput(id, label, value, hint) {
+function renderInput(id, label, value, hint, tooltip) {
   return '<div>'
-    + '<label for="' + id + '" class="block text-sm font-medium text-neutral-700 mb-1">' + label + '</label>'
+    + '<label for="' + id + '" class="flex items-center gap-1.5 text-sm font-medium text-neutral-700 mb-1">'
+    + label
+    + '<span class="relative group cursor-help">'
+    + '<svg class="w-3.5 h-3.5 text-neutral-400 group-hover:text-primary-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">'
+    + '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+    + '</svg>'
+    + '<span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-neutral-800 text-white text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">'
+    + tooltip
+    + '<span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-800"></span>'
+    + '</span>'
+    + '</span>'
+    + '</label>'
     + '<input type="number" id="' + id + '" value="' + value + '" min="1" max="50" step="1"'
     + ' class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition" />'
     + '<p class="text-[11px] text-neutral-400 mt-1">' + hint + '</p>'

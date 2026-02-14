@@ -3569,6 +3569,17 @@ body.lc-maximized .lc-header-actions #lc-maximize-btn.active {
   color: white;
 }
 
+.wa-floating-status.wa-connecting {
+  background: #f59e0b;
+  color: white;
+  animation: wa-pulse 2s ease-in-out infinite;
+}
+
+@keyframes wa-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 .wa-floating-status .wa-icon {
   font-size: 16px;
   line-height: 1;

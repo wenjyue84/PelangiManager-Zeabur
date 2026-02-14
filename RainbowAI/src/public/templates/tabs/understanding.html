@@ -19,7 +19,7 @@
       </div>
       <div class="bg-white border rounded-2xl p-4">
         <div class="text-sm text-neutral-500 mb-1">System</div>
-        <div class="text-xs font-mono text-neutral-600">Fuzzy + Semantic + LLM</div>
+        <div class="text-xs font-mono text-neutral-600">Regex + Fuzzy + Semantic + LLM</div>
       </div>
     </div>
 
@@ -80,7 +80,7 @@
         <span class="current-label">Current:</span>
         <span id="current-template-label" class="current-value">T3 Balanced</span>
         <span class="text-neutral-300">·</span>
-        <button type="button" onclick="saveCurrentAsCustom()" class="save-custom">
+        <button type="button" onclick="saveCurrentAsCustom()" class="save-custom" title="Snapshot your current tier thresholds and model settings as a reusable custom template">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
           Save as Custom
         </button>
@@ -141,7 +141,7 @@
           </button>
           <label class="flex items-center gap-2 cursor-pointer">
             <span class="text-sm text-neutral-500">Enable</span>
-            <input type="checkbox" id="tier1-enabled" class="tier-toggle w-10 h-6 bg-neutral-200 rounded-full relative appearance-none cursor-pointer checked:bg-primary-500 transition" checked />
+            <input type="checkbox" id="tier1-enabled" class="tier-toggle w-10 h-6 bg-neutral-200 rounded-full relative appearance-none cursor-pointer checked:bg-primary-500 transition" checked title="Disabling skips regex emergency detection — only disable if you have no emergency patterns" />
           </label>
         </div>
       </div>
@@ -200,8 +200,8 @@
             <input type="checkbox" id="tier2-enabled" class="tier-toggle w-10 h-6 bg-neutral-200 rounded-full relative appearance-none cursor-pointer checked:bg-primary-500 transition" checked />
           </label>
           <div class="flex gap-2">
-            <button onclick="exportIntentData('json')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition">Export JSON</button>
-            <button onclick="exportIntentData('csv')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition">Export CSV</button>
+            <button onclick="exportIntentData('json')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition" title="Download all intents, keywords, and examples as a JSON file for backup or migration">Export JSON</button>
+            <button onclick="exportIntentData('csv')" class="text-xs bg-neutral-500 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-2xl transition" title="Download all keywords as a CSV spreadsheet (one row per keyword per language)">Export CSV</button>
           </div>
         </div>
       </div>
@@ -397,7 +397,7 @@
           </button>
           <label class="flex items-center gap-2 cursor-pointer">
             <span id="tier4-status-label" class="text-sm text-neutral-500">Enabled</span>
-            <input type="checkbox" id="tier4-enabled" class="tier-toggle w-10 h-6 bg-neutral-200 rounded-full relative appearance-none cursor-pointer checked:bg-primary-500 transition" checked />
+            <input type="checkbox" id="tier4-enabled" class="tier-toggle w-10 h-6 bg-neutral-200 rounded-full relative appearance-none cursor-pointer checked:bg-primary-500 transition" checked title="If disabled, messages that don't match T1-T3 will be classified as 'Others' with no AI attempt" />
           </label>
         </div>
       </div>

@@ -16,7 +16,8 @@
       📱 Live Simulation
     </button>
     <button onclick="testIntentClassifier()"
-      class="px-4 py-3 text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white transition flex items-center gap-2">
+      class="px-4 py-3 text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white transition flex items-center gap-2"
+      title="Run automated test scenarios to verify intent detection accuracy across all tiers">
       <span>🎯</span>
       <span>Test Intent Classifier</span>
     </button>
@@ -57,17 +58,20 @@
             <div id="export-dropdown-menu"
               class="hidden absolute right-0 mt-1 w-72 bg-white border border-neutral-300 rounded-xl shadow-lg z-50">
               <button onclick="exportAutotestReport(lastAutotestResults, 'all')"
-                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 rounded-t-xl">
+                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 rounded-t-xl"
+                title="HTML report with every test scenario — pass, warning, and fail">
                 <span class="text-lg">📊</span>
                 <span>Export All Results</span>
               </button>
               <button onclick="exportAutotestReport(lastAutotestResults, 'warnings-failed')"
-                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-200">
+                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-200"
+                title="Only scenarios that need attention — wrong intent or low confidence">
                 <span class="text-lg">⚠️</span>
                 <span>Export Warnings & Failed Only</span>
               </button>
               <button onclick="exportAutotestReport(lastAutotestResults, 'failed')"
-                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-200 rounded-b-xl">
+                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-200 rounded-b-xl"
+                title="Only scenarios where the wrong intent was detected">
                 <span class="text-lg">❌</span>
                 <span>Export Failed Only</span>
               </button>
@@ -97,19 +101,22 @@
                 <span id="run-all-count" class="ml-auto text-neutral-400 text-xs">0</span>
               </button>
               <button type="button" onclick="runAutotestWithFilter('static_reply'); closeRunAllDropdown();"
-                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-100">
+                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-100"
+                title="Test only intents routed to pre-written responses (fastest, no AI calls)">
                 <span>📌</span>
                 <span>Static Reply only</span>
                 <span id="run-static-count" class="ml-auto text-neutral-400 text-xs">0</span>
               </button>
               <button type="button" onclick="runAutotestWithFilter('workflow'); closeRunAllDropdown();"
-                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-100">
+                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-100"
+                title="Test only intents that trigger multi-step workflows (booking, complaints, etc.)">
                 <span>🔄</span>
                 <span>Workflow only</span>
                 <span id="run-workflow-count" class="ml-auto text-neutral-400 text-xs">0</span>
               </button>
               <button type="button" onclick="runAutotestWithFilter('llm_reply'); closeRunAllDropdown();"
-                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-100 rounded-b-xl">
+                class="w-full text-left text-sm px-4 py-2.5 hover:bg-neutral-50 transition flex items-center gap-2 border-t border-neutral-100 rounded-b-xl"
+                title="Test only intents that need AI-generated responses (slowest, uses API calls)">
                 <span>🤖</span>
                 <span>LLM Reply only</span>
                 <span id="run-llm-count" class="ml-auto text-neutral-400 text-xs">0</span>
@@ -247,7 +254,8 @@
             <span>History</span>
           </button>
           <button onclick="toggleAutotest()"
-            class="text-sm bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-2xl transition">Autotest</button>
+            class="text-sm bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-2xl transition"
+            title="Switch to automated testing — run 58 scenarios across all guest journey phases at once">Autotest</button>
           <button onclick="clearCurrentChat()"
             class="text-sm bg-white border border-neutral-300 hover:bg-neutral-50 px-3 py-1.5 rounded-2xl transition">Clear
             Chat</button>
@@ -349,7 +357,7 @@
               <span class="rc-spin-icon">⟳</span>
               <span id="rc-last-refresh">Updated just now</span>
             </span>
-            <button class="rc-dev-toggle" id="rc-dev-toggle" onclick="toggleDevMode()" title="Toggle Developer Mode">
+            <button class="rc-dev-toggle" id="rc-dev-toggle" onclick="toggleDevMode()" title="Show raw classification data, tier info, and message search for debugging">
               🔧 Dev
             </button>
             <!-- Message search toggle (visible in dev mode) -->
@@ -358,7 +366,7 @@
               🔍 Search
             </button>
             <button class="rc-translate-toggle" id="rc-translate-toggle" onclick="toggleTranslateMode()"
-              title="Toggle Translation Mode">
+              title="Auto-translate your replies into the guest's language before sending">
               🌐 Translate
             </button>
             <select class="rc-lang-selector" id="rc-lang-selector" title="Target Language" style="display:none;"

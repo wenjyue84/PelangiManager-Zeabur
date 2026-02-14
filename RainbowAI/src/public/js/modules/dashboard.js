@@ -134,9 +134,20 @@ export async function loadDashboard() {
           lastConnectedText = inst.state === 'open' ? '<span class="text-success-600 font-medium">Online now</span>' : 'Never connected';
         }
 
-        const statusDot = inst.state === 'open' ? 'bg-success-400' : inst.unlinkedFromWhatsApp ? 'bg-orange-500' : 'bg-neutral-300';
-        const statusText = inst.state === 'open' ? 'Connected' : inst.unlinkedFromWhatsApp ? 'Unlinked' : 'Disconnected';
-        const statusColor = inst.state === 'open' ? 'text-success-600' : inst.unlinkedFromWhatsApp ? 'text-orange-600' : 'text-neutral-500';
+        const isConnecting = inst.state === 'connecting';
+        const statusDot = inst.state === 'open' ? 'bg-success-400' : isConnecting ? 'bg-amber-400 animate-pulse' : inst.unlinkedFromWhatsApp ? 'bg-orange-500' : 'bg-neutral-300';
+        const statusColor = inst.state === 'open' ? 'text-success-600' : isConnecting ? 'text-amber-600' : inst.unlinkedFromWhatsApp ? 'text-orange-600' : 'text-neutral-500';
+
+        // Track connecting start time per instance
+        const timerKey = '_dashConnecting_' + inst.id;
+        if (isConnecting) {
+          if (!window[timerKey]) window[timerKey] = Date.now();
+        } else {
+          delete window[timerKey];
+        }
+        const statusText = inst.state === 'open' ? 'Connected' : isConnecting ? 'Connecting...' : inst.unlinkedFromWhatsApp ? 'Unlinked' : 'Disconnected';
+        const timerSpanId = 'dash-connecting-timer-' + inst.id;
+
         const firstConnectedStr = inst.firstConnectedAt
           ? new Date(inst.firstConnectedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
           : '—';
@@ -149,6 +160,7 @@ export async function loadDashboard() {
                 <div class="flex items-center gap-2">
                   <span class="font-medium text-neutral-800 text-sm">${esc(inst.label || inst.id)}</span>
                   <span class="text-xs ${statusColor}">${statusText}</span>
+                  ${isConnecting ? '<span id="' + timerSpanId + '" class="text-[10px] text-amber-500 font-mono"></span>' : ''}
                 </div>
                 <div class="text-xs text-neutral-500">${esc(formattedPhone)}${inst.user?.name ? ' — ' + esc(inst.user.name) : ''}</div>
                 <div class="text-xs text-neutral-400">Last: ${lastConnectedText}</div>
@@ -162,6 +174,27 @@ export async function loadDashboard() {
             </div>
           </div>`;
       }).join('');
+
+      // Start connecting timers for any instances in connecting state
+      if (window._dashConnectingTimers) {
+        window._dashConnectingTimers.forEach(id => clearInterval(id));
+      }
+      window._dashConnectingTimers = [];
+      waInstances.filter(i => i.state === 'connecting').forEach(inst => {
+        const timerKey = '_dashConnecting_' + inst.id;
+        const spanId = 'dash-connecting-timer-' + inst.id;
+        const startTime = window[timerKey] || Date.now();
+        const updateTimer = () => {
+          const el = document.getElementById(spanId);
+          if (!el) return;
+          const secs = Math.floor((Date.now() - startTime) / 1000);
+          if (secs < 60) { el.textContent = secs + 's'; return; }
+          const mins = Math.floor(secs / 60);
+          el.textContent = mins + 'm ' + (secs % 60 < 10 ? '0' : '') + (secs % 60) + 's';
+        };
+        updateTimer();
+        window._dashConnectingTimers.push(setInterval(updateTimer, 1000));
+      });
     }
 
     // Update AI Model Status (providers are under statusData.ai.providers)

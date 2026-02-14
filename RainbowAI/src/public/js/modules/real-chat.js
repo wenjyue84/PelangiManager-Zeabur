@@ -36,6 +36,8 @@ const RealChat = (function () {
   let _rcLastLog = null;  // Last fetched conversation log (for edit modal)
   let _rcWaStatusPoll = null;
   let _rcWaWasConnected = null;  // for one-time disconnect alert
+  let _rcConnectingStartedAt = null;
+  let _rcConnectingTimerInterval = null;
   let _rcSelectedFile = null;  // { file: File, type: 'photo'|'document' }
   let _rcLastRefreshAt = Date.now(); // For refresh timestamp display
   let _rcSearchOpen = false;
@@ -165,23 +167,57 @@ const RealChat = (function () {
 
   // ─── WhatsApp connection status (same as Live Chat) ───────────────
 
+  function rcFormatElapsed(startTime) {
+    const secs = Math.floor((Date.now() - startTime) / 1000);
+    if (secs < 60) return secs + 's';
+    const mins = Math.floor(secs / 60);
+    return mins + 'm ' + (secs % 60 < 10 ? '0' : '') + (secs % 60) + 's';
+  }
+
+  function startRcConnectingTimer(textEl) {
+    if (_rcConnectingTimerInterval) clearInterval(_rcConnectingTimerInterval);
+    _rcConnectingTimerInterval = setInterval(() => {
+      if (_rcConnectingStartedAt && textEl) {
+        textEl.textContent = 'Connecting... ' + rcFormatElapsed(_rcConnectingStartedAt);
+      }
+    }, 1000);
+  }
+
+  function stopRcConnectingTimer() {
+    if (_rcConnectingTimerInterval) {
+      clearInterval(_rcConnectingTimerInterval);
+      _rcConnectingTimerInterval = null;
+    }
+    _rcConnectingStartedAt = null;
+  }
+
   function updateRcConnectionStatus(statusData) {
     const bar = document.getElementById('rc-wa-status-bar');
     if (!bar) return;
     const instances = (statusData && statusData.whatsappInstances) || [];
     const connected = instances.some(i => i.state === 'open');
-    bar.classList.remove('wa-connected', 'wa-disconnected');
-    bar.classList.add(connected ? 'wa-connected' : 'wa-disconnected');
+    const connecting = !connected && instances.some(i => i.state === 'connecting');
+    bar.classList.remove('wa-connected', 'wa-disconnected', 'wa-connecting');
+    bar.classList.add(connected ? 'wa-connected' : connecting ? 'wa-connecting' : 'wa-disconnected');
     const text = bar.querySelector('.wa-connection-text');
     if (text) {
-      text.textContent = connected ? 'WhatsApp Connected' : 'Disconnected';
+      if (connected) {
+        stopRcConnectingTimer();
+        text.textContent = 'WhatsApp Connected';
+      } else if (connecting) {
+        if (!_rcConnectingStartedAt) _rcConnectingStartedAt = Date.now();
+        text.textContent = 'Connecting... ' + rcFormatElapsed(_rcConnectingStartedAt);
+        startRcConnectingTimer(text);
+      } else {
+        stopRcConnectingTimer();
+        text.textContent = 'Disconnected';
+      }
     }
-    // removed link logic
-    if (_rcWaWasConnected === true && !connected) {
+    if (_rcWaWasConnected === true && !connected && !connecting) {
       _rcWaWasConnected = false;
       alert('WhatsApp disconnected. Messages cannot be sent. Check Connect \u2192 Dashboard or scan QR at /admin/whatsapp-qr.');
-    } else {
-      _rcWaWasConnected = connected;
+    } else if (connected) {
+      _rcWaWasConnected = true;
     }
   }
 
