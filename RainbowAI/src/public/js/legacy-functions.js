@@ -1,20 +1,8 @@
 // Note: Core + High-isolation modules (Testing, Real Chat, KB Editor) loaded from external files
 // Remaining inline code will be refactored in phases 4-6
 
-// ─── Modal helpers ──────────────────────────────────────────────────
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-// ─── Reload Config ──────────────────────────────────────────────────
-async function reloadConfig() {
-  try {
-    await api('/reload', { method: 'POST' });
-    toast('Config reloaded from disk');
-    const activeTab = document.querySelector('.tab-active')?.dataset.tab || 'dashboard';
-    loadTab(activeTab);
-  } catch (e) { toast(e.message, 'error'); }
-}
-
-
+// ═════════════════════════════════════════════════════════════════════
+// Global Helpers (closeModal, reloadConfig) — EXTRACTED to modules/global-helpers.js (Phase 26)
 // ═════════════════════════════════════════════════════════════════════
 // Status Tab — EXTRACTED to modules/status.js (Phase 18)
 // ═════════════════════════════════════════════════════════════════════

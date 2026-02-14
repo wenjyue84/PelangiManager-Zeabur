@@ -6,6 +6,9 @@
  * but all new modules are ES6 modules. This file bridges the two worlds.
  */
 
+// Phase 26: Global Helpers Module
+import { closeModal, reloadConfig } from '/public/js/modules/global-helpers.js';
+
 // Phase 1: Trivial Loaders
 import { loadWhatsappAccounts } from '/public/js/modules/whatsapp-accounts.js';
 import { loadUnderstanding } from '/public/js/modules/understanding.js';
@@ -237,6 +240,9 @@ import {
 // ─── Expose to global scope ────────────────────────────────────────
 // Required by tabs.js and onclick handlers in HTML templates
 
+// Phase 26: Global Helpers
+window.closeModal = closeModal;
+window.reloadConfig = reloadConfig;
 window.loadWhatsappAccounts = loadWhatsappAccounts;
 window.loadUnderstanding = loadUnderstanding;
 window.loadPerformance = loadPerformance;
