@@ -2,7 +2,7 @@
 
 ## Address
 **Pelangi Capsule Hostel**
-26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru
+26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia
 
 ## Navigate Here
 https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb
@@ -17,4 +17,4 @@ https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb
 
 ## Trouble Getting In?
 If the door doesn't open or you have any issues, contact us immediately:
-- WhatsApp: +60 12-708 8789 (Jay) or +60 16-762 0815 (Alston)
+- WhatsApp: +60127088789 (Jay) or +60167620815 (Alston)

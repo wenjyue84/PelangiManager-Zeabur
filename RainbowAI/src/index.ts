@@ -18,25 +18,52 @@ import { getWhatsAppStatus } from './lib/baileys-client.js';
 import { startBaileysWithSupervision } from './lib/baileys-supervisor.js';
 import adminRoutes from './routes/admin/index.js';
 import { initFeedbackSettings } from './lib/init-feedback-settings.js';
+import { initAdminNotificationSettings } from './lib/admin-notification-settings.js';
 import { setupHotReload, HOT_RELOAD_SCRIPT } from './lib/hot-reload.js';
+import { configStore } from './assistant/config-store.js';
 
 const __filename_main = fileURLToPath(import.meta.url);
 const __dirname_main = dirname(__filename_main);
 
-// Load environment variables
+// Single source for AI keys (OPENROUTER_API_KEY, etc.): RainbowAI/.env. Then cwd so repo root .env can add vars without overriding.
+dotenv.config({ path: join(__dirname_main, '..', '.env') });
 dotenv.config();
+
+// CRITICAL: Initialize configStore BEFORE mounting admin routes
+// This prevents "Cannot read properties of undefined" errors when API endpoints are called before WhatsApp init completes
+try {
+  configStore.init();
+  console.log('[Startup] ConfigStore initialized successfully');
+} catch (err: any) {
+  console.error('[Startup] Failed to initialize ConfigStore:', err.message);
+  console.error('[Startup] Admin API may not function correctly until config files are fixed');
+}
 
 const app = express();
 const PORT = parseInt(process.env.MCP_SERVER_PORT || '3002', 10);
 
+// Disable ETags to prevent stale cache on normal refresh
+app.set('etag', false);
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Allow up to 10MB for long messages/conversations
+
+// Error handler for payload too large
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err.type === 'entity.too.large') {
+    res.status(413).json({ error: 'Message payload too large. Maximum size is 10MB.' });
+    return;
+  }
+  next(err);
+});
 
 // Serve static assets for Rainbow dashboard modules with no-cache headers for development
 app.use(
   '/public',
   express.static(join(__dirname_main, 'public'), {
+    etag: false,
+    lastModified: false,
     setHeaders: (res) => {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
@@ -58,6 +85,10 @@ app.get('/health', (req, res) => {
 
 function getDashboardHtml(): string {
   let html = readFileSync(join(__dirname_main, 'public', 'rainbow-admin.html'), 'utf-8');
+  // Cache-bust all local JS/CSS URLs with a fresh timestamp (mimics Vite's content hashing)
+  // This forces the browser to fetch fresh files on every page load, preventing stale cache
+  const v = Date.now();
+  html = html.replace(/(src|href)="(\/public\/[^"]+\.(js|css))"/g, `$1="$2?v=${v}"`);
   if (process.env.NODE_ENV !== 'production') {
     html = html.replace('</body>', HOT_RELOAD_SCRIPT + '\n</body>');
   }
@@ -178,7 +209,28 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     // Initialize feedback settings defaults
     await initFeedbackSettings();
 
+    // Initialize admin notification settings
+    await initAdminNotificationSettings();
+
     // Initialize WhatsApp (Baileys) with crash isolation supervisor
     await startBaileysWithSupervision();
   });
 });
+
+// Graceful shutdown handlers
+const shutdown = (signal: string) => {
+  console.log(`\n[SHUTDOWN] Received ${signal}. Closing server...`);
+  server.close(() => {
+    console.log('[SHUTDOWN] HTTP server closed.');
+    process.exit(0);
+  });
+
+  // Force exit if server.close() hangs
+  setTimeout(() => {
+    console.error('[SHUTDOWN] Force exiting...');
+    process.exit(1);
+  }, 5000);
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

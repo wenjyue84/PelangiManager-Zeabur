@@ -18,7 +18,7 @@
           "message": {
             "en": "How many guests will be staying?",
             "ms": "Berapa orang tetamu?",
-            "zh": "?????????"
+            "zh": "请问有几位客人入住？"
           },
           "waitForReply": true
         },
@@ -70,23 +70,14 @@
         {
           "id": "s1",
           "message": {
-            "en": "Great! I'll help you with the check-in process. 🎉 Let me collect some information.",
-            "ms": "Baik! Saya akan bantu anda check-in. 🎉 Biar saya kumpul maklumat.",
-            "zh": "太好了！我会帮您办理入住。🎉 让我收集一些信息。"
-          },
-          "waitForReply": false
-        },
-        {
-          "id": "s2",
-          "message": {
-            "en": "Have you already arrived at Pelangi Capsule Hostel, or are you planning to come?",
-            "ms": "Anda sudah sampai di Pelangi Capsule Hostel, atau masih dalam perjalanan?",
-            "zh": "您已经到达Pelangi胶囊旅舍了吗，还是正在路上？"
+            "en": "Great! I'll help you with the check-in process. Welcome! 🎉 Have you already arrived at Pelangi Capsule Hostel?",
+            "ms": "Baik! Saya akan bantu anda dengan proses check-in. Selamat datang! 🎉 Anda sudah sampai di hostel kami?",
+            "zh": "太好了！我会帮您办理入住手续。欢迎！🎉 您已经到达我们的旅舍了吗？"
           },
           "waitForReply": true
         },
         {
-          "id": "s3",
+          "id": "s2",
           "message": {
             "en": "Perfect! What is your full name as per your passport or IC?",
             "ms": "Baik! Apakah nama penuh anda seperti dalam pasport atau IC?",
@@ -95,7 +86,7 @@
           "waitForReply": true
         },
         {
-          "id": "s4",
+          "id": "s3",
           "message": {
             "en": "Thank you! Please upload a photo of your passport or IC for registration.",
             "ms": "Terima kasih! Sila upload gambar pasport atau IC anda untuk pendaftaran.",
@@ -104,7 +95,7 @@
           "waitForReply": true
         },
         {
-          "id": "s5",
+          "id": "s4",
           "message": {
             "en": "What is your check-in date? (e.g., 15 Feb 2026)",
             "ms": "Apakah tarikh check-in anda? (contoh: 15 Feb 2026)",
@@ -113,7 +104,7 @@
           "waitForReply": true
         },
         {
-          "id": "s6",
+          "id": "s5",
           "message": {
             "en": "What is your check-out date? (e.g., 17 Feb 2026)",
             "ms": "Apakah tarikh check-out anda? (contoh: 17 Feb 2026)",
@@ -122,7 +113,7 @@
           "waitForReply": true
         },
         {
-          "id": "s7",
+          "id": "s6",
           "message": {
             "en": "Great! Let me check available capsules for you... Checking our system now. 🔍",
             "ms": "Baik! Biar saya check capsule yang ada untuk anda... Sedang semak sistem. 🔍",
@@ -134,7 +125,7 @@
           }
         },
         {
-          "id": "s8",
+          "id": "s7",
           "message": {
             "en": "Good news! Available capsules: {{availableCapsules}} 🎊\n\nI'm forwarding your details to our admin at +60127088789 who will assign you a capsule and send you the door password. You'll receive confirmation shortly!",
             "ms": "Berita baik! Capsule tersedia: {{availableCapsules}} 🎊\n\nSaya hantar maklumat anda ke admin +60127088789 untuk assign capsule dan hantar password pintu. Anda akan terima konfirmasi tidak lama lagi!",
@@ -143,7 +134,7 @@
           "waitForReply": false
         },
         {
-          "id": "s9",
+          "id": "s8",
           "message": {
             "en": "Forwarding your check-in details to admin now...",
             "ms": "Menghantar butiran check-in anda ke admin sekarang...",
@@ -155,7 +146,7 @@
           }
         },
         {
-          "id": "s10",
+          "id": "s9",
           "message": {
             "en": "✅ Check-in details sent to admin! They will confirm your capsule assignment shortly.",
             "ms": "✅ Butiran check-in dihantar ke admin! Mereka akan confirm capsule anda tidak lama lagi.",
@@ -204,6 +195,15 @@
             "zh": "太好了！新山有很多精彩景点！🎡🏖️ 以下是我们旅舍附近的热门目的地：\n\n🎢 **乐高乐园** (25分钟车程) - 马来西亚第一个国际主题公园！\n\n🏖️ **迪沙鲁海滩** (1小时) - 25公里美丽海岸线，适合游泳和水上运动\n\n🕌 **苏丹阿布峇卡清真寺** (15分钟) - 山顶清真寺，景色壮观\n\n🛍️ **新山城市广场** (10分钟) - 顶级购物和餐饮目的地\n\n🌊 **丹加湾** (20分钟) - 海滨天堂，日落美景和海鲜美食\n\n🐯 **新山动物园** (25分钟) - 新装修，各种野生动物\n\n🏛️ **华人文物馆** (12分钟) - 了解华人移民历史\n\n🙏 **玻璃兴都庙** (15分钟) - 壮观的玻璃兴都庙\n\n🌐 更多信息: https://pelangicapsulehostel.com/\n\n需要这些地方的具体路线或推荐吗？"
           },
           "waitForReply": true
+        },
+        {
+          "id": "s2",
+          "message": {
+            "en": "Great choice! 🚗 Here's how to get there from our hostel:\n\nThe easiest way is to grab a **Grab ride** (Malaysia's ride-hailing app) directly from our hostel. Just enter the destination and you'll be on your way!\n\n📍 You can also search on **Google Maps** from our address: *Jalan Dato Haji Hassan, Johor Bahru*\n\n🚌 Public transport options are also available — our staff can help you with bus routes.\n\n💡 **Pro tip:** Ask our front desk for the latest transport advice and any discount deals for popular attractions!\n\nWould you like help with anything else? 😊",
+            "ms": "Pilihan bagus! 🚗 Ini cara ke sana dari hostel kami:\n\nCara paling mudah ialah guna **Grab** terus dari hostel kami. Masukkan destinasi dan anda boleh bergerak!\n\n📍 Boleh juga cari di **Google Maps** dari alamat kami: *Jalan Dato Haji Hassan, Johor Bahru*\n\n🚌 Pengangkutan awam juga ada — staf kami boleh bantu dengan laluan bas.\n\n💡 **Tip:** Tanya kaunter depan untuk nasihat transport terkini dan diskaun untuk tempat popular!\n\nNak bantuan lain? 😊",
+            "zh": "好选择！🚗 从我们旅舍出发的路线：\n\n最简单的方式是从旅舍直接叫一辆 **Grab**（马来西亚打车软件）。输入目的地就可以出发！\n\n📍 也可以在 **Google Maps** 上搜索，从我们的地址出发：*Jalan Dato Haji Hassan, Johor Bahru*\n\n🚌 也有公共交通选择 — 我们的工作人员可以帮您了解巴士路线。\n\n💡 **小贴士：** 问前台获取最新交通建议和热门景点折扣！\n\n需要其他帮助吗？😊"
+          },
+          "waitForReply": false
         }
       ]
     },
@@ -256,9 +256,9 @@
         {
           "id": "s5",
           "message": {
-            "en": "✅ Priority complaint sent to management. They will contact you within 15 minutes to resolve this. In the meantime, is there anything else I can help you with?",
-            "ms": "✅ Aduan keutamaan dihantar ke pengurusan. Mereka akan hubungi anda dalam 15 minit untuk selesaikan. Sementara itu, ada apa-apa lagi saya boleh bantu?",
-            "zh": "✅ 优先投诉已发送给管理层。他们将在15分钟内与您联系解决。同时，还有其他我能帮您的吗？"
+            "en": "✅ Priority complaint sent to management staff (+60127088789). They will contact you shortly to resolve this. In the meantime, is there anything else I can help you with?",
+            "ms": "✅ Aduan keutamaan dihantar ke staff pengurusan (+60127088789). Mereka akan hubungi anda tidak lama lagi untuk selesaikan. Sementara itu, ada apa-apa lagi saya boleh bantu?",
+            "zh": "✅ 优先投诉已发送给管理人员 (+60127088789)。他们会尽快与您联系解决。同时，还有其他我能帮您的吗？"
           },
           "waitForReply": true
         }
@@ -271,16 +271,16 @@
         {
           "id": "s1",
           "message": {
-            "en": "🚨 I'm very sorry to hear about this theft incident. Your safety and security are our highest priority. I'm taking immediate action.",
-            "ms": "🚨 Saya sangat kesal mendengar insiden kecurian ini. Keselamatan anda adalah keutamaan tertinggi kami. Saya ambil tindakan segera.",
-            "zh": "🚨 很抱歉听到这起盗窃事件。您的安全是我们的最高优先级。我立即采取行动。"
+            "en": "🚨 I'm very sorry to hear about this. We take **security** seriously. If items are missing from the **safe**, we'll treat this as a **report** and may need an **inspection**. We'll help you report the incident and involve security or police if needed. I'm taking immediate action and connecting you with our team.",
+            "ms": "🚨 Saya sangat kesal mendengar ini. Kami mengambil **keselamatan** serius. Jika barang hilang dari **peti besi**, kami akan anggap ini sebagai **laporan** dan mungkin perlukan **pemeriksaan**. Kami akan bantu anda buat laporan dan libatkan pihak keselamatan/polis jika perlu. Saya ambil tindakan segera.",
+            "zh": "🚨 很抱歉听到这件事。我们非常重视**安全**。如果**保险箱**里的物品不见了，我们会按**报告**处理并可能安排**检查**。我们将协助您报案，必要时联系安保或警方。我立即采取行动并为您联系我们的团队。"
           },
           "waitForReply": false
         },
         {
           "id": "s2",
           "message": {
-            "en": "What item(s) were stolen? Please provide details (e.g., phone, wallet, laptop, etc.)",
+            "en": "What item(s) were stolen or missing? Please provide details (e.g., phone, wallet, laptop, jewelry, etc.)",
             "ms": "Barang apa yang telah dicuri? Sila beri butiran (contoh: telefon, dompet, laptop, dll)",
             "zh": "什么物品被盗了？请提供详细信息（例如：手机、钱包、笔记本电脑等）"
           },
@@ -289,18 +289,18 @@
         {
           "id": "s3",
           "message": {
-            "en": "When did you notice the theft? (e.g., just now, 1 hour ago, this morning)",
-            "ms": "Bila anda perasan kecurian ini? (contoh: baru tadi, 1 jam lepas, pagi tadi)",
-            "zh": "您什么时候发现被盗的？（例如：刚刚、1小时前、今天早上）"
+            "en": "When did you notice the theft? What time did this occur? (e.g., just now, 1 hour ago, this morning)",
+            "ms": "Bila anda notice kecurian ini? Bila masa berlaku? (contoh: baru tadi, 1 jam lepas, pagi tadi)",
+            "zh": "您什么时候notice被盗的？是什么时间发生的？（例如：刚刚、1小时前、今天早上）"
           },
           "waitForReply": true
         },
         {
           "id": "s4",
           "message": {
-            "en": "Where did the theft occur? (e.g., in capsule, bathroom, common area)",
-            "ms": "Di mana berlaku kecurian? (contoh: dalam capsule, bilik air, ruang bersama)",
-            "zh": "盗窃发生在哪里？（例如：胶囊房内、浴室、公共区域）"
+            "en": "Where did the theft occur? What location did this happen? (e.g., in capsule, bathroom, common area)",
+            "ms": "Where berlaku kecurian? Di mana lokasi kejadian? (contoh: dalam capsule, bilik air, ruang bersama)",
+            "zh": "盗窃occur在哪里？在什么location发生的？（例如：胶囊房内、浴室、公共区域）"
           },
           "waitForReply": true
         },
@@ -340,27 +340,18 @@
         {
           "id": "s1",
           "message": {
-            "en": "Oh no! Don't worry, this happens occasionally and we can solve it quickly. 😊 Let me guide you through the steps.",
-            "ms": "Oh tidak! Jangan risau, ini kadang-kadang berlaku dan kami boleh selesaikan dengan cepat. 😊 Biar saya guide anda.",
-            "zh": "哦不！别担心，这种情况偶尔会发生，我们可以快速解决。😊 让我指导您。"
-          },
-          "waitForReply": false
-        },
-        {
-          "id": "s2",
-          "message": {
-            "en": "**Quick Solution Steps:**\n\n1️⃣ Check if the capsule door has a small emergency release mechanism (usually a small button or latch on the inside)\n\n2️⃣ Try gently pushing/pulling the door while turning the handle\n\n3️⃣ Some capsules have a secondary manual release - look for a small lever near the lock\n\nAre you able to see any of these mechanisms?",
-            "ms": "**Langkah Penyelesaian Pantas:**\n\n1️⃣ Check jika pintu capsule ada mekanisme emergency release (biasanya butang kecil atau selak di bahagian dalam)\n\n2️⃣ Cuba tolak/tarik pintu perlahan-lahan sambil pusing handle\n\n3️⃣ Sesetengah capsule ada manual release kedua - cari tuas kecil dekat lock\n\nNampak mana-mana mekanisme ini?",
-            "zh": "**快速解决步骤：**\n\n1️⃣ 检查胶囊门是否有小的紧急释放装置（通常是内侧的小按钮或闩锁）\n\n2️⃣ 尝试在转动把手的同时轻轻推拉门\n\n3️⃣ 有些胶囊有第二个手动释放装置 - 在锁附近寻找小杠杆\n\n您能看到这些装置吗？"
+            "en": "Oh no! Don't worry, this happens occasionally and we can solve it quickly. 😊 Let me guide you through the emergency steps:\n\n**Quick Solution Steps:**\n\n1️⃣ Check if the capsule door has a small emergency release mechanism (usually a small button or latch on the inside)\n\n2️⃣ Try gently pushing/pulling the door while turning the handle\n\n3️⃣ Some capsules have a secondary manual release - look for a small lever near the lock\n\nAre you able to see any of these mechanisms?",
+            "ms": "Oh tidak! Jangan risau, ini kadang-kadang berlaku dan kami boleh selesaikan dengan cepat. 😊 Biar saya guide anda melalui langkah emergency:\n\n**Langkah Penyelesaian Pantas:**\n\n1️⃣ Check jika pintu capsule ada mekanisme emergency release (biasanya butang kecil atau selak di bahagian dalam)\n\n2️⃣ Cuba tolak/tarik pintu perlahan-lahan sambil pusing handle\n\n3️⃣ Sesetengah capsule ada manual release kedua - cari tuas kecil dekat lock\n\nNampak mana-mana mekanisme ini?",
+            "zh": "哦不！别担心，这种情况偶尔会发生，我们可以快速解决。😊 让我指导您紧急处理步骤：\n\n**快速解决步骤：**\n\n1️⃣ 检查胶囊门是否有小的紧急释放装置（通常是内侧的小按钮或闩锁）\n\n2️⃣ 尝试在转动把手的同时轻轻推拉门\n\n3️⃣ 有些胶囊有第二个手动释放装置 - 在锁附近寻找小杠杆\n\n您能看到这些装置吗？"
           },
           "waitForReply": true
         },
         {
-          "id": "s3",
+          "id": "s2",
           "message": {
-            "en": "If the above methods don't work, I'm contacting our staff at +60127088789 RIGHT NOW...",
-            "ms": "Jika cara di atas tak berjaya, saya contact staff +60127088789 SEKARANG...",
-            "zh": "如果上述方法无效，我现在立即联系员工 +60127088789..."
+            "en": "No problem! I'm contacting our staff at +60127088789 RIGHT NOW to help you...",
+            "ms": "Tiada masalah! Saya contact staff +60127088789 SEKARANG untuk bantu anda...",
+            "zh": "没问题！我现在立即联系员工 +60127088789 来帮助您..."
           },
           "waitForReply": false,
           "action": {
@@ -371,11 +362,11 @@
           }
         },
         {
-          "id": "s4",
+          "id": "s3",
           "message": {
-            "en": "✅ Staff notified. They have master access and will arrive within 10-15 minutes. Meanwhile:\n\n✅ Stay calm and comfortable inside\n✅ Keep your phone with you\n✅ The capsule has ventilation, so you're safe\n\nIs there anything you need while waiting?",
-            "ms": "✅ Staff diberitahu. Mereka ada master access dan akan sampai dalam 10-15 minit. Sementara itu:\n\n✅ Stay calm dan selesa dalam capsule\n✅ Simpan telefon dengan anda\n✅ Capsule ada pengudaraan, jadi anda selamat\n\nAda apa-apa yang anda perlukan sambil tunggu?",
-            "zh": "✅ 员工已通知。他们有主钥匙，会在10-15分钟内到达。同时：\n\n✅ 保持冷静和舒适\n✅ 保管好手机\n✅ 胶囊房有通风，所以您是安全的\n\n等待期间需要什么吗？"
+            "en": "✅ Staff notified! They have master access and will arrive shortly. Meanwhile:\n\n✅ Stay calm and comfortable inside\n✅ Keep your phone with you\n✅ The capsule has ventilation, so you're safe\n\nIs there anything you need while waiting?",
+            "ms": "✅ Staff diberitahu! Mereka ada master access dan akan sampai tidak lama lagi. Sementara itu:\n\n✅ Stay calm dan selesa dalam capsule\n✅ Simpan telefon dengan anda\n✅ Capsule ada pengudaraan, jadi anda selamat\n\nAda apa-apa yang anda perlukan sambil tunggu?",
+            "zh": "✅ 员工已通知！他们有主钥匙，会很快到达。同时：\n\n✅ 保持冷静和舒适\n✅ 保管好手机\n✅ 胶囊房有通风，所以您是安全的\n\n等待期间需要什么吗？"
           },
           "waitForReply": true
         }
@@ -420,6 +411,54 @@
             "zh": "正在将您的付款信息转发给管理员..."
           },
           "waitForReply": false
+        }
+      ]
+    },
+    {
+      "id": "amenity_request_handler",
+      "name": "Extra Amenity Request Handler",
+      "steps": [
+        {
+          "id": "s1",
+          "message": {
+            "en": "Of course! We can provide extra towels, pillows, or blankets. Our on-site staff Maya will deliver them to your capsule. 🧺",
+            "ms": "Tentu! Kami boleh sediakan tuala, bantal, atau selimut tambahan. Staf kami Maya akan hantar ke kapsul anda. 🧺",
+            "zh": "当然可以！我们可以提供额外的毛巾、枕头或毯子。我们的现场工作人员Maya会送到您的胶囊房。🧺"
+          },
+          "waitForReply": false
+        },
+        {
+          "id": "s2",
+          "message": {
+            "en": "What items do you need? (e.g., towels, pillows, blankets, hangers, etc.)",
+            "ms": "Anda perlukan barang apa? (contoh: tuala, bantal, selimut, penyangkut baju, dll)",
+            "zh": "您需要什么物品？（例如：毛巾、枕头、毯子、衣架等）"
+          },
+          "waitForReply": true
+        },
+        {
+          "id": "s3",
+          "message": {
+            "en": "Great! I'm notifying Maya to deliver {{items}} to your capsule...",
+            "ms": "Baik! Saya beritahu Maya untuk hantar {{items}} ke kapsul anda...",
+            "zh": "好的！我正在通知Maya将{{items}}送到您的胶囊房..."
+          },
+          "waitForReply": false,
+          "action": {
+            "type": "send_to_staff",
+            "params": {
+              "urgency": "normal"
+            }
+          }
+        },
+        {
+          "id": "s4",
+          "message": {
+            "en": "✅ Request forwarded to Maya (+60127088789). She will deliver the items shortly. Is there anything else you need?",
+            "ms": "✅ Permintaan dihantar ke Maya (+60127088789). Dia akan hantar barang tidak lama lagi. Ada apa-apa lagi yang diperlukan?",
+            "zh": "✅ 请求已转发给Maya（+60127088789）。她会尽快送达。还需要其他东西吗？"
+          },
+          "waitForReply": true
         }
       ]
     }

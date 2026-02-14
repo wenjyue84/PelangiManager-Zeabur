@@ -54,6 +54,12 @@ export function setupHotReload(server: Server) {
   watcher.on('change', (path) => {
     console.log(`[Hot Reload] File changed: ${path}`);
 
+    // Skip reload for tier state changes (UI-only preference changes)
+    if (path.includes('intent-tiers.json')) {
+      console.log('[Hot Reload] Skipping reload for intent-tiers.json (UI state only)');
+      return;
+    }
+
     // Notify all connected clients
     clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {

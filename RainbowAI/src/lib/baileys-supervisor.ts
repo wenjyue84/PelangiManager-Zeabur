@@ -15,6 +15,7 @@ import { initBaileys, registerMessageHandler, sendWhatsAppMessage, getWhatsAppSt
 import { initAssistant } from '../assistant/index.js';
 import { callAPI } from './http-client.js';
 import { startDailyReportScheduler } from './daily-report.js';
+import { initAdminNotifier, notifyAdminServerStartup } from './admin-notifier.js';
 
 interface SupervisorConfig {
   maxRetries: number;
@@ -63,6 +64,11 @@ async function attemptStart(config: SupervisorConfig): Promise<void> {
     // Reset retry count on successful init
     retryCount = 0;
 
+    // Initialize Admin Notifier (for system admin alerts)
+    initAdminNotifier({
+      sendMessage: sendWhatsAppMessage
+    });
+
     // Initialize AI Assistant (auto-reply to WhatsApp messages)
     try {
       await initAssistant({
@@ -80,6 +86,13 @@ async function attemptStart(config: SupervisorConfig): Promise<void> {
 
     // Start daily report scheduler (11:30 AM MYT)
     startDailyReportScheduler();
+
+    // Notify system admin of server startup (after a delay to allow WhatsApp to connect)
+    setTimeout(() => {
+      notifyAdminServerStartup().catch(err => {
+        console.warn(`[BaileysSupervisor] Failed to send server startup notification:`, err.message);
+      });
+    }, 5000); // 5 second delay to allow WhatsApp instances to connect
 
   } catch (err: any) {
     console.error(`[BaileysSupervisor] Baileys crashed: ${err.message}`);

@@ -54,13 +54,13 @@ router.get('/intents', (_req: Request, res: Response) => {
 });
 
 router.post('/intents', (req: Request, res: Response) => {
-  const { category, patterns, flags, enabled } = req.body;
+  const { category, patterns, flags, enabled, time_sensitive } = req.body;
   if (!category || !Array.isArray(patterns)) {
     res.status(400).json({ error: 'category and patterns[] required' });
     return;
   }
   const data = configStore.getIntents();
-  const exists = data.categories.find(c => c.category === category);
+  const exists = data.categories.find((c: any) => c.category === category);
   if (exists) {
     res.status(409).json({ error: `Category "${category}" already exists. Use PUT to update.` });
     return;
@@ -69,7 +69,8 @@ router.post('/intents', (req: Request, res: Response) => {
     category,
     patterns,
     flags: flags || 'i',
-    enabled: enabled !== false
+    enabled: enabled !== false,
+    ...(time_sensitive !== undefined && { time_sensitive: Boolean(time_sensitive) })
   };
   data.categories.push(entry);
   configStore.setIntents(data);
@@ -94,6 +95,7 @@ router.put('/intents/:category', (req: Request, res: Response) => {
   if (req.body.flags !== undefined) entry.flags = req.body.flags;
   if (req.body.enabled !== undefined) entry.enabled = req.body.enabled;
   if (req.body.min_confidence !== undefined) entry.min_confidence = req.body.min_confidence;
+  if (req.body.time_sensitive !== undefined) (entry as any).time_sensitive = Boolean(req.body.time_sensitive);
 
   // Per-tier threshold overrides (Layer 1 enhancement)
   if (req.body.t2_fuzzy_threshold !== undefined) {
@@ -188,7 +190,21 @@ router.delete('/templates/:key', (req: Request, res: Response) => {
 // ─── Settings ───────────────────────────────────────────────────────
 
 router.get('/settings', (_req: Request, res: Response) => {
-  res.json(configStore.getSettings());
+  const settings = JSON.parse(JSON.stringify(configStore.getSettings()));
+
+  if (settings.ai && Array.isArray(settings.ai.providers)) {
+    settings.ai.providers = settings.ai.providers.map((p: any) => ({
+      ...p,
+      // Ollama does not require an API key (local or remote)
+      available: Boolean(
+        p.type === 'ollama' ||
+        (p.api_key_env && process.env[p.api_key_env]) ||
+        p.api_key
+      )
+    }));
+  }
+
+  res.json(settings);
 });
 
 router.patch('/settings', (req: Request, res: Response) => {
@@ -262,6 +278,28 @@ router.delete('/settings/providers/:id', (req: Request, res: Response) => {
   settings.ai.providers.splice(idx, 1);
   configStore.setSettings(settings);
   res.json({ ok: true, deleted: id });
+});
+
+router.patch('/settings/providers/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const settings = configStore.getSettings();
+  if (!settings.ai.providers) {
+    res.status(404).json({ error: `Provider "${id}" not found` });
+    return;
+  }
+  const provider = settings.ai.providers.find(p => p.id === id);
+  if (!provider) {
+    res.status(404).json({ error: `Provider "${id}" not found` });
+    return;
+  }
+
+  if (req.body.enabled !== undefined) provider.enabled = req.body.enabled;
+  if (req.body.priority !== undefined) provider.priority = req.body.priority;
+  if (req.body.name !== undefined) provider.name = req.body.name;
+  if (req.body.model !== undefined) provider.model = req.body.model;
+
+  configStore.setSettings(settings);
+  res.json({ ok: true, provider });
 });
 
 // ─── Workflow ───────────────────────────────────────────────────────

@@ -127,16 +127,19 @@ function renderTestResults(data) {
   // Status banner
   const banner = document.getElementById('test-status-banner');
   banner.classList.remove('hidden');
+  const passed = data.numPassedTests ?? 0;
+  const failed = data.numFailedTests ?? 0;
+  const suites = data.numPassedTestSuites ?? 0;
   if (data.success) {
     banner.className = 'mb-4 rounded-2xl border border-green-200 bg-green-50 p-4 flex items-center gap-3';
     document.getElementById('test-status-icon').innerHTML = '<svg class="w-7 h-7 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
     document.getElementById('test-status-text').textContent = 'All tests passed';
-    document.getElementById('test-status-sub').textContent = `${data.numPassedTests} tests across ${data.numPassedTestSuites} files in ${dur}`;
+    document.getElementById('test-status-sub').textContent = `${passed} tests across ${suites} files in ${dur}`;
   } else {
     banner.className = 'mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 flex items-center gap-3';
     document.getElementById('test-status-icon').innerHTML = '<svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
-    document.getElementById('test-status-text').textContent = `${data.numFailedTests} test${data.numFailedTests !== 1 ? 's' : ''} failed`;
-    document.getElementById('test-status-sub').textContent = `${data.numPassedTests} passed, ${data.numFailedTests} failed in ${dur}`;
+    document.getElementById('test-status-text').textContent = `${failed} test${failed !== 1 ? 's' : ''} failed`;
+    document.getElementById('test-status-sub').textContent = `${passed} passed, ${failed} failed in ${dur}`;
   }
 
   // Test file cards

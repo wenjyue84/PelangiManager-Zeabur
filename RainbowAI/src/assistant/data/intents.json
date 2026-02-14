@@ -24,7 +24,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.90
+          "min_confidence": 0.9
         },
         {
           "category": "contact_staff",
@@ -35,7 +35,16 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
+        },
+        {
+          "category": "unknown",
+          "professional_term": "Others (system fallback)",
+          "patterns": [],
+          "flags": "i",
+          "enabled": true,
+          "min_confidence": 0,
+          "_comment": "GENERAL_SUPPORT. Used when AI Fallback is disabled or no tier matches. Cannot be deleted or turned off."
         }
       ]
     },
@@ -63,7 +72,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.70
+          "min_confidence": 0.7
         },
         {
           "category": "booking",
@@ -107,7 +116,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         },
         {
           "category": "payment_info",
@@ -118,7 +127,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         },
         {
           "category": "payment_made",
@@ -140,7 +149,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         },
         {
           "category": "checkout_info",
@@ -151,7 +160,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         }
       ]
     },
@@ -168,7 +177,8 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.67
+          "min_confidence": 0.67,
+          "time_sensitive": true
         },
         {
           "category": "lower_deck_preference",
@@ -267,19 +277,22 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.50
+          "min_confidence": 0.5
         },
         {
           "category": "theft_report",
           "professional_term": "Security Incident Report",
           "severity": "CRITICAL",
           "patterns": [
-            "\\b(stole|stolen|theft|missing|lost|robbed|kecurian|hilang|dicuri|dirompak)\\b",
-            "(被偷|丢了|不见了|被盗)"
+            "\\b(was\\s+stolen|were\\s+stolen|got\\s+stolen|been\\s+stolen|stole|stolen|theft|kecurian|dicuri|dirompak)\\b",
+            "\\b(my\\s+(phone|wallet|bag|laptop|passport|money).*(stolen|missing|gone|lost|taken))\\b",
+            "\\b(someone\\s+(stole|took|robbed))\\b",
+            "(被偷|丢了|不见了|被盗)",
+            "\\b(safe|from\\s+the\\s+safe|missing\\s+from\\s+safe|peti\\s?besi|保险箱)\\b"
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.50
+          "min_confidence": 0.4
         },
         {
           "category": "general_complaint_in_stay",
@@ -291,7 +304,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.60
+          "min_confidence": 0.6
         },
         {
           "category": "extra_amenity_request",
@@ -332,7 +345,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         },
         {
           "category": "late_checkout_request",
@@ -343,7 +356,8 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.85
+          "min_confidence": 0.85,
+          "time_sensitive": true
         },
         {
           "category": "luggage_storage",
@@ -365,7 +379,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         }
       ]
     },
@@ -395,14 +409,14 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.60
+          "min_confidence": 0.6
         },
         {
           "category": "billing_dispute",
           "professional_term": "Billing Dispute",
           "severity": "HIGH",
           "patterns": [
-            "\\b(overcharge|wrong\\s?bill|incorrect\\s?charge|pertikaian\\s?bil|salah\\s?caj)\\b",
+            "\\b(overcharge|overcharged|overcharged\\s+by\\s+rm\\s?\\d+|wrong\\s?bill|incorrect\\s?charge|pertikaian\\s?bil|salah\\s?caj)\\b",
             "(多收|账单错误|收费有误)"
           ],
           "flags": "i",
@@ -419,7 +433,7 @@
           ],
           "flags": "i",
           "enabled": true,
-          "min_confidence": 0.80
+          "min_confidence": 0.8
         }
       ]
     }

@@ -22,12 +22,15 @@ function getProviders(): AIProvider[] {
     .sort((a, b) => a.priority - b.priority);
 }
 
-/** Resolve API key for a provider: direct value > env var > null */
+/** Resolve API key for a provider: direct value > env var > null. Trims whitespace to avoid 401s. */
 function resolveApiKey(provider: AIProvider): string | null {
-  if (provider.api_key) return provider.api_key;
-  if (provider.api_key_env) return process.env[provider.api_key_env] || null;
-  if (provider.type === 'ollama') return 'ollama'; // Ollama doesn't need a key
-  return null;
+  let key: string | undefined;
+  if (provider.api_key) key = provider.api_key;
+  else if (provider.api_key_env) key = process.env[provider.api_key_env];
+  else if (provider.type === 'ollama') return 'ollama'; // Ollama doesn't need a key
+  else return null;
+  const trimmed = typeof key === 'string' ? key.trim() : '';
+  return trimmed || null;
 }
 
 // Groq SDK instance cache
@@ -122,6 +125,11 @@ async function providerChat(
   if (apiKey && provider.type !== 'ollama') {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
+  // OpenRouter returns complete responses only when Referer + X-Title are set
+  if (provider.base_url?.includes('openrouter.ai')) {
+    headers['Referer'] = process.env.OPENROUTER_REFERER || 'https://pelangi-capsule.local';
+    headers['X-Title'] = process.env.OPENROUTER_APP_TITLE || 'Rainbow AI Pelangi';
+  }
 
   const res = await axios.post(`${provider.base_url}/chat/completions`, body, {
     headers,
@@ -131,6 +139,12 @@ async function providerChat(
 
   if (res.status !== 200) {
     const errText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+
+    // 401 from OpenRouter = invalid/missing API key or key not from OpenRouter
+    if (res.status === 401 && provider.base_url?.includes('openrouter.ai')) {
+      const hint = 'Get a valid key at https://openrouter.ai/keys and set OPENROUTER_API_KEY in .env, then restart.';
+      throw new Error(`${provider.name} 401 (invalid API key). ${hint}`);
+    }
 
     // Enhanced logging for rate limits (429) and quota errors
     if (res.status === 429) {
@@ -323,11 +337,20 @@ export async function classifyAndRespondWithSmartFallback(
   };
 }
 
-/** Read T4 selected provider IDs from llm-settings.json */
+/**
+ * Read T4 (intent classification) provider IDs.
+ * - If Understanding tab has a default model (defaultProviderId), use that single model.
+ * - Else if selectedProviders list is set, use those in order.
+ * - Else master setting: Settings → routing_mode.classifyProvider, or all enabled by priority.
+ */
 function getT4ProviderIds(): string[] | undefined {
   try {
     const raw = readFileSync(join(__dirname, 'data', 'llm-settings.json'), 'utf-8');
     const settings = JSON.parse(raw);
+    const defaultId = settings.defaultProviderId;
+    if (defaultId && typeof defaultId === 'string') {
+      return [defaultId];
+    }
     const selected = settings.selectedProviders;
     if (Array.isArray(selected) && selected.length > 0) {
       return selected
@@ -335,9 +358,20 @@ function getT4ProviderIds(): string[] | undefined {
         .map((s: any) => s.id);
     }
   } catch {
-    // Fall through — use all providers
+    // Fall through to master default
   }
-  return undefined;
+  // Default: master setting (Settings) — classifyProvider or all enabled by priority
+  try {
+    const master = configStore.getSettings();
+    const classifyProvider = master.routing_mode?.classifyProvider;
+    if (classifyProvider) {
+      return [classifyProvider];
+    }
+    const ids = getProviders().map(p => p.id);
+    return ids.length > 0 ? ids : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const VALID_CATEGORIES: IntentCategory[] = [
@@ -359,7 +393,7 @@ const VALID_CATEGORIES: IntentCategory[] = [
  */
 function buildClassifySystemPrompt(
   intents: Array<{ intent: string; keywords: Record<string, string[]> }>,
-  examples?: Array<{ intent: string; examples: string[] }>
+  examples?: Array<{ intent: string; examples: Record<string, string[]> }>
 ): string {
   // Extract unique intent names from keywords and sort alphabetically
   const intentNames = intents.map(i => i.intent).sort();
@@ -376,9 +410,11 @@ function buildClassifySystemPrompt(
   let examplesSection = '';
   if (examples && examples.length > 0) {
     examplesSection = '\n\nExample classifications:\n';
-    // Take first 3 examples as demonstrations
+    // Take first 3 intents as demonstrations
     examples.slice(0, 3).forEach(ex => {
-      const firstExample = ex.examples[0];
+      // Flatten examples from all languages
+      const allExamples = Object.values(ex.examples).flat();
+      const firstExample = allExamples[0];
       if (firstExample) {
         examplesSection += `- "${firstExample}" → ${ex.intent}\n`;
       }
@@ -527,33 +563,47 @@ export async function classifyAndRespond(
   history: ChatMessage[],
   userMessage: string
 ): Promise<AIResponse> {
-  if (!isAIAvailable()) {
-    return { intent: 'unknown', action: 'reply', response: '', confidence: 0, model: 'none' };
+  // Wrap everything in try-catch to ensure we never throw unhandled exceptions
+  try {
+    if (!isAIAvailable()) {
+      return { intent: 'unknown', action: 'reply', response: '', confidence: 0, model: 'none' };
+    }
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt }
+    ];
+
+    const recentHistory = history.slice(-20);
+    for (const msg of recentHistory) {
+      messages.push({ role: msg.role, content: msg.content });
+    }
+    messages.push({ role: 'user', content: userMessage });
+
+    const aiCfg = getAISettings();
+    const startTime = Date.now();
+    const { content, provider } = await chatWithFallback(messages, aiCfg.max_chat_tokens, aiCfg.chat_temperature, true);
+    const responseTime = Date.now() - startTime;
+
+    if (content) {
+      const result = parseAIResponse(content);
+      result.model = provider?.name || provider?.model || 'unknown';
+      result.responseTime = responseTime;
+      return result;
+    }
+
+    return { intent: 'unknown', action: 'reply', response: '', confidence: 0, model: 'failed', responseTime };
+  } catch (err: any) {
+    // Log error but return safe response instead of throwing
+    console.error('[AI] classifyAndRespond error:', err);
+    return {
+      intent: 'unknown',
+      action: 'reply',
+      response: 'I apologize, but I encountered an error processing your message. Please try again or contact staff.',
+      confidence: 0,
+      model: 'error',
+      responseTime: 0
+    };
   }
-
-  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-    { role: 'system', content: systemPrompt }
-  ];
-
-  const recentHistory = history.slice(-20);
-  for (const msg of recentHistory) {
-    messages.push({ role: msg.role, content: msg.content });
-  }
-  messages.push({ role: 'user', content: userMessage });
-
-  const aiCfg = getAISettings();
-  const startTime = Date.now();
-  const { content, provider } = await chatWithFallback(messages, aiCfg.max_chat_tokens, aiCfg.chat_temperature, true);
-  const responseTime = Date.now() - startTime;
-
-  if (content) {
-    const result = parseAIResponse(content);
-    result.model = provider?.name || provider?.model || 'unknown';
-    result.responseTime = responseTime;
-    return result;
-  }
-
-  return { intent: 'unknown', action: 'reply', response: '', confidence: 0, model: 'failed', responseTime };
 }
 
 function parseAIResponse(raw: string): AIResponse {
@@ -569,12 +619,59 @@ function parseAIResponse(raw: string): AIResponse {
     return {
       intent,
       action: VALID_ACTIONS.includes(parsed.action) ? parsed.action : 'reply',
-      response: typeof parsed.response === 'string' ? parsed.response : '',
+      response: (typeof parsed.response === 'string' && !looksLikeJson(parsed.response)) ? parsed.response : '',
       confidence: typeof parsed.confidence === 'number' ? Math.min(1, Math.max(0, parsed.confidence)) : 0.5
     };
   } catch {
-    return { intent: 'general', action: 'reply', response: raw, confidence: 0.5 };
+    // LLM may return "user-facing text\n\n{\"intent\":\"...\",\"action\":\"...\",\"response\":\"...\",\"confidence\":...}"
+    // Try to extract the JSON object and use its .response so we never send/store technical JSON to guests
+    const lastBrace = raw.lastIndexOf('}');
+    if (lastBrace >= 0) {
+      for (let start = raw.lastIndexOf('{'); start >= 0; start = raw.lastIndexOf('{', start - 1)) {
+        if (start > lastBrace) continue;
+        try {
+          const candidate = raw.slice(start, lastBrace + 1);
+          const parsed = JSON.parse(candidate);
+          if (
+            typeof parsed.intent === 'string' &&
+            typeof parsed.response === 'string' &&
+            typeof parsed.confidence === 'number'
+          ) {
+            const routing = configStore.getRouting();
+            const definedIntents = Object.keys(routing);
+            const intent = definedIntents.includes(parsed.intent) ? parsed.intent : 'general';
+            const responseText = parsed.response.trim();
+            if (responseText) {
+              return {
+                intent,
+                action: VALID_ACTIONS.includes(parsed.action) ? parsed.action : 'reply',
+                response: responseText,
+                confidence: Math.min(1, Math.max(0, parsed.confidence))
+              };
+            }
+          }
+        } catch {
+          continue;
+        }
+        break;
+      }
+      // Strip trailing JSON block: content before last "\n\n{" is the user-facing part
+      const jsonStart = raw.lastIndexOf('\n\n{');
+      if (jsonStart > 0) {
+        const stripped = raw.slice(0, jsonStart).trim();
+        if (stripped && !looksLikeJson(stripped)) return { intent: 'general', action: 'reply', response: stripped, confidence: 0.5 };
+      }
+    }
+    // Never send raw LLM output to the guest — may be JSON or malformed
+    console.warn('[AI] parseAIResponse: could not extract plain-text response, using empty');
+    return { intent: 'general', action: 'reply', response: '', confidence: 0.5 };
   }
+}
+
+/** True if the string looks like raw JSON (e.g. {"intent":"...") to avoid leaking to guests. */
+function looksLikeJson(s: string): boolean {
+  const t = s.trim();
+  return (t.startsWith('{') && t.includes('"')) || (t.startsWith('[{') && t.includes('"'));
 }
 
 // ─── Split-Model: Classify-Only (fast 8B model) ─────────────────────
@@ -700,17 +797,23 @@ Respond with ONLY valid JSON: {"response":"<your reply>", "confidence": 0.0-1.0}
         ? Math.min(1, Math.max(0, parsed.confidence))
         : 0.7; // Default confidence if not provided
 
+      // Only ever send plain-text response to guest — never raw JSON
+      const responseText = typeof parsed.response === 'string' ? parsed.response.trim() : '';
       return {
-        response: typeof parsed.response === 'string' ? parsed.response : content,
+        response: responseText,
         confidence,
         model: provider?.name || provider?.model || 'unknown',
         responseTime
       };
     } catch {
-      // Raw text response — use as-is with low confidence
+      // Unparseable (e.g. raw JSON) — never send to guest
+      if (looksLikeJson(content)) {
+        console.warn('[AI] generateReplyOnly: LLM returned JSON-like content, using empty response');
+        return { response: '', confidence: 0.5, model: provider?.name || 'unknown', responseTime };
+      }
       return {
         response: content,
-        confidence: 0.5, // Low confidence for unparseable responses
+        confidence: 0.5,
         model: provider?.name || 'unknown',
         responseTime
       };
@@ -762,4 +865,47 @@ export async function testProvider(providerId: string): Promise<{
     const elapsed = Date.now() - startTime;
     return { ok: false, error: e.message, responseTime: elapsed };
   }
+}
+
+// ─── Workflow Evaluation ───────────────────────────────────────────
+
+/**
+ * Evaluate a workflow step condition using AI.
+ * Used for smart skipping/branching in workflows.
+ * 
+ * @param prompt - The evaluation question (e.g. "Did user already provide name?")
+ * @param history - Conversation context
+ * @param userMessage - Latest user message
+ */
+export async function evaluateWorkflowStep(
+  prompt: string,
+  history: ChatMessage[],
+  userMessage: string
+): Promise<string> {
+  const systemPrompt = `You are a workflow logic engine.
+ANALYZE the conversation history and the latest user message.
+ANSWER the following question with ONLY a single key from the allowed options.
+
+QUESTION: ${prompt}
+
+RULES:
+- Respond with ONLY the answer key (e.g. "YES", "NO")
+- Do NOT include markdown or explanations.
+- Be conservative: if unsure, choose the negative/default option.`;
+
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemPrompt }
+  ];
+
+  const recentHistory = history.slice(-5);
+  for (const msg of recentHistory) {
+    messages.push({ role: msg.role, content: msg.content });
+  }
+  messages.push({ role: 'user', content: userMessage });
+
+  const aiCfg = getAISettings();
+  // Use lower temperature for logic
+  const { content } = await chatWithFallback(messages, 50, 0.1);
+
+  return content ? content.trim().toUpperCase() : 'NO';
 }

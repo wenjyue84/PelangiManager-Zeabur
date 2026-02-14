@@ -238,7 +238,13 @@ export async function handleBookingStep(
 
       return {
         response: aiResponse || getTemplate('booking_start', lang),
-        newState: { ...state, stage: 'dates' }
+        newState: {
+          ...state,
+          stage: 'dates',
+          guests: extraction?.guests,
+          checkIn: extraction?.checkIn,
+          checkOut: extraction?.checkOut
+        }
       };
     }
 
@@ -246,25 +252,25 @@ export async function handleBookingStep(
       // Try AI extraction first, then regex fallback
       const extraction = await aiExtractBookingInfo(input, conversationHistory);
 
-      let checkIn: string | null = null;
-      let checkOut: string | null = null;
-      let guests: number | undefined;
+      let checkIn = extraction?.checkIn || state.checkIn || null;
+      let checkOut = extraction?.checkOut || state.checkOut || null;
+      let guests = extraction?.guests ?? state.guests;
 
-      if (extraction?.checkIn) {
-        checkIn = extraction.checkIn;
-        checkOut = extraction.checkOut || null;
-        guests = extraction.guests;
-      } else {
-        // Regex fallback
+      if (!checkIn && !extraction?.checkIn) {
+        // Regex fallback only if AI didn't find a date
         const parts = input.split(/\s+(?:to|until|til|sampai)\s+|(?:\u5230)|(?:\s+~\s+)/i);
         checkIn = parseDate(parts[0]);
         if (parts.length > 1) checkOut = parseDate(parts[1]);
       }
 
+      if (extraction?.guests) {
+        state = { ...state, guests: extraction.guests };
+      }
+
       if (!checkIn) {
         // Ask again conversationally via AI
         const aiRetry = await aiBookingResponse(
-          "I couldn't understand the date from the guest's message. Ask them again naturally — suggest examples like 'next Friday', 'March 15', or '15/3/2026'. Don't be robotic.",
+          "I couldn't understand the date from the guest's message. Ask them again naturally — suggest examples like 'next Friday', 'March 15', or '15/3/2026'. You MUST include the word 'check-in' or 'date' in your reply. Don't be robotic.",
           input,
           lang,
           conversationHistory

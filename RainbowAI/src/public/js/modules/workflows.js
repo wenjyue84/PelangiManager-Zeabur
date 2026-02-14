@@ -43,3 +43,9 @@ export async function loadWorkflow() {
 export function editWorkflow(id) {
   toast('Edit workflow functionality - to be implemented', 'info');
 }
+
+// Export to global scope
+if (typeof window !== 'undefined') {
+  window.loadWorkflow = loadWorkflow;
+}
+

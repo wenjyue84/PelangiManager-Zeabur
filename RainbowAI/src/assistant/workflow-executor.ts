@@ -63,9 +63,10 @@ export async function executeWorkflowStep(
   }
 
   // If user provided a message, store it for the previous step
+  // BUT only if the previous step wasn't an evaluation step (eval steps don't collect data)
   if (userMessage && state.currentStepIndex > 0) {
     const previousStep = workflow.steps[state.currentStepIndex - 1];
-    if (previousStep) {
+    if (previousStep && !previousStep.evaluation) {
       state.collectedData[previousStep.id] = userMessage;
     }
   }
@@ -88,9 +89,71 @@ export async function executeWorkflowStep(
   }
 
   const currentStep = workflow.steps[state.currentStepIndex];
+
+  // ─── NEW: Evaluation Logic (Smart Workflows) ──────────────────────
+  if (currentStep.evaluation) {
+    // This is a silent step. We evaluate and jump, then RECURSE.
+    console.log(`[WorkflowExecutor] Running evaluation step ${currentStep.id}...`);
+
+    // We need history for context. Since we don't have seamless access to full DB history here,
+    // we'll rely on what we have: userMessage (latest) + collectedData (previous workflow steps).
+    // In a real implementation, we'd fetch full history.
+    // For now, let's construct a "workflow context" string.
+
+    const contextLines = [];
+    for (const [key, val] of Object.entries(state.collectedData)) {
+      contextLines.push(`Step ${key}: ${val}`);
+    }
+    const contextStr = contextLines.join('\n');
+
+    // "History" for the evaluator will include the collected data as a system note
+    // and the latest user message.
+    const mockHistory: any[] = [
+      { role: 'system', content: `Workflow Content So Far:\n${contextStr}` }
+    ];
+
+    try {
+      const { evaluateWorkflowStep } = await import('./ai-client.js');
+      const result = await evaluateWorkflowStep(
+        currentStep.evaluation.prompt,
+        mockHistory,
+        userMessage || '(No new message)'
+      );
+
+      console.log(`[WorkflowExecutor] Evaluation "${currentStep.evaluation.prompt}" -> ${result}`);
+
+      const nextStepId = currentStep.evaluation.outcomes[result] || currentStep.evaluation.defaultNextId;
+      const nextStepIndex = workflow.steps.findIndex(s => s.id === nextStepId);
+
+      if (nextStepIndex !== -1) {
+        // Update state to jump
+        const nextState = {
+          ...state,
+          currentStepIndex: nextStepIndex,
+          lastUpdateAt: Date.now()
+        };
+
+        // RECURSE! Execute the target step immediately
+        // Pass userMessage=null because we haven't "consumed" it yet if we're skipping
+        // Wait... actually userMessage IS the current input. If we skip, we want the *next* step
+        // to see it potentially? Or strictly distinct?
+        // Let's assume evaluation steps are invisible. The user's input triggered the evaluation.
+        // The NEXT step will be the "response" to that input.
+        return executeWorkflowStep(nextState, null, language, phone, pushName, instanceId);
+      } else {
+        console.error(`[WorkflowExecutor] Evaluation target step ${nextStepId} not found!`);
+      }
+    } catch (err) {
+      console.error('[WorkflowExecutor] Evaluation failed:', err);
+    }
+
+    // Fallback: just advance 1 step if evaluation fails
+    // (This shouldn't happen if config is correct)
+  }
+
   let response = getStepMessage(currentStep, language);
 
-  // NEW: Enhance step if action present and phone available
+  // Enhance step if action present and phone available
   if (currentStep.action && phone && sendMessageFn) {
     const enhancerContext: WorkflowEnhancerContext = {
       workflowId: state.workflowId,

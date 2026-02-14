@@ -7,11 +7,12 @@
  * @param {string} msg - Message to display
  * @param {string} type - Type of toast ('success', 'error', 'info')
  */
-function toast(msg, type = 'success') {
+function toast(msg, type = 'success', isHtml = false) {
   const el = document.createElement('div');
   const colors = type === 'success' ? 'bg-success-500' : type === 'error' ? 'bg-danger-500' : 'bg-blue-500';
   el.className = `toast ${colors} text-white text-sm px-4 py-2 rounded-2xl shadow-medium`;
-  el.textContent = msg;
+  if (isHtml) el.innerHTML = msg;
+  else el.textContent = msg;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), 3000);
 }
@@ -29,6 +30,7 @@ async function api(path, opts = {}) {
 
   try {
     const res = await fetch(API + path, {
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       ...opts,
       body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -56,7 +58,15 @@ async function api(path, opts = {}) {
   } catch (error) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeout}ms`);
+      throw new Error(`Request timeout after ${timeout}ms. Try a shorter message or wait for the server to process.`);
+    }
+    // Payload too large (HTTP 413)
+    if (error.message && error.message.includes('413')) {
+      throw new Error('Message too large. Please try a shorter message.');
+    }
+    // Network or fetch errors
+    if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+      throw new Error('Network error. Check your connection and ensure the Rainbow server is running (start-all.bat).');
     }
     throw error;
   }
@@ -69,7 +79,7 @@ async function api(path, opts = {}) {
  */
 function escapeHtml(s) {
   if (!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**

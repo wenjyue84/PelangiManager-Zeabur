@@ -4,6 +4,14 @@
  * Supports per-intent confidence thresholds (Layer 1)
  */
 
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = join(__dirname, 'data');
+const TIERS_FILE = join(DATA_DIR, 'intent-tiers.json');
+
 // ─── Per-Intent Threshold Maps (Layer 1 + Tier Overrides) ───────────────────
 const intentMinConfidenceMap = new Map<string, number>();
 const intentT2FuzzyThresholdMap = new Map<string, number>();
@@ -90,6 +98,29 @@ export function updateIntentConfig(config: Partial<IntentDetectionConfig>): void
   };
 
   console.log('[IntentConfig] Configuration updated:', currentConfig);
+}
+
+/**
+ * Load tier configuration from intent-tiers.json if it exists.
+ * Called at module load so server restarts preserve tier toggles (e.g. AI Fallback off).
+ */
+export function loadIntentTiersFromFile(): void {
+  if (!existsSync(TIERS_FILE)) return;
+  try {
+    const raw = readFileSync(TIERS_FILE, 'utf-8');
+    const data = JSON.parse(raw) as { tiers?: Partial<IntentDetectionConfig['tiers']> };
+    if (data?.tiers && typeof data.tiers === 'object') {
+      updateIntentConfig({ tiers: { ...currentConfig.tiers, ...data.tiers } });
+      console.log('[IntentConfig] Loaded tiers from', TIERS_FILE);
+    }
+  } catch (err) {
+    console.warn('[IntentConfig] Could not load intent-tiers.json:', (err as Error).message);
+  }
+}
+
+/** Path to persisted tiers file for use by routes. */
+export function getIntentTiersFilePath(): string {
+  return TIERS_FILE;
 }
 
 export function loadIntentConfigFromDB(dbConfig: any): void {
@@ -242,3 +273,6 @@ export function checkTierThreshold(
   // No tier-specific override - use standard check
   return checkIntentThreshold(intentName, score, globalThreshold);
 }
+
+// Load persisted tier state on module init (e.g. AI Fallback disabled)
+loadIntentTiersFromFile();

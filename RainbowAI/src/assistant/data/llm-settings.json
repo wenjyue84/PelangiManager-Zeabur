@@ -7,17 +7,18 @@
     "lowConfidence": 0.5,
     "mediumConfidence": 0.7
   },
+  "defaultProviderId": "groq-llama-8b",
   "selectedProviders": [
     {
-      "id": "groq-llama",
+      "id": "groq-llama-8b",
       "priority": 0
     },
     {
-      "id": "ollama-local",
+      "id": "groq-llama",
       "priority": 1
     },
     {
-      "id": "groq-llama-8b",
+      "id": "ollama-local",
       "priority": 2
     }
   ],

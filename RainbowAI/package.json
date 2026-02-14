@@ -5,7 +5,7 @@
   "description": "MCP server for PelangiManager hostel management system",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc && node -e \"require('fs').cpSync('src/assistant/data','dist/assistant/data',{recursive:true});require('fs').cpSync('src/public','dist/public',{recursive:true})\"",
     "start": "node dist/index.js",
     "test": "vitest",
@@ -46,8 +46,8 @@
     "chokidar": "^4.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "eld": "^2.0.2",
     "express": "^4.18.2",
-    "franc-min": "^6.2.0",
     "fuse.js": "^7.1.0",
     "groq-sdk": "^0.37.0",
     "multer": "^2.0.2",

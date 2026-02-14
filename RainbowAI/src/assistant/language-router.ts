@@ -1,80 +1,63 @@
-import { francAll } from 'franc-min';
+import { eld } from 'eld/medium';
 
 export type SupportedLanguage = 'en' | 'ms' | 'zh' | 'unknown';
+
+/** Our 3 supported languages — ELD subset improves speed and accuracy for short text */
+const SUPPORTED_CODES: SupportedLanguage[] = ['en', 'ms', 'zh'];
+
+// Restrict ELD to en/ms/zh only (faster + better accuracy for mixed/colloquial)
+eld.setLanguageSubset(SUPPORTED_CODES);
 
 /**
  * Language Router - Detects message language and routes to appropriate keywords
  *
  * Supports: English (en), Malay (ms), Chinese (zh)
- * Uses franc-min for fast, accurate detection
+ * Uses ELD (Efficient Language Detector) for fast, accurate short-text detection;
+ * pattern-based fast path for Chinese script and strong Malay/English signals.
  */
 export class LanguageRouter {
-  // ISO 639-3 codes used by franc
-  private readonly languageMap: Record<string, SupportedLanguage> = {
-    'eng': 'en',  // English
-    'zsm': 'ms',  // Standard Malay
-    'zlm': 'ms',  // Malay (generic)
-    'ind': 'ms',  // Indonesian (close to Malay)
-    'cmn': 'zh',  // Mandarin Chinese
-    'zho': 'zh',  // Chinese (generic)
-    'yue': 'zh',  // Cantonese
-  };
-
-  // Common patterns for quick detection (fallback)
+  // Common patterns for quick detection (fast path; used when ELD is uncertain or text is very short)
   private readonly patterns = {
     zh: /[\u4e00-\u9fff\u3400-\u4dbf]/,  // Chinese characters
-    ms: /\b(saya|anda|adalah|dengan|untuk|dari|yang|ini|itu|ada|tidak|boleh)\b/i,
-    en: /\b(the|is|are|was|were|have|has|had|do|does|did|can|will|would)\b/i,
+    ms: /\b(saya|anda|adalah|dengan|untuk|dari|yang|ini|itu|ada|tidak|boleh|bole|awal|lewat|nak|berapa|mana|apa|assalamualaikum|selamat|terima|kasih)\b/i,
+    en: /\b(the|is|are|was|were|have|has|had|do|does|did|can|will|would|hello|hi|hai|hey|thanks|thank|tq|tqvm|thx|wifi|password|check|world)\b/i,
   };
+
+  /** Short Malay-only phrases (avoid ELD/pattern tie or misclassification) */
+  private readonly msPhraseOnly = /^password\s+wifi\s*[?.]?$/i;
+  private readonly msColloquial = /\b(bole|boleh)\b.*\b(awal|lewat)\b|\b(awal|lewat)\b.*\b(bole|boleh)\b/i;
 
   /**
    * Detect language from text
    * @param text Input text to analyze
-   * @param minLength Minimum text length for reliable detection (default: 3)
+   * @param minLength Minimum text length for statistical detection (default: 3)
    * @returns Detected language code
    */
   detectLanguage(text: string, minLength = 3): SupportedLanguage {
     const cleaned = text.trim();
 
-    // Too short for reliable detection
-    if (cleaned.length < minLength) {
-      return 'unknown';
-    }
-
-    // Quick pattern-based detection (fast path)
+    // Fast path: Chinese script and strong Malay/English keyword signals
     const patternResult = this.detectByPattern(cleaned);
     if (patternResult !== 'unknown') {
       return patternResult;
     }
 
-    // Use franc for statistical detection
-    try {
-      const results = francAll(cleaned, { minLength });
-
-      // No reliable detection
-      if (results.length === 0 || results[0][0] === 'und') {
-        return 'unknown';
-      }
-
-      // Map franc language code to our system
-      const detectedCode = results[0][0];
-      const mappedLang = this.languageMap[detectedCode];
-
-      if (mappedLang) {
-        return mappedLang;
-      }
-
-      // Check top 3 results for any match
-      for (const [code, score] of results.slice(0, 3)) {
-        if (this.languageMap[code]) {
-          return this.languageMap[code];
-        }
-      }
-
+    if (cleaned.length < minLength) {
       return 'unknown';
+    }
+
+    try {
+      const result = eld.detect(cleaned);
+      const code = result.language;
+      if (code && SUPPORTED_CODES.includes(code as SupportedLanguage)) {
+        return code as SupportedLanguage;
+      }
+      // ELD returned empty or language outside en/ms/zh — fall back to pattern (e.g. short text, abbreviations)
+      const patternFallback = this.detectByPattern(cleaned);
+      return patternFallback;
     } catch (error) {
       console.warn('[LanguageRouter] Detection error:', error);
-      return 'unknown';
+      return this.detectByPattern(cleaned);
     }
   }
 
@@ -84,23 +67,14 @@ export class LanguageRouter {
    * @returns Language code or 'unknown'
    */
   private detectByPattern(text: string): SupportedLanguage {
-    // Check for Chinese characters (most reliable)
-    if (this.patterns.zh.test(text)) {
-      return 'zh';
-    }
+    if (this.patterns.zh.test(text)) return 'zh';
+    if (this.msPhraseOnly.test(text) || this.msColloquial.test(text)) return 'ms';
 
-    // Count matches for Malay and English patterns
     const malayMatches = (text.match(this.patterns.ms) || []).length;
     const englishMatches = (text.match(this.patterns.en) || []).length;
 
-    if (malayMatches > englishMatches && malayMatches > 0) {
-      return 'ms';
-    }
-
-    if (englishMatches > malayMatches && englishMatches > 0) {
-      return 'en';
-    }
-
+    if (malayMatches > englishMatches && malayMatches > 0) return 'ms';
+    if (englishMatches > malayMatches && englishMatches > 0) return 'en';
     return 'unknown';
   }
 
@@ -112,27 +86,19 @@ export class LanguageRouter {
   detectWithConfidence(text: string): { language: SupportedLanguage; confidence: number } {
     const cleaned = text.trim();
 
-    // Pattern-based detection (high confidence)
     if (this.patterns.zh.test(cleaned)) {
       return { language: 'zh', confidence: 0.95 };
     }
 
-    // Use franc for statistical detection
     try {
-      const results = francAll(cleaned, { minLength: 3 });
-
-      if (results.length === 0 || results[0][0] === 'und') {
+      const result = eld.detect(cleaned);
+      const code = result.language as SupportedLanguage;
+      if (!code || !SUPPORTED_CODES.includes(code)) {
         return { language: 'unknown', confidence: 0 };
       }
-
-      const [code, score] = results[0];
-      const mappedLang = this.languageMap[code] || 'unknown';
-
-      // Franc score is 0-1 (higher = more confident)
-      return {
-        language: mappedLang,
-        confidence: score
-      };
+      const scores = result.getScores?.();
+      const confidence = scores && typeof scores[code] === 'number' ? scores[code] : (result.isReliable?.() ? 0.9 : 0.5);
+      return { language: code, confidence };
     } catch {
       return { language: 'unknown', confidence: 0 };
     }

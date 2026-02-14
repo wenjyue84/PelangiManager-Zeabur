@@ -96,7 +96,8 @@ router.get('/status', async (_req: Request, res: Response) => {
       available: isAIAvailable(),
       providers: aiProviders
     },
-    config_files: ['knowledge', 'intents', 'templates', 'settings', 'workflow', 'workflows', 'routing']
+    config_files: ['knowledge', 'intents', 'templates', 'settings', 'workflow', 'workflows', 'routing'],
+    response_modes: settings.response_modes || { default_mode: 'autopilot' }
   });
 });
 

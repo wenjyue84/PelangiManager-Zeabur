@@ -1,24 +1,15 @@
 import { configStore } from './config-store.js';
+import { languageRouter } from './language-router.js';
 
 type Language = 'en' | 'ms' | 'zh';
 
-// Simple keyword-based language detection
-const MS_KEYWORDS = ['apa', 'berapa', 'bila', 'mana', 'saya', 'boleh', 'nak', 'ada', 'ini', 'itu', 'harga', 'bilik', 'masuk', 'keluar', 'terima kasih', 'tolong', 'encik', 'cik'];
-const ZH_KEYWORDS = ['你好', '多少', '价格', '房间', '入住', '退房', '谢谢', '请问', '可以', '我要', '什么', '哪里', '怎么', '几点', '有没有'];
-
+/**
+ * Detect message language (en/ms/zh). Uses LanguageRouter (ELD + patterns);
+ * defaults to 'en' when unknown for template/response selection.
+ */
 export function detectLanguage(text: string): Language {
-  const lower = text.toLowerCase();
-
-  // Check Chinese characters first (most distinctive)
-  if (/[\u4e00-\u9fff]/.test(text)) {
-    return 'zh';
-  }
-
-  // Check Malay keywords
-  const msCount = MS_KEYWORDS.filter(kw => lower.includes(kw)).length;
-  if (msCount >= 2) return 'ms';
-
-  return 'en';
+  const detected = languageRouter.detectLanguage(text);
+  return detected === 'unknown' ? 'en' : detected;
 }
 
 // Extended language detection — returns specific language name for non-EN/MS/ZH

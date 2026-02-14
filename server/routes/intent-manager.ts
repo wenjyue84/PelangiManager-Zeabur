@@ -130,21 +130,22 @@ router.get('/stats', async (req, res) => {
     const keywordsData = JSON.parse(await readFile(KEYWORDS_PATH, 'utf-8'));
     const examplesData = JSON.parse(await readFile(EXAMPLES_PATH, 'utf-8'));
 
+    const exampleCount = (ex: any) =>
+      Array.isArray(ex) ? ex.length : (ex && typeof ex === 'object' ? Object.values(ex).flat().length : 0);
+
     const stats = {
       totalIntents: keywordsData.intents.length,
       totalKeywords: keywordsData.intents.reduce((sum: number, intent: any) => {
         const keywordCount = Object.values(intent.keywords).flat().length;
         return sum + keywordCount;
       }, 0),
-      totalExamples: examplesData.intents.reduce((sum: number, intent: any) => {
-        return sum + intent.examples.length;
-      }, 0),
+      totalExamples: examplesData.intents.reduce((sum: number, intent: any) => sum + exampleCount(intent.examples), 0),
       byIntent: keywordsData.intents.map((intent: any) => {
         const exampleIntent = examplesData.intents.find((e: any) => e.intent === intent.intent);
         return {
           intent: intent.intent,
           keywordCount: Object.values(intent.keywords).flat().length,
-          exampleCount: exampleIntent ? exampleIntent.examples.length : 0
+          exampleCount: exampleIntent ? exampleCount(exampleIntent.examples) : 0
         };
       })
     };
@@ -230,10 +231,19 @@ router.put('/regex', async (req, res) => {
       return res.status(400).json({ error: 'patterns array required' });
     }
 
+    const allowedLangs = ['en', 'ms', 'zh'];
+    const allowedTypes = ['complaint', 'theft', 'card_locked'];
+
     // Validate regex patterns
     for (const item of patterns) {
       if (!item.pattern || typeof item.pattern !== 'string') {
         return res.status(400).json({ error: 'Each pattern must have a pattern string' });
+      }
+      if (item.language != null && !allowedLangs.includes(item.language)) {
+        return res.status(400).json({ error: `language must be one of: ${allowedLangs.join(', ')}` });
+      }
+      if (item.emergencyType != null && !allowedTypes.includes(item.emergencyType)) {
+        return res.status(400).json({ error: `emergencyType must be one of: ${allowedTypes.join(', ')}` });
       }
 
       // Validate regex syntax

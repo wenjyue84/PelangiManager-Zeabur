@@ -14,6 +14,8 @@ import feedbackSettingsRoutes from './feedback-settings.js';
 import intentAnalyticsRoutes from './intent-analytics.js';
 import templatesRoutes from './templates.js';
 import activityRoutes from './activity.js';
+import adminNotificationsRoutes from './admin-notifications.js';
+import latencyRoutes from '../test/latency.js';
 
 const router = Router();
 
@@ -62,6 +64,8 @@ router.use(feedbackSettingsRoutes);
 router.use(intentAnalyticsRoutes);
 router.use('/templates', templatesRoutes);
 router.use(activityRoutes);
+router.use('/admin-notifications', adminNotificationsRoutes);
+router.use('/test', latencyRoutes);
 
 // Ensure unmatched /api/rainbow/* returns JSON 404 (never HTML)
 router.use((_req: Request, res: Response) => {

@@ -27,9 +27,9 @@ let ESCALATION_COOLDOWN_MS = 30 * 60 * 1000; // Default: 30 min
 // Load config from settings
 function loadConfig() {
   const settings = configStore.getSettings();
-  if (!settings) return; // Skip if settings not loaded yet
-  CONSECUTIVE_THRESHOLD = settings.sentiment_analysis?.consecutive_threshold ?? 2;
-  ESCALATION_COOLDOWN_MS = (settings.sentiment_analysis?.cooldown_minutes ?? 30) * 60 * 1000;
+  if (!settings || !settings.sentiment_analysis) return; // Skip if settings not loaded yet
+  CONSECUTIVE_THRESHOLD = settings.sentiment_analysis.consecutive_threshold ?? 2;
+  ESCALATION_COOLDOWN_MS = (settings.sentiment_analysis.cooldown_minutes ?? 30) * 60 * 1000;
 }
 
 // Initialize config
@@ -46,7 +46,11 @@ configStore.on('reload', (domain: string) => {
 // ─── Check if Sentiment Analysis is Enabled ────────────────────────
 export function isSentimentAnalysisEnabled(): boolean {
   const settings = configStore.getSettings();
-  return settings.sentiment_analysis?.enabled !== false;
+  // Guard: if settings not loaded yet, return false (sentiment analysis disabled)
+  if (!settings || !settings.sentiment_analysis) {
+    return false;
+  }
+  return settings.sentiment_analysis.enabled !== false;
 }
 
 // ─── Sentiment Analysis ─────────────────────────────────────────────

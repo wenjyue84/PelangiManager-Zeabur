@@ -78,8 +78,11 @@ const TOPIC_FILE_MAP: Record<string, string[]> = {
   'towel|pillow|extra.*(towel|pillow)|maya':
     ['amenities-extra.md'],
   // Location & directions
-  'where|direction|map|location|address|nearby|food|restaurant|transport|grab|alamat|dimana|地址|怎么走':
+  'where|direction|map|location|address|nearby|food|restaurant|transport|grab|alamat|dimana|地址|怎么走|airport|get.*(from|to)|how.*(get|reach|find)|way.*(here|there)':
     ['location.md'],
+  // Theft / security incident (report, security, police, incident)
+  'stol[ea]n|theft|rob(?:bed|bery)|dicuri|kecurian|被偷|被抢|失窃|someone stole':
+    ['theft-incident.md'],
 };
 
 /**
@@ -117,6 +120,28 @@ export function getMYTTimestamp(): string {
     minute: '2-digit',
     hour12: false
   });
+}
+
+/**
+ * Current date and time in Malaysia (Asia/Kuala_Lumpur) for LLM context.
+ * Use when replying to time-sensitive intents (e.g. early check-in, late checkout).
+ */
+export function getTimeContext(): string {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const timeStr = now.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  return `CURRENT DATE AND TIME (Malaysia, Asia/Kuala_Lumpur): ${dateStr}, ${timeStr}. Use this when answering questions about check-in times, check-out times, early arrival, or late checkout.`;
 }
 
 // ─── Memory Helpers ─────────────────────────────────────────────────
