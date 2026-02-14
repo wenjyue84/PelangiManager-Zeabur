@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { configStore } from '../../assistant/config-store.js';
+import { circuitBreakerRegistry } from '../../assistant/circuit-breaker.js';
 import type { IntentEntry, RoutingAction, RoutingData, WorkflowDefinition, AIProvider } from '../../assistant/config-store.js';
 import { deepMerge } from './utils.js';
 import { ok, badRequest, notFound, conflict, serverError } from './http-utils.js';
@@ -412,6 +413,44 @@ router.delete('/workflows/:id', (req: Request, res: Response) => {
   data.workflows.splice(idx, 1);
   configStore.setWorkflows(data);
   ok(res, { deleted: id });
+});
+
+// ─── Circuit Breaker Status (Health Check) ─────────────────────────────
+
+/**
+ * GET /api/rainbow/circuit-breaker/status
+ * Returns status of all AI provider circuit breakers
+ */
+router.get('/circuit-breaker/status', (_req: Request, res: Response) => {
+  const statuses = circuitBreakerRegistry.getAllStatuses();
+  res.json({
+    circuitBreakers: statuses,
+    summary: {
+      total: Object.keys(statuses).length,
+      open: Object.values(statuses).filter(s => s.state === 'OPEN').length,
+      halfOpen: Object.values(statuses).filter(s => s.state === 'HALF_OPEN').length,
+      closed: Object.values(statuses).filter(s => s.state === 'CLOSED').length
+    }
+  });
+});
+
+/**
+ * POST /api/rainbow/circuit-breaker/reset/:providerId
+ * Manually reset a specific provider's circuit breaker
+ */
+router.post('/circuit-breaker/reset/:providerId', (req: Request, res: Response) => {
+  const { providerId } = req.params;
+  circuitBreakerRegistry.reset(providerId);
+  ok(res, { providerId, status: 'reset' });
+});
+
+/**
+ * POST /api/rainbow/circuit-breaker/reset-all
+ * Reset all circuit breakers (admin intervention)
+ */
+router.post('/circuit-breaker/reset-all', (_req: Request, res: Response) => {
+  circuitBreakerRegistry.resetAll();
+  ok(res, { status: 'all circuit breakers reset' });
 });
 
 export default router;

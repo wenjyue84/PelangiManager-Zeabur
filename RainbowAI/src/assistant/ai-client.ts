@@ -5,6 +5,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { AIClassifyResult, IntentCategory, ChatMessage } from './types.js';
 import { configStore, type AIProvider } from './config-store.js';
+import { circuitBreakerRegistry } from './circuit-breaker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -179,13 +180,25 @@ async function chatWithFallback(
   }
 
   for (const provider of providers) {
+    // ─── Circuit Breaker Check ──────────────────────────────────────
+    const breaker = circuitBreakerRegistry.getOrCreate(provider.id);
+    if (breaker.isOpen()) {
+      const status = breaker.getStatus();
+      const cooldownSec = Math.ceil(status.cooldownRemaining / 1000);
+      console.log(`[AI] ⚡ Circuit breaker OPEN for ${provider.name}, skipping (cooldown: ${cooldownSec}s)`);
+      continue; // Skip this provider during cooldown
+    }
+
     try {
       const content = await providerChat(provider, messages, maxTokens, temperature, jsonMode);
       if (content) {
+        breaker.recordSuccess(); // ✅ Record success
         console.log(`[AI] ✅ Success using: ${provider.name} (${provider.id})`);
         return { content, provider };
       }
     } catch (err: any) {
+      breaker.recordFailure(); // ❌ Record failure
+
       // Enhanced error logging with rate limit detection
       const isRateLimit = err.message?.includes('429') || err.message?.toLowerCase().includes('rate limit');
       if (isRateLimit) {
