@@ -579,3 +579,19 @@ window.renderSettingsTemplateButtons = renderSettingsTemplateButtons;
 window.applySettingsTemplate = applySettingsTemplate;
 window.detectActiveSettingsTemplate = detectActiveSettingsTemplate;
 window.settingsMatchTemplate = settingsMatchTemplate;
+
+// Phase 36: Global helpers (moved from legacy-functions.js)
+async function reloadConfig() {
+  try {
+    await window.api('/reload', { method: 'POST' });
+    window.toast('Config reloaded from disk');
+    const activeTab = document.querySelector('.tab-active')?.dataset.tab || 'dashboard';
+    window.loadTab(activeTab);
+  } catch (e) { window.toast(e.message, 'error'); }
+}
+function loadTesting() {
+  console.log('[Testing] Tab loaded');
+}
+window.reloadConfig = reloadConfig;
+window.loadTesting = loadTesting;
+window.switchTab = function(tab) { if (window.loadTab) window.loadTab(tab); };
