@@ -18,14 +18,27 @@ let _lastVitestResult = null;
 /** History store backed by localStorage */
 const _historyStore = createHistoryStore('rainbow-vitest-history', 20);
 
-// ─── Init: show history button if history exists ────────────────
-(function initVitestHistory() {
+// ─── Init: called by tab system when #testing becomes active ────
+function initVitestHistory() {
   const history = _historyStore.load();
-  if (history.length > 0) {
-    const btn = document.getElementById('btn-vitest-history');
-    if (btn) btn.classList.remove('hidden');
+  const btn = document.getElementById('btn-vitest-history');
+  if (btn) {
+    if (history.length > 0) {
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+    }
   }
-})();
+}
+
+/**
+ * Tab loader — called by tabs.js when navigating to #testing.
+ * The tab system calls window['load' + PascalTabName]() after
+ * the template HTML is injected into the DOM.
+ */
+export function loadTesting() {
+  initVitestHistory();
+}
 
 /**
  * Runs the test suite for the selected project

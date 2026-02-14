@@ -81,161 +81,15 @@ let autotestAbortRequested = false;
 let autotestHistory = []; // Store history of test runs
 let importedReports = []; // Store imported HTML reports
 
-// Load autotest history from localStorage on page load
-async function loadAutotestHistory() {
-  try {
-    const saved = localStorage.getItem('rainbow-autotest-history');
-    if (saved) {
-      autotestHistory = JSON.parse(saved);
-      // Keep only last 20 reports to avoid excessive storage
-      if (autotestHistory.length > 20) {
-        autotestHistory = autotestHistory.slice(-20);
-        saveAutotestHistory();
-      }
-    }
-  } catch (e) {
-    console.error('Error loading autotest history:', e);
-    autotestHistory = [];
-  }
-
-  // Load imported reports (async - scans for new reports)
-  await loadImportedReports();
-}
-
-// Load imported reports from localStorage + scan for new reports
-async function loadImportedReports() {
-  try {
-    const saved = localStorage.getItem('rainbow-imported-reports');
-    if (saved) {
-      importedReports = JSON.parse(saved);
-    } else {
-      // Initialize with existing report files
-      importedReports = [
-        {
-          id: 'imported-2026-02-10-2017',
-          filename: 'rainbow-autotest-2026-02-10-2017.html',
-          timestamp: '2026-02-10T20:17:00.000Z',
-          total: 34,
-          passed: 9,
-          warnings: 18,
-          failed: 7,
-          isImported: true
-        },
-        {
-          id: 'imported-2026-02-11-0003',
-          filename: 'rainbow-autotest-2026-02-11-0003.html',
-          timestamp: '2026-02-11T00:03:00.000Z',
-          total: 34,
-          passed: 9,
-          warnings: 18,
-          failed: 7,
-          isImported: true
-        },
-        {
-          id: 'imported-2026-02-11-0052',
-          filename: 'rainbow-autotest-2026-02-11-0052.html',
-          timestamp: '2026-02-11T00:52:00.000Z',
-          total: 34,
-          passed: 9,
-          warnings: 18,
-          failed: 7,
-          isImported: true
-        },
-        {
-          id: 'imported-2026-02-11-1103',
-          filename: 'rainbow-autotest-2026-02-11-1103.html',
-          timestamp: '2026-02-11T11:03:00.000Z',
-          total: 34,
-          passed: 9,
-          warnings: 18,
-          failed: 7,
-          isImported: true
-        },
-        {
-          id: 'imported-2026-02-11-2105',
-          filename: 'rainbow-autotest-2026-02-11-2105.html',
-          timestamp: '2026-02-11T21:05:00.000Z',
-          total: 34,
-          passed: 9,
-          warnings: 18,
-          failed: 7,
-          isImported: true
-        }
-      ];
-      saveImportedReports();
-    }
-
-    // Scan for new reports from scripts (auto-import)
-    try {
-      const response = await fetch('/api/rainbow/tests/scan-reports');
-      if (response.ok) {
-        const data = await response.json();
-        const scannedReports = data.reports || [];
-
-        // Merge with existing reports (avoid duplicates by filename)
-        const existingFilenames = new Set(importedReports.map(r => r.filename));
-        const newReports = scannedReports.filter(r => !existingFilenames.has(r.filename));
-
-        if (newReports.length > 0) {
-          console.log(`[Test History] Auto-imported ${newReports.length} new reports from scripts`);
-          importedReports = [...importedReports, ...newReports];
-          saveImportedReports();
-          updateHistoryButtonVisibility();
-        }
-      }
-    } catch (e) {
-      console.warn('Could not scan for new reports:', e);
-    }
-  } catch (e) {
-    console.error('Error loading imported reports:', e);
-    importedReports = [];
-  }
-}
-
-// Save imported reports to localStorage
-function saveImportedReports() {
-  try {
-    localStorage.setItem('rainbow-imported-reports', JSON.stringify(importedReports));
-  } catch (e) {
-    console.error('Error saving imported reports:', e);
-  }
-}
-
-// Save autotest history to localStorage
-function saveAutotestHistory() {
-  try {
-    localStorage.setItem('rainbow-autotest-history', JSON.stringify(autotestHistory));
-  } catch (e) {
-    console.error('Error saving autotest history:', e);
-  }
-}
-
-// Update history button visibility across all locations
-function updateHistoryButtonVisibility() {
-  const hasHistory = autotestHistory.length > 0 || importedReports.length > 0;
-  const historyBtn = document.getElementById('view-history-btn');
-  const historyBtnPreview = document.getElementById('view-history-btn-preview');
-
-  // Always show the preview button (it's in the main view)
-  // Show/hide based on whether history exists
-  if (historyBtnPreview) {
-    if (hasHistory) {
-      historyBtnPreview.classList.remove('hidden');
-      historyBtnPreview.disabled = false;
-      historyBtnPreview.classList.remove('opacity-50', 'cursor-not-allowed');
-    } else {
-      // Show but disabled if no history
-      historyBtnPreview.classList.remove('hidden');
-      historyBtnPreview.disabled = true;
-      historyBtnPreview.classList.add('opacity-50', 'cursor-not-allowed');
-    }
-  }
-
-  // Autotest panel History button is always visible so users can view (or open empty) history even while a run is in progress
-  if (historyBtn) {
-    historyBtn.classList.remove('hidden');
-  }
-}
+// ─── History Management Functions ──────────────────────────────────────
+// EXTRACTED to modules/autotest-history.js (Phase 30):
+// - loadAutotestHistory()
+// - loadImportedReports()
+// - saveImportedReports()
+// - saveAutotestHistory()
+// - updateHistoryButtonVisibility()
+// NOTE: State variables (autotestHistory, importedReports) remain here temporarily
+// for other autotest functions. Will be refactored in future phases.
 
 // ─── Scenario Definitions ──────────────────────────────────────────
 
@@ -2358,6 +2212,11 @@ function renderIntentList() {
       <div class="text-xs text-neutral-500">${totalKeywords} keywords</div>
     </button>`;
   }).join('');
+
+  // Auto-select the first intent on load
+  if (imKeywordsData.intents && imKeywordsData.intents.length > 0) {
+    selectIntent(imKeywordsData.intents[0].intent);
+  }
 }
 
 function getExampleCount(examples) {

@@ -259,6 +259,20 @@ import {
   switchSettingsTab
 } from '/public/js/modules/settings.js';
 
+// Phase 30: Autotest History Management Module
+import {
+  loadAutotestHistory,
+  loadImportedReports,
+  saveImportedReports,
+  saveAutotestHistory,
+  updateHistoryButtonVisibility,
+  getAutotestHistory,
+  getImportedReports,
+  addToAutotestHistory,
+  clearAutotestHistory,
+  clearImportedReports
+} from '/public/js/modules/autotest-history.js';
+
 // ─── Expose to global scope ────────────────────────────────────────
 // Required by tabs.js and onclick handlers in HTML templates
 
@@ -421,3 +435,14 @@ window.saveAdvancedWorkflow = saveAdvancedWorkflow;
 // Phase 28: Settings Tab (other settings functions self-register from sub-modules)
 window.loadSettings = loadSettings;
 window.switchSettingsTab = switchSettingsTab;
+// Phase 30: Autotest History Management
+window.loadAutotestHistory = loadAutotestHistory;
+window.loadImportedReports = loadImportedReports;
+window.saveImportedReports = saveImportedReports;
+window.saveAutotestHistory = saveAutotestHistory;
+window.updateHistoryButtonVisibility = updateHistoryButtonVisibility;
+window.getAutotestHistory = getAutotestHistory;
+window.getImportedReports = getImportedReports;
+window.addToAutotestHistory = addToAutotestHistory;
+window.clearAutotestHistory = clearAutotestHistory;
+window.clearImportedReports = clearImportedReports;

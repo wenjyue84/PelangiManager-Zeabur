@@ -9,7 +9,7 @@
  */
 
 import {
-  runTests, runCoverage,
+  runTests, runCoverage, loadTesting,
   showVitestHistory, closeVitestHistory, clearVitestHistory,
   loadHistoricalVitestRun, exportHistoricalVitestRun,
   exportVitestReport, toggleVitestExportDropdown
@@ -19,6 +19,7 @@ import { initHelp } from './modules/help.js';
 // Expose testing functions (not in legacy-functions.js)
 window.runTests = runTests;
 window.runCoverage = runCoverage;
+window.loadTesting = loadTesting;
 window.showVitestHistory = showVitestHistory;
 window.closeVitestHistory = closeVitestHistory;
 window.clearVitestHistory = clearVitestHistory;
