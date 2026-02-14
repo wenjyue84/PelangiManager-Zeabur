@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import type { AIClassifyResult, IntentCategory, ChatMessage } from './types.js';
 import { configStore, type AIProvider } from './config-store.js';
 import { circuitBreakerRegistry } from './circuit-breaker.js';
+import { getContextWindows } from './context-windows.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -247,8 +248,9 @@ export async function classifyAndRespondWithSmartFallback(
     return classifyAndRespond(systemPrompt, history, userMessage);
   }
 
-  // 2. Double context size (10 → 20 messages)
-  const expandedHistory = history.slice(-20);
+  // 2. Use configurable combined context window
+  const cw = getContextWindows();
+  const expandedHistory = history.slice(-cw.combined);
 
   console.log(
     `[AI] 🧠 Smart fallback: ${smartProviders.length} providers, ` +
@@ -500,8 +502,9 @@ export async function classifyIntent(
     { role: 'system', content: systemPrompt }
   ];
 
-  // Use only 5 recent messages for classification (less noise, faster)
-  const recentHistory = history.slice(-5);
+  // Use configurable context window for classification
+  const cw = getContextWindows();
+  const recentHistory = history.slice(-cw.classify);
   for (const msg of recentHistory) {
     messages.push({ role: msg.role, content: msg.content });
   }
@@ -539,11 +542,12 @@ export async function chat(
     throw new Error('AI not available');
   }
 
+  const cw = getContextWindows();
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt }
   ];
 
-  const recentHistory = history.slice(-20);
+  const recentHistory = history.slice(-cw.combined);
   for (const msg of recentHistory) {
     messages.push({ role: msg.role, content: msg.content });
   }
@@ -582,11 +586,12 @@ export async function classifyAndRespond(
       return { intent: 'unknown', action: 'reply', response: '', confidence: 0, model: 'none' };
     }
 
+    const cw = getContextWindows();
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt }
     ];
 
-    const recentHistory = history.slice(-20);
+    const recentHistory = history.slice(-cw.combined);
     for (const msg of recentHistory) {
       messages.push({ role: msg.role, content: msg.content });
     }
@@ -711,11 +716,12 @@ export async function classifyOnly(
   }
 
   const systemPrompt = await getSystemPrompt();
+  const cw = getContextWindows();
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt }
   ];
 
-  const recentHistory = history.slice(-5);
+  const recentHistory = history.slice(-cw.classify);
   for (const msg of recentHistory) {
     messages.push({ role: msg.role, content: msg.content });
   }
@@ -788,11 +794,12 @@ IMPORTANT: Include a confidence score for your response:
 
 Respond with ONLY valid JSON: {"response":"<your reply>", "confidence": 0.0-1.0}`;
 
+  const cw = getContextWindows();
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: replyPrompt }
   ];
 
-  const recentHistory = history.slice(-10);
+  const recentHistory = history.slice(-cw.reply);
   for (const msg of recentHistory) {
     messages.push({ role: msg.role, content: msg.content });
   }
@@ -906,11 +913,12 @@ RULES:
 - Do NOT include markdown or explanations.
 - Be conservative: if unsure, choose the negative/default option.`;
 
+  const cw = getContextWindows();
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt }
   ];
 
-  const recentHistory = history.slice(-5);
+  const recentHistory = history.slice(-cw.classify);
   for (const msg of recentHistory) {
     messages.push({ role: msg.role, content: msg.content });
   }
