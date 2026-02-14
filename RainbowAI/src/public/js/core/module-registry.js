@@ -215,6 +215,21 @@ import {
   saveLLMSettings
 } from '/public/js/modules/llm-settings.js';
 
+// Phase 24: Chat Preview Module
+import {
+  saveSessions,
+  getCurrentSession,
+  updateSessionTitle,
+  renderSessionsList,
+  switchToSession,
+  createNewChat,
+  deleteSession,
+  clearCurrentChat,
+  clearChat,
+  renderChatMessages,
+  loadPreview
+} from '/public/js/modules/chat-preview.js';
+
 // ─── Expose to global scope ────────────────────────────────────────
 // Required by tabs.js and onclick handlers in HTML templates
 
@@ -344,3 +359,15 @@ window.moveT4Provider = moveT4Provider;
 window.autoSaveT4Providers = autoSaveT4Providers;
 window.testT4Provider = testT4Provider;
 window.saveLLMSettings = saveLLMSettings;
+// Phase 24: Chat Preview
+window.saveSessions = saveSessions;
+window.getCurrentSession = getCurrentSession;
+window.updateSessionTitle = updateSessionTitle;
+window.renderSessionsList = renderSessionsList;
+window.switchToSession = switchToSession;
+window.createNewChat = createNewChat;
+window.deleteSession = deleteSession;
+window.clearCurrentChat = clearCurrentChat;
+window.clearChat = clearChat;
+window.renderChatMessages = renderChatMessages;
+window.loadPreview = loadPreview;
