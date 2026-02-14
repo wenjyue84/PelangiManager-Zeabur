@@ -1,10 +1,6 @@
 import type { ConversationState, ChatMessage } from './types.js';
 import { detectLanguage } from './formatter.js';
 import { StateManager } from './state-manager.js';
-import {
-  initStatePersistence, loadActiveStates,
-  schedulePersist, deletePersistedState
-} from './state-persistence.js';
 
 const TTL_MS = 3_600_000; // 1 hour
 const MAX_MESSAGES = 20;
@@ -14,28 +10,12 @@ const CLEANUP_INTERVAL_MS = 300_000; // 5 minutes
 // StateManager adds 'lastActiveAt' automatically, so we omit it from the type
 const conversationManager = new StateManager<Omit<ConversationState, 'lastActiveAt'>>(
   TTL_MS,
-  CLEANUP_INTERVAL_MS,
-  {
-    onExpire: (key) => {
-      deletePersistedState(key).catch(() => { });
-    }
-  }
+  CLEANUP_INTERVAL_MS
 );
 
-/**
- * Initialize conversations — loads active states from DB on startup.
- */
-export async function initConversations(): Promise<void> {
-  await initStatePersistence();
-
-  const savedStates = await loadActiveStates(TTL_MS);
-  for (const { phone, state } of savedStates) {
-    conversationManager.set(phone, state);
-  }
-
-  if (savedStates.length > 0) {
-    console.log(`[Conversations] Restored ${savedStates.length} conversation(s) from database`);
-  }
+export function initConversations(): void {
+  // No-op: StateManager auto-starts cleanup timer on construction
+  // Kept for backward compatibility with existing code
 }
 
 export function destroyConversations(): void {
@@ -83,10 +63,6 @@ export function addMessage(phone: string, role: 'user' | 'assistant', content: s
       convo.language = detectLanguage(content);
     }
   });
-
-  // Debounced persist (messages not stored in DB, but metadata updates)
-  const state = conversationManager.get(phone);
-  if (state) schedulePersist(phone, state as ConversationState);
 }
 
 export function getMessages(phone: string): ChatMessage[] {
@@ -97,20 +73,12 @@ export function updateBookingState(phone: string, bookingState: ConversationStat
   conversationManager.update(phone, (convo) => {
     convo.bookingState = bookingState;
   });
-
-  // Critical state — persist immediately
-  const state = conversationManager.get(phone);
-  if (state) schedulePersist(phone, state as ConversationState, true);
 }
 
 export function updateWorkflowState(phone: string, workflowState: ConversationState['workflowState']): void {
   conversationManager.update(phone, (convo) => {
     convo.workflowState = workflowState;
   });
-
-  // Critical state — persist immediately
-  const state = conversationManager.get(phone);
-  if (state) schedulePersist(phone, state as ConversationState, true);
 }
 
 export function incrementUnknown(phone: string): number {
@@ -130,10 +98,9 @@ export function resetUnknown(phone: string): void {
 
 export function clearConversation(phone: string): void {
   conversationManager.delete(phone);
-  deletePersistedState(phone).catch(() => { });
 }
 
-// ─── Context-Aware Intent Tracking ──────────────────────────────────
+// ─── Context-Aware Intent Tracking (NEW!) ──────────────────────────
 
 export function updateLastIntent(
   phone: string,
@@ -145,10 +112,6 @@ export function updateLastIntent(
     convo.lastIntentConfidence = confidence;
     convo.lastIntentTimestamp = Date.now();
   });
-
-  // Debounced persist
-  const state = conversationManager.get(phone);
-  if (state) schedulePersist(phone, state as ConversationState);
 }
 
 export function checkRepeatIntent(
@@ -184,10 +147,6 @@ export function updateSlots(
     // Merge new slots with existing ones
     convo.slots = { ...convo.slots, ...newSlots };
   });
-
-  // Debounced persist
-  const state = conversationManager.get(phone);
-  if (state) schedulePersist(phone, state as ConversationState);
 }
 
 export function getSlots(phone: string): Record<string, any> {
@@ -202,7 +161,6 @@ export function clearSlots(phone: string): void {
 
 // ─── Cleanup ────────────────────────────────────────────────────────
 // Cleanup is now handled automatically by StateManager
-// On expire, onExpire callback deletes from DB
 
 // For testing
 export function _getConversationsSize(): number {
