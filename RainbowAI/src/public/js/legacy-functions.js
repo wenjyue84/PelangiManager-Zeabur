@@ -1679,85 +1679,8 @@ async function sendChatMessage(event) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Inline Edit Functions (Chat Simulator)
+// Inline Edit Functions — EXTRACTED to modules/inline-edit.js (Phase 20)
 // ═════════════════════════════════════════════════════════════════════
-
-/** Toggle visibility of an inline edit panel */
-function toggleInlineEdit(editId) {
-  const panel = document.getElementById(editId);
-  if (!panel) return;
-  panel.classList.toggle('hidden');
-  // Auto-focus the first textarea when opening
-  if (!panel.classList.contains('hidden')) {
-    const firstTextarea = panel.querySelector('textarea');
-    if (firstTextarea) firstTextarea.focus();
-  }
-}
-
-/** Save inline edit — routes to the correct API based on editMeta.type */
-async function saveInlineEdit(editId) {
-  const panel = document.getElementById(editId);
-  if (!panel) return;
-
-  let meta;
-  try {
-    meta = JSON.parse(panel.dataset.editMeta);
-  } catch { toast('Invalid edit metadata', 'error'); return; }
-
-  const en = panel.querySelector('[data-lang="en"]')?.value || '';
-  const ms = panel.querySelector('[data-lang="ms"]')?.value || '';
-  const zh = panel.querySelector('[data-lang="zh"]')?.value || '';
-
-  // Find save button and show loading state
-  const saveBtn = panel.querySelector('button');
-  const originalText = saveBtn?.textContent;
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
-
-  try {
-    if (meta.type === 'knowledge') {
-      await api(`/knowledge/${encodeURIComponent(meta.intent)}`, {
-        method: 'PUT',
-        body: { response: { en, ms, zh } }
-      });
-      toast(`Quick Reply "${meta.intent}" updated`, 'success');
-
-    } else if (meta.type === 'workflow') {
-      await api(`/workflows/${encodeURIComponent(meta.workflowId)}/steps/${encodeURIComponent(meta.stepId)}`, {
-        method: 'PATCH',
-        body: { message: { en, ms, zh } }
-      });
-      toast(`Workflow step updated (${meta.workflowName || meta.workflowId})`, 'success');
-
-    } else if (meta.type === 'template') {
-      const key = meta.templateKey || meta.key;
-      await api(`/templates/${encodeURIComponent(key)}`, {
-        method: 'PUT',
-        body: { en, ms, zh }
-      });
-      toast(`System Message "${key}" updated`, 'success');
-    }
-
-    // Update displayed message text with the new English version
-    const baseId = editId.replace(/-tmpl$/, '');
-    const textEl = document.getElementById(`${baseId}-text`);
-    if (textEl && meta.type !== 'template') {
-      // For knowledge/workflow: update the visible chat text
-      textEl.textContent = en;
-    }
-
-    // Update the stored languages in the panel's metadata
-    meta.languages = { en, ms, zh };
-    panel.dataset.editMeta = JSON.stringify(meta);
-
-    // Collapse the edit panel
-    panel.classList.add('hidden');
-
-  } catch (err) {
-    toast(`Failed to save: ${err.message || 'Unknown error'}`, 'error');
-  } finally {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalText; }
-  }
-}
 
 // ═════════════════════════════════════════════════════════════════════
 // Autotest Functions

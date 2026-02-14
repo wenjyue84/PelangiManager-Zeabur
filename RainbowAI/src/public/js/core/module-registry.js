@@ -164,7 +164,13 @@ import {
   markPredictionCorrect,
   showCorrectionDropdown,
   submitCorrection,
-  refreshStaffReview
+  refreshStaffReview,
+  bulkApproveAll,
+  bulkRejectAll,
+  bulkApproveAboveThreshold,
+  bulkRejectBelowThreshold,
+  bulkApproveByIntent,
+  bulkRejectByIntent
 } from '/public/js/modules/staff-review.js';
 
 // Phase 18: Status Tab Module
@@ -176,6 +182,12 @@ import {
 import {
   loadStaticReplies
 } from '/public/js/modules/static-messages.js';
+
+// Phase 20: Inline Edit Module
+import {
+  toggleInlineEdit,
+  saveInlineEdit
+} from '/public/js/modules/inline-edit.js';
 
 // ─── Expose to global scope ────────────────────────────────────────
 // Required by tabs.js and onclick handlers in HTML templates
@@ -273,7 +285,16 @@ window.markPredictionCorrect = markPredictionCorrect;
 window.showCorrectionDropdown = showCorrectionDropdown;
 window.submitCorrection = submitCorrection;
 window.refreshStaffReview = refreshStaffReview;
+window.bulkApproveAll = bulkApproveAll;
+window.bulkRejectAll = bulkRejectAll;
+window.bulkApproveAboveThreshold = bulkApproveAboveThreshold;
+window.bulkRejectBelowThreshold = bulkRejectBelowThreshold;
+window.bulkApproveByIntent = bulkApproveByIntent;
+window.bulkRejectByIntent = bulkRejectByIntent;
 // Phase 18: Status Tab
 window.loadStatus = loadStatus;
 // Phase 19: Static Messages Tab
 window.loadStaticReplies = loadStaticReplies;
+// Phase 20: Inline Edit
+window.toggleInlineEdit = toggleInlineEdit;
+window.saveInlineEdit = saveInlineEdit;
