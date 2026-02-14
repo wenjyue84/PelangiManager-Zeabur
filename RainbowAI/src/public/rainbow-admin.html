@@ -147,6 +147,9 @@
           <button
             class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-neutral-600 transition"
             data-tab="settings" onclick="closeAllDropdowns()">⚙️ Settings</button>
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-neutral-600 transition"
+            data-tab="staff-review" onclick="closeAllDropdowns()">📋 Staff Review</button>
         </div>
       </div>
 
@@ -274,6 +277,16 @@
     </section>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Staff Review Tab (Intent Prediction Validation) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-staff-review" class="tab-content hidden" data-template="staff-review">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading staff review...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- Help Tab -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <section id="tab-help" class="tab-content hidden" data-template="help">
@@ -302,9 +315,9 @@
   <!-- Tab System (needs functions above to be defined) -->
   <script src="/public/js/core/tabs.js"></script>
 
-  <!-- Extracted modules (Phase 1-5 Complete) -->
-  <script type="module">
-    // Phase 1: Trivial Loaders
+  <!-- Module Registry (imports all ES modules → exposes to global scope) -->
+  <script type="module" src="/public/js/core/module-registry.js"></script>
+  <!-- Inline script extracted to /public/js/core/module-registry.js (SRP Phase 4)
     import { loadWhatsappAccounts } from '/public/js/modules/whatsapp-accounts.js';
     import { loadUnderstanding } from '/public/js/modules/understanding.js';
     import { loadPerformance } from '/public/js/modules/performance.js';
@@ -456,6 +469,20 @@
       updateOperatorField
     } from '/public/js/modules/admin-notifications.js';
 
+    // Phase 17: Staff Review Module
+    import {
+      loadStaffReview,
+      markPredictionCorrect,
+      showCorrectionDropdown,
+      submitCorrection,
+      refreshStaffReview
+    } from '/public/js/modules/staff-review.js';
+
+    // Phase 18: Status Tab Module
+    import {
+      loadStatus
+    } from '/public/js/modules/status.js';
+
     // Expose to global scope (required by tabs.js and onclick handlers)
     window.loadWhatsappAccounts = loadWhatsappAccounts;
     window.loadUnderstanding = loadUnderstanding;
@@ -555,7 +582,15 @@
     window.addOperator = addOperator;
     window.removeOperator = removeOperator;
     window.updateOperatorField = updateOperatorField;
-  </script>
+    // Phase 17: Staff Review
+    window.loadStaffReview = loadStaffReview;
+    window.markPredictionCorrect = markPredictionCorrect;
+    window.showCorrectionDropdown = showCorrectionDropdown;
+    window.submitCorrection = submitCorrection;
+    window.refreshStaffReview = refreshStaffReview;
+    // Phase 18: Status Tab
+    window.loadStatus = loadStatus;
+  -->
 
   <!-- ES6 Module Scripts (deferred - run after all regular scripts) -->
   <script type="module" src="/public/js/modules/testing.js"></script>
