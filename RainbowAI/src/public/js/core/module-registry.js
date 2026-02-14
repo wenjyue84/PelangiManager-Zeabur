@@ -172,6 +172,11 @@ import {
   loadStatus
 } from '/public/js/modules/status.js';
 
+// Phase 19: Static Messages Tab Module
+import {
+  loadStaticReplies
+} from '/public/js/modules/static-messages.js';
+
 // ─── Expose to global scope ────────────────────────────────────────
 // Required by tabs.js and onclick handlers in HTML templates
 
@@ -270,3 +275,5 @@ window.submitCorrection = submitCorrection;
 window.refreshStaffReview = refreshStaffReview;
 // Phase 18: Status Tab
 window.loadStatus = loadStatus;
+// Phase 19: Static Messages Tab
+window.loadStaticReplies = loadStaticReplies;
