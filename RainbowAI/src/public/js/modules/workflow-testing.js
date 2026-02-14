@@ -232,3 +232,16 @@ export function updateWorkflowTestSelect() {
     select.value = currentValue;
   }
 }
+
+// ─── Init: Enter key handler for workflow test input ─────────────
+// (Moved from legacy-functions.js Phase 36)
+setTimeout(() => {
+  const testInput = document.getElementById('test-user-input');
+  if (testInput) {
+    testInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !testInput.disabled) {
+        sendTestMessage();
+      }
+    });
+  }
+}, 100);
