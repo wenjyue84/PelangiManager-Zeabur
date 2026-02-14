@@ -269,4 +269,68 @@ router.patch('/intent/predictions/:id', async (req: Request, res: Response) => {
   }
 });
 
+// ─── POST /api/rainbow/intent/predictions/bulk-validate ─────────────
+// Bulk validate multiple predictions at once
+router.post('/intent/predictions/bulk-validate', async (req: Request, res: Response) => {
+  try {
+    const { ids, wasCorrect, actualIntent } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return badRequest(res, 'ids array is required');
+    }
+    if (typeof wasCorrect !== 'boolean') {
+      return badRequest(res, 'wasCorrect (boolean) is required');
+    }
+
+    let updatedCount = 0;
+    // Build IN clause from ids array (Drizzle sql template can't pass JS arrays to ANY())
+    const idList = sql.join(ids.map((id: string) => sql`${id}`), sql`, `);
+
+    if (wasCorrect) {
+      const result = await db.execute(sql`
+        UPDATE intent_predictions
+        SET was_correct = true,
+            actual_intent = COALESCE(${actualIntent || null}, predicted_intent),
+            correction_source = 'manual_bulk',
+            corrected_at = NOW()
+        WHERE id IN (${idList})
+          AND was_correct IS NULL
+      `);
+      updatedCount = (result as any).rowCount || ids.length;
+    } else {
+      if (!actualIntent) {
+        const result = await db.execute(sql`
+          UPDATE intent_predictions
+          SET was_correct = false,
+              actual_intent = 'unknown',
+              correction_source = 'manual_bulk',
+              corrected_at = NOW()
+          WHERE id IN (${idList})
+            AND was_correct IS NULL
+        `);
+        updatedCount = (result as any).rowCount || ids.length;
+      } else {
+        const result = await db.execute(sql`
+          UPDATE intent_predictions
+          SET was_correct = false,
+              actual_intent = ${actualIntent},
+              correction_source = 'manual_bulk',
+              corrected_at = NOW()
+          WHERE id IN (${idList})
+            AND was_correct IS NULL
+        `);
+        updatedCount = (result as any).rowCount || ids.length;
+      }
+    }
+
+    res.json({
+      success: true,
+      updatedCount,
+    });
+  } catch (error) {
+    console.error('[Intent Analytics] Error bulk validating:', error);
+    serverError(res, 'Failed to bulk validate predictions');
+  }
+});
+
 export default router;

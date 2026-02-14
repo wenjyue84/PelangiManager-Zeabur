@@ -21,6 +21,7 @@ const tabNameMapping = {
   'system-status': 'system-status',
   'monitor': 'performance',
   'performance': 'performance',
+  'staff-review': 'staff-review',
   'help': 'help',
 
   // Knowledge/Response tabs
