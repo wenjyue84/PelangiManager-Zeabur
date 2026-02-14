@@ -1153,25 +1153,6 @@ async function saveAdvancedWorkflow() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-// ═════════════════════════════════════════════════════════════════════
-// Preview Tab
-// ═════════════════════════════════════════════════════════════════════
-let chatSessions = JSON.parse(localStorage.getItem('rainbowChatSessions') || '[]');
-let currentSessionId = localStorage.getItem('rainbowCurrentSession') || null;
-
-// Initialize with a default session if none exist
-if (chatSessions.length === 0) {
-  const firstSession = {
-    id: Date.now().toString(),
-    title: 'New Chat',
-    history: [],
-    createdAt: Date.now(),
-    lastActivity: Date.now()
-  };
-  chatSessions.push(firstSession);
-  currentSessionId = firstSession.id;
-  saveSessions();
-}
 
 // ─── Chat Preview (Preview Tab) — EXTRACTED to modules/chat-preview.js (Phase 24) ───
 
@@ -3395,6 +3376,15 @@ async function loadTierStates() {
   document.getElementById('tier3-enabled').checked = states.tier3;
   document.getElementById('tier4-enabled').checked = states.tier4;
   updateTier4StatusLabel(states.tier4);
+}
+
+
+function updateTierUI(tiers) {
+  if (!tiers) return;
+  if (tiers.tier1_emergency) document.getElementById('tier1-enabled').checked = tiers.tier1_emergency.enabled;
+  if (tiers.tier2_fuzzy) document.getElementById('tier2-enabled').checked = tiers.tier2_fuzzy.enabled;
+  if (tiers.tier3_semantic) document.getElementById('tier3-enabled').checked = tiers.tier3_semantic.enabled;
+  if (tiers.tier4_llm) document.getElementById('tier4-enabled').checked = tiers.tier4_llm.enabled;
 }
 
 function updateTier4StatusLabel(enabled) {
