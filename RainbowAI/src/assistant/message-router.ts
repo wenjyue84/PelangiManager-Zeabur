@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { IncomingMessage, SendMessageFn, CallAPIFn, MessageType } from './types.js';
-import { isEmergency, classifyMessageWithContext } from './intents.js';
+import { isEmergency, getEmergencyIntent, classifyMessageWithContext } from './intents.js';
 import { setDynamicKnowledge, deleteDynamicKnowledge, listDynamicKnowledge, getStaticReply } from './knowledge.js';
 import { getOrCreate, addMessage, updateBookingState, updateWorkflowState, incrementUnknown, resetUnknown, updateLastIntent, checkRepeatIntent } from './conversation.js';
 import { detectMessageType } from './problem-detector.js';
@@ -12,12 +12,14 @@ import { configStore } from './config-store.js';
 import { escalateToStaff, shouldEscalate, handleStaffReply } from './escalation.js';
 import { handleBookingStep, createBookingState } from './booking.js';
 import { isAIAvailable, classifyAndRespond, classifyOnly, generateReplyOnly, translateText, classifyAndRespondWithSmartFallback } from './ai-client.js';
-import { buildSystemPrompt, guessTopicFiles } from './knowledge-base.js';
+import { buildSystemPrompt, getTimeContext, guessTopicFiles } from './knowledge-base.js';
 import { sendWhatsAppTypingIndicator } from '../lib/baileys-client.js';
 import { initWorkflowExecutor, executeWorkflowStep, createWorkflowState, forwardWorkflowSummary } from './workflow-executor.js';
 import { maybeWriteDiary } from './memory-writer.js';
 import type { ConversationEvent } from './memory-writer.js';
 import { logMessage, logNonTextExchange } from './conversation-logger.js';
+import { addApproval } from './approval-queue.js';
+import { getOrCreate as getConversation, updateSlots } from './conversation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 import {
@@ -51,6 +53,25 @@ let callAPI: CallAPIFn;
 
 let jayLID: string | null = null; // Stored after first staff command
 
+/**
+ * Ensure we never send raw LLM JSON to the guest. If the response looks like
+ * structured JSON (e.g. {"intent":"...","response":"..."}), extract only the
+ * plain-text "response" field; otherwise return as-is or a safe fallback.
+ */
+function ensureResponseText(response: string, lang: 'en' | 'ms' | 'zh'): string {
+  const t = response.trim();
+  if (!t || !t.startsWith('{') || !t.includes('"')) return response;
+  try {
+    const parsed = JSON.parse(t);
+    const text = typeof parsed.response === 'string' ? parsed.response.trim() : '';
+    if (text && !text.trimStart().startsWith('{')) return text;
+  } catch {
+    // not valid JSON, could be partial — don't send to guest
+  }
+  console.warn('[Router] Stripped JSON-like response before send, using error template');
+  return getTemplate('error', lang);
+}
+
 /** Placeholder content for non-text messages so live chat shows "Voice message", "[Image]", etc. */
 function getNonTextPlaceholder(messageType: MessageType): string {
   const labels: Record<MessageType, string> = {
@@ -64,6 +85,23 @@ function getNonTextPlaceholder(messageType: MessageType): string {
     location: '[Location]'
   };
   return labels[messageType] || `[${messageType}]`;
+}
+
+/**
+ * Get the response mode for a conversation
+ * Per-conversation override takes precedence over global default
+ */
+function getConversationMode(phone: string): 'autopilot' | 'copilot' | 'manual' {
+  const convo = getConversation(phone, 'Guest');
+  const settings = configStore.getSettings();
+
+  // Per-conversation override takes precedence
+  if (convo?.slots?.responseMode) {
+    return convo.slots.responseMode as 'autopilot' | 'copilot' | 'manual';
+  }
+
+  // Fall back to global default
+  return (settings.response_modes?.default_mode as 'autopilot' | 'copilot' | 'manual') || 'autopilot';
 }
 
 function loadRouterConfig(): void {
@@ -155,7 +193,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     // Get or create conversation
     const convo = getOrCreate(phone, msg.pushName);
     addMessage(phone, 'user', text);
-    logMessage(phone, msg.pushName, 'user', text, { instanceId: msg.instanceId }).catch(() => {});
+    logMessage(phone, msg.pushName, 'user', text, { instanceId: msg.instanceId }).catch(() => { });
     const lang = convo.language;
 
     // ─── SENTIMENT ANALYSIS ─────────────────────────────────────────
@@ -190,9 +228,9 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
                   feedbackData.conversationId,
                   'unknown', // We don't know the actual intent from negative feedback alone
                   'feedback'
-                ).catch(() => {});
+                ).catch(() => { });
               } else {
-                markIntentCorrect(feedbackData.conversationId).catch(() => {});
+                markIntentCorrect(feedbackData.conversationId).catch(() => { });
               }
             }
           } catch (error) {
@@ -228,14 +266,18 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       if (result.newState) {
         updateWorkflowState(phone, result.newState);
         addMessage(phone, 'assistant', result.response);
-        logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'workflow', instanceId: msg.instanceId }).catch(() => {});
-        await sendMessage(phone, result.response, msg.instanceId);
+        logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'workflow', instanceId: msg.instanceId }).catch(() => { });
+        // Ensure we never send raw JSON from workflow responses
+        const cleanResponse = ensureResponseText(result.response, lang);
+        await sendMessage(phone, cleanResponse, msg.instanceId);
       } else {
         // Workflow complete - forward summary and cleanup
         updateWorkflowState(phone, null);
         addMessage(phone, 'assistant', result.response);
-        logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'workflow_complete', instanceId: msg.instanceId }).catch(() => {});
-        await sendMessage(phone, result.response, msg.instanceId);
+        logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'workflow_complete', instanceId: msg.instanceId }).catch(() => { });
+        // Ensure we never send raw JSON from workflow responses
+        const cleanResponse = ensureResponseText(result.response, lang);
+        await sendMessage(phone, cleanResponse, msg.instanceId);
 
         if (result.shouldForward && result.conversationSummary) {
           const workflows = configStore.getWorkflows();
@@ -253,24 +295,50 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       const result = await handleBookingStep(convo.bookingState, text, lang, convo.messages);
       updateBookingState(phone, result.newState);
       addMessage(phone, 'assistant', result.response);
-      logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'booking', instanceId: msg.instanceId }).catch(() => {});
+      logMessage(phone, msg.pushName, 'assistant', result.response, { action: 'booking', instanceId: msg.instanceId }).catch(() => { });
       await sendMessage(phone, result.response, msg.instanceId);
       return;
     }
 
     // ─── EMERGENCY CHECK (regex, instant) ────────────────────────
-    if (isEmergency(processText)) {
-      console.log(`[Router] EMERGENCY detected for ${phone}`);
+    const emergencyIntent = getEmergencyIntent(processText);
+    if (emergencyIntent !== null) {
+      console.log(`[Router] EMERGENCY detected for ${phone}: ${emergencyIntent}`);
       trackEmergency(phone, msg.pushName);
       await escalateToStaff({
         phone,
         pushName: msg.pushName,
-        reason: 'complaint',
+        reason: emergencyIntent === 'theft' ? 'theft' : 'complaint',
         recentMessages: convo.messages.map(m => `${m.role}: ${m.content}`),
         originalMessage: text,
         instanceId: msg.instanceId
       });
-      // Still get AI response for the guest (empathetic acknowledgment)
+
+      // If the emergency has a dedicated workflow, route directly to it
+      // (skip LLM classification to avoid misclassification)
+      const routingConfig = configStore.getRouting();
+      const route = routingConfig[emergencyIntent];
+      if (route?.action === 'workflow' && route.workflow_id) {
+        const workflows = configStore.getWorkflows();
+        const workflow = workflows.workflows.find(w => w.id === route.workflow_id);
+        if (workflow) {
+          console.log(`[Router] Emergency → workflow: ${workflow.name} (${route.workflow_id})`);
+          trackWorkflowStarted(phone, msg.pushName, workflow.name);
+          const workflowState = createWorkflowState(route.workflow_id);
+          const workflowResult = await executeWorkflowStep(workflowState, null, lang, phone, msg.pushName, msg.instanceId);
+
+          if (workflowResult.newState) {
+            updateWorkflowState(phone, workflowResult.newState);
+          }
+
+          const cleanResponse = ensureResponseText(workflowResult.response, lang);
+          addMessage(phone, 'assistant', cleanResponse);
+          logMessage(phone, msg.pushName, 'assistant', cleanResponse, { action: 'workflow', instanceId: msg.instanceId }).catch(() => { });
+          await sendMessage(phone, cleanResponse, msg.instanceId);
+          return;
+        }
+      }
+      // For other emergencies (fire, medical, etc.), fall through to LLM for empathetic response
     }
 
     // ─── LLM classify + respond (single call) ───────────────────
@@ -302,7 +370,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
 
     if (isAIAvailable()) {
       // Send typing indicator immediately (composing bubble in WhatsApp)
-      sendWhatsAppTypingIndicator(phone, msg.instanceId).catch(() => {});
+      sendWhatsAppTypingIndicator(phone, msg.instanceId).catch(() => { });
 
       // ─── CONVERSATION SUMMARIZATION ─────────────────────────────────
       // Apply conversation summarization to reduce context size
@@ -330,6 +398,8 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
           await sendWhatsAppTypingIndicator(phone, msg.instanceId);
           const ackText = getTemplate('thinking', lang);
           await sendMessage(phone, ackText, msg.instanceId);
+          // Log so it appears in live chat dashboard
+          logMessage(phone, msg.pushName ?? 'Guest', 'assistant', ackText, { action: 'thinking', instanceId: msg.instanceId }).catch(() => {});
           console.log(`[Router] Sent thinking ack to ${phone} (LLM taking >3s)`);
         } catch { /* non-fatal */ }
       }, 3000);
@@ -376,8 +446,12 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
           // Need LLM for reply generation (either llm_reply route or LLM classification)
           if (caughtByFastTier) {
             // Classified by fast tier but needs LLM for reply
+            const timeSensitiveSet = configStore.getTimeSensitiveIntentSet();
+            const replyPrompt = timeSensitiveSet.has(tierResult.category)
+              ? systemPrompt + '\n\n' + getTimeContext()
+              : systemPrompt;
             const replyResult = await generateReplyOnly(
-              systemPrompt,
+              replyPrompt,
               contextMessages,
               processText,
               tierResult.category
@@ -434,8 +508,12 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
 
         // Only call the full model for llm_reply routes
         if (routedAction === 'llm_reply' || routedAction === 'reply') {
+          const timeSensitiveSet = configStore.getTimeSensitiveIntentSet();
+          const replyPrompt = timeSensitiveSet.has(classifyResult.intent)
+            ? systemPrompt + '\n\n' + getTimeContext()
+            : systemPrompt;
           const replyResult = await generateReplyOnly(
-            systemPrompt,
+            replyPrompt,
             contextMessages,
             processText,
             classifyResult.intent
@@ -554,20 +632,20 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
         result.confidence,
         _devMetadata.source || 'unknown',
         result.model
-      ).catch(() => {}); // Non-fatal
+      ).catch(() => { }); // Non-fatal
 
       // Track intent for future repeat detection
       updateLastIntent(phone, result.intent, result.confidence);
 
       // Update conversation language with tier result if more confident
       if (result.detectedLanguage &&
-          result.detectedLanguage !== 'unknown' &&
-          result.confidence >= 0.8 &&
-          result.detectedLanguage !== lang) {
+        result.detectedLanguage !== 'unknown' &&
+        result.confidence >= 0.8 &&
+        result.detectedLanguage !== lang) {
         const updatedConvo = getOrCreate(phone, msg.pushName);
         if (updatedConvo && (result.detectedLanguage === 'en' ||
-                    result.detectedLanguage === 'ms' ||
-                    result.detectedLanguage === 'zh')) {
+          result.detectedLanguage === 'ms' ||
+          result.detectedLanguage === 'zh')) {
           updatedConvo.language = result.detectedLanguage as 'en' | 'ms' | 'zh';
           console.log(
             `[Router] 🔄 Updated conversation language: ${lang} → ${result.detectedLanguage}`
@@ -586,9 +664,9 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       ): 'en' | 'ms' | 'zh' {
         // If tier result has high-confidence language detection, use it
         if (tierResultLang &&
-            tierResultLang !== 'unknown' &&
-            confidence >= 0.7 &&
-            (tierResultLang === 'en' || tierResultLang === 'ms' || tierResultLang === 'zh')) {
+          tierResultLang !== 'unknown' &&
+          confidence >= 0.7 &&
+          (tierResultLang === 'en' || tierResultLang === 'ms' || tierResultLang === 'zh')) {
           return tierResultLang as 'en' | 'ms' | 'zh';
         }
 
@@ -787,6 +865,9 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
     }
 
     if (response) {
+      // Never send raw JSON to guest (e.g. LLM returning {"intent":"...","response":"..."})
+      response = ensureResponseText(response, lang);
+
       // ─── PRIORITY 3: Low-Confidence Handling ─────────────────────────
       // Add disclaimer or escalate based on confidence thresholds
       const llmSettings = JSON.parse(
@@ -864,6 +945,92 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
         }
       }
       addMessage(phone, 'assistant', response);
+
+      // ─── MODE CHECKING LOGIC ────────────────────────────────────────
+      // Check response mode and handle accordingly
+      const mode = getConversationMode(phone);
+
+      if (mode === 'manual') {
+        // Manual mode: Don't send AI response automatically
+        console.log(`[Manual Mode] Skipping AI auto-response for ${phone}`);
+        logMessage(phone, msg.pushName, 'assistant', response, {
+          intent: _diaryEvent.intent || undefined,
+          confidence: _diaryEvent.confidence,
+          action: _diaryEvent.action || undefined,
+          instanceId: msg.instanceId,
+          source: _devMetadata.source,
+          model: _devMetadata.model,
+          responseTime: _devMetadata.responseTime,
+          kbFiles: _devMetadata.kbFiles.length > 0 ? _devMetadata.kbFiles : undefined,
+          messageType: _diaryEvent.messageType,
+          routedAction: _devMetadata.routedAction,
+          workflowId: _devMetadata.workflowId,
+          stepId: _devMetadata.stepId,
+          manual: true,
+          skipped_auto_response: true
+        }).catch(() => { });
+        return; // Don't send automatically in manual mode
+      }
+
+      if (mode === 'copilot') {
+        // Copilot mode: Check if should auto-approve
+        const settings = configStore.getSettings();
+        const copilotSettings = settings.response_modes?.copilot;
+
+        const shouldAutoApprove =
+          (copilotSettings?.auto_approve_confidence &&
+            _diaryEvent.confidence >= copilotSettings.auto_approve_confidence) ||
+          (copilotSettings?.auto_approve_intents?.includes(_diaryEvent.intent));
+
+        if (shouldAutoApprove) {
+          console.log(
+            `[Copilot] Auto-approving high-confidence response (${_diaryEvent.confidence.toFixed(2)} for intent: ${_diaryEvent.intent})`
+          );
+          // Fall through to sendMessage below
+        } else {
+          // Add to approval queue instead of sending
+          console.log(
+            `[Copilot] Adding response to approval queue (confidence: ${_diaryEvent.confidence.toFixed(2)}, intent: ${_diaryEvent.intent})`
+          );
+          const approvalId = addApproval({
+            phone,
+            pushName: msg.pushName,
+            originalMessage: text,
+            suggestedResponse: response,
+            intent: _diaryEvent.intent,
+            confidence: _diaryEvent.confidence,
+            language: lang,
+            metadata: {
+              source: _devMetadata.source,
+              model: _devMetadata.model,
+              kbFiles: _devMetadata.kbFiles
+            }
+          });
+
+          // Log that we queued for approval instead of sending
+          logMessage(phone, msg.pushName, 'assistant', response, {
+            intent: _diaryEvent.intent || undefined,
+            confidence: _diaryEvent.confidence,
+            action: _diaryEvent.action || undefined,
+            instanceId: msg.instanceId,
+            source: _devMetadata.source,
+            model: _devMetadata.model,
+            responseTime: _devMetadata.responseTime,
+            kbFiles: _devMetadata.kbFiles.length > 0 ? _devMetadata.kbFiles : undefined,
+            messageType: _diaryEvent.messageType,
+            routedAction: _devMetadata.routedAction,
+            workflowId: _devMetadata.workflowId,
+            stepId: _devMetadata.stepId,
+            manual: false,
+            pending_approval: true,
+            approval_id: approvalId
+          }).catch(() => { });
+
+          return; // Don't send yet - waiting for approval
+        }
+      }
+
+      // Autopilot mode or auto-approved copilot - send immediately
       logMessage(phone, msg.pushName, 'assistant', response, {
         intent: _diaryEvent.intent || undefined,
         confidence: _diaryEvent.confidence,
@@ -877,7 +1044,7 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
         routedAction: _devMetadata.routedAction,
         workflowId: _devMetadata.workflowId,
         stepId: _devMetadata.stepId
-      }).catch(() => {});
+      }).catch(() => { });
       await sendMessage(phone, response, msg.instanceId);
 
       // Track response sent for real-time activity

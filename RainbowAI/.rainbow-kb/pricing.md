@@ -20,14 +20,14 @@
 - Locker use (subject to availability)
 
 ## Deposits
-- **RM10 card deposit** (standard stays) — refundable
+- **RM10 card deposit** (stays >7 nights) — refundable
 - **RM100 security deposit** (long-term stays) — refundable
 - Used to cover: damages, missing items, unpaid charges, or excessive cleaning
 
 ## Common Additional Charges
 - Key card replacement: **RM10**
 - Late checkout: **Free** (subject to availability)
-- Early check-in: **Free** (subject to availability)
+- Early check-in: **Subject to approval**
 - Extra cleaning required: **RM20+** (depends on work needed)
 - Damage / missing items: **actual cost** (evidence-based)
 

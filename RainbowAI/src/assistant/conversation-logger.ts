@@ -54,6 +54,8 @@ export interface ConversationLog {
   favourite?: boolean;
   /** Timestamp of last message when admin last opened this chat (for unread badge). */
   lastReadAt?: number;
+  /** Per-conversation response mode override (autopilot/copilot/manual). Persisted to disk. */
+  responseMode?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -363,6 +365,15 @@ export async function updateContactDetails(phone: string, partial: Partial<Conta
   log.updatedAt = Date.now();
   await writeLog(log);
   return log.contactDetails;
+}
+
+/** Update the response mode for a conversation (persists to disk). */
+export async function updateConversationMode(phone: string, mode: string): Promise<void> {
+  const log = await readLog(phone);
+  if (!log) return;
+  log.responseMode = mode;
+  log.updatedAt = Date.now();
+  await writeLog(log);
 }
 
 /** Aggregate response time from all conversation logs (for dashboard avg). */

@@ -11,7 +11,7 @@ export interface SemanticMatchResult {
 
 export interface IntentExamples {
   intent: string;
-  examples: string[];
+  examples: string[] | { en?: string[]; ms?: string[]; zh?: string[] };
 }
 
 /**
@@ -66,17 +66,22 @@ export class SemanticMatcher {
       const embeddingStartTime = Date.now();
 
       for (const { intent, examples } of intentExamples) {
-        if (examples.length === 0) continue;
+        // Flatten language-keyed examples OR keep flat array (backward compatible)
+        const exampleList = Array.isArray(examples)
+          ? examples  // Legacy flat array
+          : [...(examples.en || []), ...(examples.ms || []), ...(examples.zh || [])];
+
+        if (exampleList.length === 0) continue;
 
         // Compute embedding for each example
         const embeddings = await Promise.all(
-          examples.map(ex => this.embed(ex))
+          exampleList.map(ex => this.embed(ex))
         );
 
         // Compute centroid (average of all examples)
         const centroid = this.computeCentroid(embeddings);
 
-        this.intentEmbeddings.set(intent, { centroid, examples });
+        this.intentEmbeddings.set(intent, { centroid, examples: exampleList });
       }
 
       const totalTime = Date.now() - embeddingStartTime;

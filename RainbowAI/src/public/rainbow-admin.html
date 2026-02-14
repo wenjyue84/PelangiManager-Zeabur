@@ -1,22 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Rainbow Admin Dashboard</title>
-  <!-- Run first: normalize URL so /dashboard#x works on first paste; strip hot-reload cache-bust param -->
+  <!-- Run first: normalize URL so /understanding → /#understanding; strip hot-reload cache-bust param -->
   <script>
-  (function(){
-    var loc = window.location;
-    var path = loc.pathname || '/';
-    var hash = loc.hash || '';
-    var search = loc.search || '';
-    if (path !== '/') {
-      history.replaceState(null, '', loc.origin + '/' + hash);
-    } else if (search.indexOf('_=') !== -1) {
-      history.replaceState(null, '', loc.origin + path + hash);
-    }
-  })();
+    (function () {
+      var loc = window.location;
+      var path = loc.pathname || '/';
+      var hash = loc.hash || '';
+      var search = loc.search || '';
+      if (path !== '/') {
+        // Convert path-based tab URL to hash-based: /understanding → /#understanding
+        var tabFromPath = hash || '#' + path.slice(1);
+        history.replaceState(null, '', loc.origin + '/' + tabFromPath);
+      } else if (search.indexOf('_=') !== -1) {
+        history.replaceState(null, '', loc.origin + path + hash);
+      }
+    })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -43,220 +49,307 @@
   <!-- Rainbow Dashboard Styles -->
   <link rel="stylesheet" href="/public/css/rainbow-styles.css">
 </head>
+
 <body class="bg-neutral-50 min-h-screen">
 
-<!-- Toast Container -->
-<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
-<!-- Header -->
-<header class="bg-white border-b shadow-soft">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <span class="text-2xl">🌈</span>
-      <h1 class="text-xl font-bold text-neutral-800">Rainbow</h1>
-      <span id="wa-badge" class="text-xs px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-600">...</span>
+  <!-- Header -->
+  <header class="bg-white border-b shadow-soft">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🌈</span>
+        <h1 class="text-xl font-bold text-neutral-800">Rainbow</h1>
+        <span id="wa-badge" class="text-xs px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-600">...</span>
+      </div>
+      <button onclick="reloadConfig()"
+        class="text-sm bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-2xl transition">Reload
+        Config</button>
     </div>
-    <button onclick="reloadConfig()" class="text-sm bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-2xl transition">Reload Config</button>
-  </div>
-</header>
+  </header>
 
-<!-- Tabs -->
-<nav class="bg-white border-b">
-  <div class="max-w-6xl mx-auto px-4 flex gap-20 items-center py-2">
+  <!-- Tabs -->
+  <nav class="bg-white border-b">
+    <div class="max-w-6xl mx-auto px-4 flex gap-20 items-center py-2">
 
-    <!-- 📱 Connect (single choice → goes straight to dashboard) -->
-    <button class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-semibold text-primary-600 hover:bg-primary-50 rounded-lg transition" data-tab="dashboard">
-      📱 Connect
-    </button>
-
-    <!-- 🧠 Train Section -->
-    <div class="relative">
-      <button onclick="toggleDropdown('train-dropdown')" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-success-600 hover:bg-success-50 rounded-lg transition">
-        🧠 Train
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      <!-- 📱 Connect (single choice → goes straight to dashboard) -->
+      <button
+        class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-semibold text-primary-600 hover:bg-primary-50 rounded-lg transition"
+        data-tab="dashboard">
+        📱 Connect
       </button>
-      <div id="train-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[200px]">
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-success-50 hover:text-success-600 transition" data-tab="understanding" onclick="closeAllDropdowns()">🧠 Understanding</button>
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-success-50 hover:text-success-600 transition" data-tab="intents" onclick="closeAllDropdowns()">🎯 Smart Routing</button>
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-success-50 hover:text-success-600 transition" data-tab="responses" onclick="closeAllDropdowns()">💬 Responses</button>
-      </div>
-    </div>
 
-    <!-- 🧪 Test Section -->
-    <div class="relative">
-      <button onclick="toggleDropdown('test-dropdown')" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-warning-600 hover:bg-warning-50 rounded-lg transition">
-        🧪 Test
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      <!-- 🧠 Train Section -->
+      <div class="relative">
+        <button onclick="toggleDropdown('train-dropdown')"
+          class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-success-600 hover:bg-success-50 rounded-lg transition">
+          🧠 Train
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div id="train-dropdown"
+          class="hidden absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[200px]">
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-success-50 hover:text-success-600 transition"
+            data-tab="understanding" onclick="closeAllDropdowns()">🧠 Understanding</button>
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-success-50 hover:text-success-600 transition"
+            data-tab="intents" onclick="closeAllDropdowns()">🎯 Smart Routing</button>
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-success-50 hover:text-success-600 transition"
+            data-tab="responses" onclick="closeAllDropdowns()">💬 Responses</button>
+        </div>
+      </div>
+
+      <!-- 🧪 Test Section -->
+      <div class="relative">
+        <button onclick="toggleDropdown('test-dropdown')"
+          class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-warning-600 hover:bg-warning-50 rounded-lg transition">
+          🧪 Test
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div id="test-dropdown"
+          class="hidden absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[200px]">
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-warning-50 hover:text-warning-600 transition"
+            data-tab="chat-simulator" onclick="closeAllDropdowns()">💬 Chat Simulator</button>
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-warning-50 hover:text-warning-600 transition"
+            data-tab="testing" onclick="closeAllDropdowns()">🧪 Automated Tests</button>
+        </div>
+      </div>
+
+      <!-- 💬 Chat (Standalone — customer support) -->
+      <button
+        class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-semibold text-teal-600 hover:bg-teal-50 rounded-lg transition"
+        data-tab="live-chat">
+        💬 Chat
       </button>
-      <div id="test-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[200px]">
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-warning-50 hover:text-warning-600 transition" data-tab="chat-simulator" onclick="closeAllDropdowns()">💬 Chat Simulator</button>
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-warning-50 hover:text-warning-600 transition" data-tab="testing" onclick="closeAllDropdowns()">🧪 Automated Tests</button>
+
+      <!-- 📊 Monitor Section -->
+      <div class="relative">
+        <button onclick="toggleDropdown('monitor-dropdown')"
+          class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 rounded-lg transition">
+          📊 Monitor
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div id="monitor-dropdown"
+          class="hidden absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[200px]">
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-neutral-600 transition"
+            data-tab="performance" onclick="closeAllDropdowns()">📊 Performance</button>
+          <button
+            class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-neutral-600 transition"
+            data-tab="settings" onclick="closeAllDropdowns()">⚙️ Settings</button>
+        </div>
       </div>
-    </div>
 
-    <!-- 💬 Chat (Standalone — customer support) -->
-    <button class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-semibold text-teal-600 hover:bg-teal-50 rounded-lg transition" data-tab="live-chat">
-      💬 Chat
-    </button>
-
-    <!-- 📊 Monitor Section -->
-    <div class="relative">
-      <button onclick="toggleDropdown('monitor-dropdown')" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 rounded-lg transition">
-        📊 Monitor
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      <!-- ❓ Help Section (Standalone) -->
+      <button class="tab-btn px-4 py-3 text-sm font-semibold text-purple-600 hover:bg-purple-50 rounded-lg transition"
+        data-tab="help">
+        ❓ Help
       </button>
-      <div id="monitor-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[200px]">
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-neutral-600 transition" data-tab="performance" onclick="closeAllDropdowns()">📊 Performance</button>
-        <button class="tab-btn w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-neutral-600 transition" data-tab="settings" onclick="closeAllDropdowns()">⚙️ Settings</button>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="max-w-6xl mx-auto px-4 py-6">
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Dashboard Tab (NEW - Default Landing Page) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-dashboard" class="tab-content" data-template="dashboard">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading dashboard...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- WhatsApp Accounts Tab (REMOVED — redirects to Dashboard) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-whatsapp-accounts" class="tab-content hidden">
+      <div class="max-w-lg mx-auto py-16 text-center">
+        <div class="text-5xl mb-4">📱</div>
+        <h2 class="text-xl font-bold text-neutral-800 mb-2">Page Removed</h2>
+        <p class="text-sm text-neutral-500 mb-6">The WhatsApp Accounts page has been removed. WhatsApp connection status
+          is now shown on the <strong>Dashboard</strong>, and QR pairing is available at
+          <code>/admin/whatsapp-qr</code>.
+        </p>
+        <div class="flex gap-3 justify-center">
+          <button onclick="loadTab('dashboard')"
+            class="bg-primary-500 hover:bg-primary-600 text-white text-sm px-4 py-2 rounded-lg transition">Go to
+            Dashboard</button>
+          <a href="/admin/whatsapp-qr"
+            class="border border-neutral-300 hover:bg-neutral-50 text-neutral-700 text-sm px-4 py-2 rounded-lg transition inline-block">Pair
+            WhatsApp (QR)</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Understanding Tab (Renamed from Intent Manager) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-understanding" class="tab-content hidden" data-template="understanding">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading understanding...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Smart Routing Tab (Renamed from Intents & Routing) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-intents" class="tab-content hidden" data-template="intents">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading smart routing...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Responses Tab (NEW - Merges Static Messages + Workflow) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-responses" class="tab-content hidden" data-template="responses">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading responses...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Chat Simulator Tab (NEW - Merges Preview + Real Chat) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-chat-simulator" class="tab-content hidden" data-template="chat-simulator">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading chat simulator...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Live Chat Tab (Customer Support — WhatsApp Web style) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-live-chat" class="tab-content hidden" data-template="live-chat">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading chat...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Performance Tab (NEW - Merges Feedback Stats + Intent Accuracy) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-performance" class="tab-content hidden" data-template="performance">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading performance...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Settings Tab -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-settings" class="tab-content hidden" data-template="settings">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading settings...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Automated Tests Tab (Renamed from Testing/Run Tests) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-testing" class="tab-content hidden" data-template="testing">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading automated tests...</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- Help Tab -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <section id="tab-help" class="tab-content hidden" data-template="help">
+      <div class="p-8 text-center">
+        <div class="spinner mx-auto"></div>
+        <p class="text-sm text-neutral-500 mt-2">Loading help...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Core Scripts (Regular - global scope, load order matters!) -->
+  <script src="/public/js/core/state.js"></script>
+  <script src="/public/js/core/utils-global.js"></script>
+  <script src="/public/js/core/state-manager.js"></script>
+  <script src="/public/js/core/modals.js"></script>
+  <script src="/public/js/core/constants.js"></script>
+
+  <!-- Shared Components (loaded before legacy-functions.js and modules) -->
+  <script src="/public/js/components/metadata-badges.js"></script>
+  <script src="/public/js/components/search-panel.js"></script>
+
+  <!-- Legacy Functions (all onclick handlers from original inline JS) -->
+  <script src="/public/js/legacy-functions.js"></script>
+
+  <!-- Tab System (needs functions above to be defined) -->
+  <script src="/public/js/core/tabs.js"></script>
+
+  <!-- Extracted modules (Phase 1: Trivial Loaders) -->
+  <script type="module">
+    import { loadWhatsappAccounts } from '/public/js/modules/whatsapp-accounts.js';
+    import { loadUnderstanding } from '/public/js/modules/understanding.js';
+    import { loadPerformance } from '/public/js/modules/performance.js';
+
+    // Expose to global scope (required by tabs.js and onclick handlers)
+    window.loadWhatsappAccounts = loadWhatsappAccounts;
+    window.loadUnderstanding = loadUnderstanding;
+    window.loadPerformance = loadPerformance;
+  </script>
+
+  <!-- ES6 Module Scripts (deferred - run after all regular scripts) -->
+  <script type="module" src="/public/js/modules/testing.js"></script>
+  <script type="module" src="/public/js/modules/real-chat.js"></script>
+  <script type="module" src="/public/js/modules/live-chat.js"></script>
+  <script type="module" src="/public/js/modules/kb-editor.js"></script>
+  <script type="module" src="/public/js/modules/settings.js"></script>
+  <script type="module" src="/public/js/main.js"></script>
+
+  <!-- Diagnostic Modal -->
+  <div id="diagnostic-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+    <div class="bg-white rounded-2xl shadow-strong p-6 w-full max-w-lg mx-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-danger-500 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+            </path>
+          </svg>
+          Diagnostic Summary
+        </h3>
+        <button onclick="closeModal('diagnostic-modal')" class="text-neutral-400 hover:text-neutral-600 transition">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="diagnostic-content" class="max-h-[60vh] overflow-y-auto space-y-3 mb-6">
+        <!-- Errors will be injected here -->
+      </div>
+      <div class="flex justify-end">
+        <button onclick="closeModal('diagnostic-modal')"
+          class="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-4 py-2 rounded-2xl text-sm font-medium transition">Close</button>
       </div>
     </div>
-
-    <!-- ❓ Help Section (Standalone) -->
-    <button class="tab-btn px-4 py-3 text-sm font-semibold text-purple-600 hover:bg-purple-50 rounded-lg transition" data-tab="help">
-      ❓ Help
-    </button>
   </div>
-</nav>
-
-<!-- Content -->
-<main class="max-w-6xl mx-auto px-4 py-6">
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Dashboard Tab (NEW - Default Landing Page) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-dashboard" class="tab-content" data-template="dashboard">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading dashboard...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- WhatsApp Accounts Tab (REMOVED — redirects to Dashboard) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-whatsapp-accounts" class="tab-content hidden">
-    <div class="max-w-lg mx-auto py-16 text-center">
-      <div class="text-5xl mb-4">📱</div>
-      <h2 class="text-xl font-bold text-neutral-800 mb-2">Page Removed</h2>
-      <p class="text-sm text-neutral-500 mb-6">The WhatsApp Accounts page has been removed. WhatsApp connection status is now shown on the <strong>Dashboard</strong>, and QR pairing is available at <code>/admin/whatsapp-qr</code>.</p>
-      <div class="flex gap-3 justify-center">
-        <button onclick="loadTab('dashboard')" class="bg-primary-500 hover:bg-primary-600 text-white text-sm px-4 py-2 rounded-lg transition">Go to Dashboard</button>
-        <a href="/admin/whatsapp-qr" class="border border-neutral-300 hover:bg-neutral-50 text-neutral-700 text-sm px-4 py-2 rounded-lg transition inline-block">Pair WhatsApp (QR)</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Understanding Tab (Renamed from Intent Manager) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-understanding" class="tab-content hidden" data-template="understanding">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading understanding...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Smart Routing Tab (Renamed from Intents & Routing) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-intents" class="tab-content hidden" data-template="intents">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading smart routing...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Responses Tab (NEW - Merges Static Messages + Workflow) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-responses" class="tab-content hidden" data-template="responses">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading responses...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Chat Simulator Tab (NEW - Merges Preview + Real Chat) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-chat-simulator" class="tab-content hidden" data-template="chat-simulator">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading chat simulator...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Live Chat Tab (Customer Support — WhatsApp Web style) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-live-chat" class="tab-content hidden" data-template="live-chat">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading chat...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Performance Tab (NEW - Merges Feedback Stats + Intent Accuracy) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-performance" class="tab-content hidden" data-template="performance">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading performance...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Settings Tab -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-settings" class="tab-content hidden" data-template="settings">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading settings...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Automated Tests Tab (Renamed from Testing/Run Tests) -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-testing" class="tab-content hidden" data-template="testing">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading automated tests...</p>
-  </div>
-</section>
-
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- Help Tab -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
-  <section id="tab-help" class="tab-content hidden" data-template="help">
-<div class="p-8 text-center">
-    <div class="spinner mx-auto"></div>
-    <p class="text-sm text-neutral-500 mt-2">Loading help...</p>
-  </div>
-</section>
-
-</main>
-
-<!-- Core Scripts (Regular - global scope, load order matters!) -->
-<script src="/public/js/core/state.js"></script>
-<script src="/public/js/core/utils-global.js"></script>
-<script src="/public/js/core/state-manager.js"></script>
-<script src="/public/js/core/modals.js"></script>
-<script src="/public/js/core/constants.js"></script>
-
-<!-- Legacy Functions (all onclick handlers from original inline JS) -->
-<script src="/public/js/legacy-functions.js"></script>
-
-<!-- Tab System (needs functions above to be defined) -->
-<script src="/public/js/core/tabs.js"></script>
-
-<!-- ES6 Module Scripts (deferred - run after all regular scripts) -->
-<script type="module" src="/public/js/modules/testing.js"></script>
-<script type="module" src="/public/js/modules/real-chat.js"></script>
-<script type="module" src="/public/js/modules/live-chat.js"></script>
-<script type="module" src="/public/js/modules/kb-editor.js"></script>
-<script type="module" src="/public/js/main.js"></script>
 
 </body>
+
 </html>

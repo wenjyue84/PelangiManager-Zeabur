@@ -1713,9 +1713,9 @@ export declare const insertGuestSchema: z.ZodObject<z.objectUtil.extendShape<Omi
 }>, "strip", z.ZodTypeAny, {
     name: string;
     capsuleNumber: string;
-    paymentMethod: "platform" | "cash" | "tng" | "bank";
-    isPaid: boolean;
+    paymentMethod: "cash" | "tng" | "bank" | "platform";
     paymentCollector: string;
+    isPaid: boolean;
     nationality?: string | undefined;
     idNumber?: string | undefined;
     phoneNumber?: string | undefined;
@@ -1729,7 +1729,7 @@ export declare const insertGuestSchema: z.ZodObject<z.objectUtil.extendShape<Omi
     age?: string | undefined;
     profilePhotoUrl?: any;
     selfCheckinToken?: string | null | undefined;
-    status?: "blacklisted" | "vip" | undefined;
+    status?: "vip" | "blacklisted" | undefined;
     checkInDate?: string | undefined;
 }, {
     name: string;
@@ -1741,7 +1741,7 @@ export declare const insertGuestSchema: z.ZodObject<z.objectUtil.extendShape<Omi
     email?: string | undefined;
     expectedCheckoutDate?: string | undefined;
     paymentAmount?: string | undefined;
-    paymentMethod?: "platform" | "cash" | "tng" | "bank" | undefined;
+    paymentMethod?: "cash" | "tng" | "bank" | "platform" | undefined;
     isPaid?: boolean | undefined;
     notes?: string | undefined;
     gender?: "male" | "female" | "other" | "prefer-not-to-say" | undefined;
@@ -1750,7 +1750,7 @@ export declare const insertGuestSchema: z.ZodObject<z.objectUtil.extendShape<Omi
     age?: string | undefined;
     profilePhotoUrl?: any;
     selfCheckinToken?: string | null | undefined;
-    status?: "blacklisted" | "vip" | undefined;
+    status?: "vip" | "blacklisted" | undefined;
     checkInDate?: string | undefined;
 }>;
 export declare const insertCapsuleSchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
@@ -1782,7 +1782,7 @@ export declare const insertCapsuleSchema: z.ZodObject<z.objectUtil.extendShape<O
     problemDescription: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
 }>, "strip", z.ZodTypeAny, {
     number: string;
-    section: "front" | "middle" | "back";
+    section: "back" | "middle" | "front";
     isAvailable: boolean;
     cleaningStatus: "cleaned" | "to_be_cleaned";
     toRent: boolean;
@@ -1796,7 +1796,7 @@ export declare const insertCapsuleSchema: z.ZodObject<z.objectUtil.extendShape<O
     problemDescription?: string | undefined;
 }, {
     number: string;
-    section: "front" | "middle" | "back";
+    section: "back" | "middle" | "front";
     isAvailable?: boolean | undefined;
     cleaningStatus?: "cleaned" | "to_be_cleaned" | undefined;
     toRent?: boolean | undefined;
@@ -1822,7 +1822,7 @@ export declare const updateCapsuleSchema: z.ZodObject<{
     problemDescription: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
 }, "strip", z.ZodTypeAny, {
     number?: string | undefined;
-    section?: "front" | "middle" | "back" | undefined;
+    section?: "back" | "middle" | "front" | undefined;
     isAvailable?: boolean | undefined;
     cleaningStatus?: "cleaned" | "to_be_cleaned" | undefined;
     toRent?: boolean | undefined;
@@ -1833,7 +1833,7 @@ export declare const updateCapsuleSchema: z.ZodObject<{
     problemDescription?: string | undefined;
 }, {
     number?: string | undefined;
-    section?: "front" | "middle" | "back" | undefined;
+    section?: "back" | "middle" | "front" | undefined;
     isAvailable?: boolean | undefined;
     cleaningStatus?: "cleaned" | "to_be_cleaned" | undefined;
     toRent?: boolean | undefined;
@@ -1950,9 +1950,9 @@ export declare const bulkGuestImportSchema: z.ZodArray<z.ZodObject<z.objectUtil.
 }>, "strip", z.ZodTypeAny, {
     name: string;
     capsuleNumber: string;
-    paymentMethod: "platform" | "cash" | "tng" | "bank";
-    isPaid: boolean;
+    paymentMethod: "cash" | "tng" | "bank" | "platform";
     paymentCollector: string;
+    isPaid: boolean;
     nationality?: string | undefined;
     idNumber?: string | undefined;
     phoneNumber?: string | undefined;
@@ -1967,7 +1967,7 @@ export declare const bulkGuestImportSchema: z.ZodArray<z.ZodObject<z.objectUtil.
     age?: string | undefined;
     profilePhotoUrl?: any;
     selfCheckinToken?: string | null | undefined;
-    status?: "blacklisted" | "vip" | undefined;
+    status?: "vip" | "blacklisted" | undefined;
     checkInDate?: string | undefined;
 }, {
     name: string;
@@ -1979,9 +1979,9 @@ export declare const bulkGuestImportSchema: z.ZodArray<z.ZodObject<z.objectUtil.
     email?: string | undefined;
     expectedCheckoutDate?: string | undefined;
     paymentAmount?: string | undefined;
-    paymentMethod?: "platform" | "cash" | "tng" | "bank" | undefined;
-    isPaid?: boolean | undefined;
+    paymentMethod?: "cash" | "tng" | "bank" | "platform" | undefined;
     checkinTime?: string | undefined;
+    isPaid?: boolean | undefined;
     notes?: string | undefined;
     gender?: "male" | "female" | "other" | "prefer-not-to-say" | undefined;
     emergencyContact?: string | undefined;
@@ -1989,7 +1989,7 @@ export declare const bulkGuestImportSchema: z.ZodArray<z.ZodObject<z.objectUtil.
     age?: string | undefined;
     profilePhotoUrl?: any;
     selfCheckinToken?: string | null | undefined;
-    status?: "blacklisted" | "vip" | undefined;
+    status?: "vip" | "blacklisted" | undefined;
     checkInDate?: string | undefined;
 }>, "many">;
 export declare const guestSelfCheckinSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObject<{
@@ -2663,7 +2663,6 @@ export declare const updateSettingsSchema: z.ZodObject<{
     hostelName: z.ZodDefault<z.ZodString>;
     timezone: z.ZodDefault<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    timezone: string;
     guideShowIntro: boolean;
     guideShowAddress: boolean;
     guideShowWifi: boolean;
@@ -2692,7 +2691,7 @@ export declare const updateSettingsSchema: z.ZodObject<{
     guideShowGoogleMaps: boolean;
     guideShowCheckinVideo: boolean;
     guideShowTimeAccess: boolean;
-    defaultPaymentMethod: "platform" | "cash" | "tng" | "bank";
+    defaultPaymentMethod: "cash" | "tng" | "bank" | "platform";
     maxPaymentAmount: number;
     totalCapsules: number;
     capsuleSections: string[];
@@ -2709,11 +2708,11 @@ export declare const updateSettingsSchema: z.ZodObject<{
     supportEmail: string;
     supportPhone: string;
     hostelName: string;
+    timezone: string;
     guideHostelPhotosUrl?: string | undefined;
     guideGoogleMapsUrl?: string | undefined;
     guideCheckinVideoUrl?: string | undefined;
 }, {
-    timezone?: string | undefined;
     guideShowIntro?: boolean | undefined;
     guideShowAddress?: boolean | undefined;
     guideShowWifi?: boolean | undefined;
@@ -2745,7 +2744,7 @@ export declare const updateSettingsSchema: z.ZodObject<{
     guideShowGoogleMaps?: boolean | undefined;
     guideShowCheckinVideo?: boolean | undefined;
     guideShowTimeAccess?: boolean | undefined;
-    defaultPaymentMethod?: "platform" | "cash" | "tng" | "bank" | undefined;
+    defaultPaymentMethod?: "cash" | "tng" | "bank" | "platform" | undefined;
     maxPaymentAmount?: number | undefined;
     totalCapsules?: number | undefined;
     capsuleSections?: string[] | undefined;
@@ -2762,6 +2761,7 @@ export declare const updateSettingsSchema: z.ZodObject<{
     supportEmail?: string | undefined;
     supportPhone?: string | undefined;
     hostelName?: string | undefined;
+    timezone?: string | undefined;
 }>;
 export type UpdateSettings = z.infer<typeof updateSettingsSchema>;
 export declare const phoneNumberSchema: z.ZodEffects<z.ZodString, string, string>;
@@ -2804,9 +2804,9 @@ export declare const updateGuestSchema: z.ZodObject<{
     expectedCheckoutDate?: string | undefined;
     capsuleNumber?: string | undefined;
     paymentAmount?: string | undefined;
-    paymentMethod?: "platform" | "cash" | "tng" | "bank" | undefined;
-    isPaid?: boolean | undefined;
+    paymentMethod?: "cash" | "tng" | "bank" | "platform" | undefined;
     paymentCollector?: string | undefined;
+    isPaid?: boolean | undefined;
     notes?: string | undefined;
     gender?: string | undefined;
     emergencyContact?: string | undefined;
@@ -2825,9 +2825,9 @@ export declare const updateGuestSchema: z.ZodObject<{
     expectedCheckoutDate?: string | undefined;
     capsuleNumber?: string | undefined;
     paymentAmount?: string | undefined;
-    paymentMethod?: "platform" | "cash" | "tng" | "bank" | undefined;
-    isPaid?: boolean | undefined;
+    paymentMethod?: "cash" | "tng" | "bank" | "platform" | undefined;
     paymentCollector?: string | undefined;
+    isPaid?: boolean | undefined;
     notes?: string | undefined;
     gender?: string | undefined;
     emergencyContact?: string | undefined;
@@ -3734,9 +3734,9 @@ export declare const insertRainbowFeedbackSchema: z.ZodObject<z.objectUtil.exten
     phoneNumber: string;
     rating: 1 | -1;
     conversationId: string;
+    responseTime?: number | null | undefined;
     intent?: string | null | undefined;
     confidence?: number | null | undefined;
-    responseTime?: number | null | undefined;
     messageId?: string | null | undefined;
     feedbackText?: string | undefined;
     responseModel?: string | null | undefined;
@@ -3745,9 +3745,9 @@ export declare const insertRainbowFeedbackSchema: z.ZodObject<z.objectUtil.exten
     phoneNumber: string;
     rating: number;
     conversationId: string;
+    responseTime?: number | null | undefined;
     intent?: string | null | undefined;
     confidence?: number | null | undefined;
-    responseTime?: number | null | undefined;
     messageId?: string | null | undefined;
     feedbackText?: string | undefined;
     responseModel?: string | null | undefined;

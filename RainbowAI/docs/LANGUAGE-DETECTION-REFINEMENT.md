@@ -8,17 +8,21 @@
 
 Rainbow AI had a language detection mismatch that caused replies to be sent in the wrong language:
 
-- **Intent classification** used `languageRouter.detectLanguage()` (95%+ accuracy, statistical analysis via franc-min)
-- **Static reply selection** used simpler `formatter.detectLanguage()` from conversation state (85% accuracy, keyword-based)
-- The more accurate `tierResult.detectedLanguage` from intent classification was **not used** for static reply selection
+- **Intent classification** used `languageRouter.detectLanguage()` (ELD + patterns)
+- **Static reply selection** used `formatter.detectLanguage()` (now delegates to `languageRouter`, so single source of truth)
+- The more accurate `tierResult.detectedLanguage` from intent classification is used when confidence ≥ 0.7
 
-**Example issue:**
+**Example issue (historical):**
 ```
 User: "apa" (Malay for "what")
-├─ formatter.detectLanguage() → 'en' (only 1 Malay keyword, needs 2)
-├─ languageRouter.detectLanguage() → 'ms' (via franc-min statistical analysis)
-└─ Static reply sent in 'en' ❌ (should be 'ms')
+├─ formatter.detectLanguage() → 'en' (only 1 Malay keyword)
+├─ languageRouter.detectLanguage() → 'ms' (ELD/pattern)
+└─ Static reply sent in 'ms' ✅ (via tier resolution)
 ```
+
+### Language detection backend (2025)
+
+**Backend:** [ELD (Efficient Language Detector)](https://github.com/nitotm/efficient-language-detector-js) — fast, accurate, 100% JS, no native deps. Restricted to `en`/`ms`/`zh` via `setLanguageSubset()` for better short-text and colloquial accuracy (e.g. "Bole check in awal?" → ms). Pattern-based fast path for Chinese script, Malay/English keywords, and phrase rules; ELD used for statistical detection with pattern fallback when ELD returns unknown.
 
 ## Solution Implemented
 
@@ -290,7 +294,7 @@ cd RainbowAI && npm run build && pm2 restart rainbow
 ## References
 
 - **Original Plan:** `.claude/projects/.../55213529-42db-4c78-a9ad-192f4ca038c6.jsonl`
-- **Language Detection Implementation:** `src/assistant/language-router.ts`
+- **Language Detection Implementation:** `src/assistant/language-router.ts` (ELD + patterns); `formatter.detectLanguage()` delegates to it.
 - **Intent Classification Pipeline:** `src/assistant/intents.ts`
 - **Knowledge Base System:** `src/assistant/knowledge-base.ts`
 - **Rainbow Admin Dashboard:** http://localhost:3002/admin/rainbow

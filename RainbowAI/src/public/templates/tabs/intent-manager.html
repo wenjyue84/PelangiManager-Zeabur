@@ -155,17 +155,22 @@
         </div>
 
         <div class="border rounded-2xl p-4">
-          <div class="text-xs font-semibold text-neutral-500 mb-2">EMERGENCY PATTERNS</div>
-          <div id="im-regex-list" class="space-y-2 mb-3">
-            <!-- Regex patterns will be loaded here -->
+          <div class="text-xs font-semibold text-neutral-500 mb-2">EMERGENCY PATTERNS (by language)</div>
+          <div id="im-regex-list" class="space-y-4 mb-3">
+            <!-- Regex patterns grouped by language (en, ms, zh) -->
           </div>
-          <div class="flex gap-2">
-            <input id="im-regex-pattern" class="flex-1 border rounded-2xl px-3 py-2 text-sm font-mono" placeholder="/pattern/i (e.g., /fire|kebakaran|着火/i)" />
-            <input id="im-regex-description" class="flex-1 border rounded-2xl px-3 py-2 text-sm" placeholder="Description (e.g., Fire emergency)" />
+          <div class="flex flex-wrap gap-2 items-end">
+            <input id="im-regex-pattern" class="flex-1 min-w-0 border rounded-2xl px-3 py-2 text-sm font-mono" placeholder="/pattern/i (e.g., /\\b(fire)\\b/i)" />
+            <input id="im-regex-description" class="flex-1 min-w-0 border rounded-2xl px-3 py-2 text-sm" placeholder="Description (e.g., Fire emergency)" />
+            <select id="im-regex-language" class="border rounded-2xl px-3 py-2 text-sm bg-white w-28">
+              <option value="en">English</option>
+              <option value="ms">Malay</option>
+              <option value="zh">Chinese</option>
+            </select>
             <button onclick="addRegexPattern()" class="text-sm bg-danger-500 hover:bg-danger-600 text-white px-3 py-1.5 rounded-2xl">Add</button>
           </div>
           <div class="text-xs text-neutral-500 mt-2">
-            ⚠️ Use regex syntax: <code class="bg-neutral-100 px-1">/pattern/flags</code>. Common flags: <code class="bg-neutral-100 px-1">i</code> (case-insensitive), <code class="bg-neutral-100 px-1">g</code> (global).
+            ⚠️ Use regex syntax: <code class="bg-neutral-100 px-1">/pattern/flags</code>. Common flags: <code class="bg-neutral-100 px-1">i</code> (case-insensitive). Add one pattern per language (EN / MS / ZH) for clarity.
           </div>
 
           <div class="mt-4 pt-4 border-t">
@@ -428,31 +433,31 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex-1">
               <h4 class="text-sm font-semibold text-neutral-700 mb-1 flex items-center gap-2">
-                T4 LLM Providers (Fallback Order)
+                T4 LLM Models (Fallback Order)
               </h4>
               <div class="flex items-center gap-1 text-xs text-neutral-400">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span>Providers configured in</span>
+                <span>Models configured in</span>
                 <a href="#" onclick="switchTab('settings');scrollToProviders();return false" class="text-primary-500 hover:text-primary-600 underline font-medium">
-                  Settings → AI Providers
+                  Settings → AI Models
                 </a>
               </div>
             </div>
             <button onclick="switchTab('settings');scrollToProviders();return false" class="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              Manage Providers
+              Manage Models
             </button>
           </div>
 
           <!-- Provider Status Summary -->
           <div id="t4-provider-status" class="bg-neutral-50 rounded-lg px-3 py-2 mb-3 text-xs text-neutral-600 flex items-center gap-2">
             <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span id="t4-provider-status-text">Loading provider status...</span>
+            <span id="t4-provider-status-text">Loading model status...</span>
           </div>
 
-          <p class="text-xs text-neutral-400 mb-3">Select which providers to use for T4 classification. If none selected, all enabled providers will be used in priority order.</p>
+          <p class="text-xs text-neutral-400 mb-3">Select which models to use for T4 classification. If none selected, all enabled models will be used in priority order.</p>
           <div id="t4-providers-list" class="space-y-2 mb-4">
-            <p class="text-sm text-neutral-400 italic">Loading providers...</p>
+            <p class="text-sm text-neutral-400 italic">Loading models...</p>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -771,7 +776,7 @@
                 <ol class="ml-4 space-y-1">
                   <li>1. Click the <strong>chevron</strong> on T4 section</li>
                   <li>2. Set confidence thresholds (Fuzzy 80%, Semantic 70%, LLM 60%)</li>
-                  <li>3. Select AI providers in <strong>📊 Settings → AI Providers</strong></li>
+                  <li>3. Select AI models in <strong>📊 Settings → AI Models</strong></li>
                   <li>4. Customize system prompt (optional)</li>
                   <li>5. Configure fallback behavior</li>
                   <li>6. Click <strong>Save LLM Settings</strong></li>
@@ -885,7 +890,7 @@
                 <li>• <strong>💬 Responses:</strong> Static reply messages</li>
                 <li>• <strong>🎯 Smart Routing:</strong> Intent actions</li>
                 <li>• <strong>🧪 Chat Simulator:</strong> Test full conversations</li>
-                <li>• <strong>⚙️ Settings:</strong> Configure AI providers</li>
+                <li>• <strong>⚙️ Settings:</strong> Configure AI models</li>
               </ul>
             </div>
           </div>

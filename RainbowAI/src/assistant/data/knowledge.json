@@ -11,17 +11,17 @@
     {
       "intent": "directions",
       "response": {
-        "en": "📍 *How to find us*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru\n\nGoogle Maps: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\nWe're in a quiet residential area in Taman Pelangi, walking distance to cafes and shops.",
-        "ms": "📍 *Cara ke sini*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru\n\nGoogle Maps: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\nKami terletak di kawasan perumahan yang tenang di Taman Pelangi.",
-        "zh": "📍 *如何到达*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru\n\nGoogle地图: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\n我们位于Taman Pelangi安静的住宅区，步行可达咖啡店和商店。"
+        "en": "📍 *How to find us*\n26A Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia\n\nGoogle Maps: https://maps.app.goo.gl/maLXetUqYS5MtSLD9?g_st=iwb\n\nWe're in a quiet commercial area in Taman Pelangi, walking distance to cafes and shops.",
+        "ms": "",
+        "zh": ""
       }
     },
     {
       "intent": "checkin_info",
       "response": {
-        "en": "⏰ *Check-in Info*\n\nCheck-in time: *2:00 PM*\nDoor password: *1270#*\n\nEarly check-in available (no extra fee) — just ask staff!",
-        "ms": "⏰ *Info Daftar Masuk*\n\nMasa daftar masuk: *2:00 PM*\nKata laluan pintu: *1270#*\n\nDaftar masuk awal tersedia (tiada bayaran tambahan) — tanya staf!",
-        "zh": "⏰ *入住信息*\n\n入住时间: *下午2:00*\n门密码: *1270#*\n\n可提前入住（无额外费用）——请咨询工作人员！"
+        "en": "⏰ *Check-in Info*\n\nCheck-in time: *2:00 PM*\nDoor password: *1270#*\n\nEarly check-in is subject to approval.",
+        "ms": "⏰ *Info Daftar Masuk*\n\nMasa daftar masuk: *2:00 PM*\nKata laluan pintu: *1270#*\n\nDaftar masuk awal tertakluk kepada kelulusan.",
+        "zh": "⏰ *入住信息*\n\n入住时间: *下午2:00*\n门密码: *1270#*\n\n提前入住需经批准。"
       }
     },
     {
@@ -35,17 +35,17 @@
     {
       "intent": "pricing",
       "response": {
-        "en": "💰 *Our Rates*\n\n🏷️ Daily: *RM45/night*\n🏷️ 7 nights: *RM267* (~RM38/night)\n🏷️ Monthly: *RM650/month* (~RM22/night)\n\nDeposit: RM10 key-card + RM100 security (long-term stays, refundable)\nPayment: DuitNow QR, Bank transfer, Cash (Touch 'n Go, Boost, ShopeePay, GrabPay)\n\nWant to book? Just say *\"book\"*!",
-        "ms": "💰 *Harga Kami*\n\n🏷️ Harian: *RM45/malam*\n🏷️ 7 malam: *RM267* (~RM38/malam)\n🏷️ Bulanan: *RM650/bulan* (~RM22/malam)\n\nDeposit: RM10 kad kunci + RM100 sekuriti (penginapan jangka panjang, boleh dikembalikan)\nBayaran: DuitNow QR, Pindahan bank, Tunai (Touch 'n Go, Boost, ShopeePay, GrabPay)\n\nNak tempah? Cakap *\"tempah\"*!",
-        "zh": "💰 *我们的价格*\n\n🏷️ 日租: *RM45/晚*\n🏷️ 7晚: *RM267*（约RM38/晚）\n🏷️ 月租: *RM650/月*（约RM22/晚）\n\n押金: RM10钥匙卡 + RM100押金（长期住宿，可退还）\n付款方式: DuitNow QR、银行转账、现金（Touch 'n Go、Boost、ShopeePay、GrabPay）\n\n想预订吗？直接说 *\"预订\"*！"
+        "en": "💰 *Our Rates*\n\n🏷️ Daily: *RM45/night*\n🏷️ 7 nights: *RM267* (~RM38/night)\n🏷️ 14 nights: *RM423* (~RM30/night)\n🏷️ 21 nights: *RM520* (~RM25/night)\n🏷️ Monthly (30 days): *RM650/month* (~RM22/night)\n🏷️ Long-term (3+ months): *RM520/month* (~RM17/night)\n\nDeposit: RM10 key-card (stays >7 nights) + RM100 security (long-term stays, refundable)\nPayment: DuitNow QR, Bank transfer, Cash (Touch 'n Go, Boost, ShopeePay, GrabPay)\n\nWant to book? Just say *\"book\"*!",
+        "ms": "💰 *Harga Kami*\n\n🏷️ Harian: *RM45/malam*\n🏷️ 7 malam: *RM267* (~RM38/malam)\n🏷️ 14 malam: *RM423* (~RM30/malam)\n🏷️ 21 malam: *RM520* (~RM25/malam)\n🏷️ Bulanan (30 hari): *RM650/bulan* (~RM22/malam)\n🏷️ Jangka panjang (3+ bulan): *RM520/bulan* (~RM17/malam)\n\nDeposit: RM10 kad kunci (penginapan >7 malam) + RM100 sekuriti (penginapan jangka panjang, boleh dikembalikan)\nBayaran: DuitNow QR, Pindahan bank, Tunai (Touch 'n Go, Boost, ShopeePay, GrabPay)\n\nNak tempah? Cakap *\"tempah\"*!",
+        "zh": "💰 *我们的价格*\n\n🏷️ 日租: *RM45/晚*\n🏷️ 7晚: *RM267*（约RM38/晚）\n🏷️ 14晚: *RM423*（约RM30/晚）\n🏷️ 21晚: *RM520*（约RM25/晚）\n🏷️ 月租 (30天): *RM650/月*（约RM22/晚）\n🏷️ 长期 (3个月以上): *RM520/月*（约RM17/晚）\n\n押金: RM10钥匙卡（入住>7晚）+ RM100押金（长期住宿，可退还）\n付款方式: DuitNow QR、银行转账、现金（Touch 'n Go、Boost、ShopeePay、GrabPay）\n\n想预订吗？直接说 *\"预订\"*！"
       }
     },
     {
       "intent": "facilities",
       "response": {
-        "en": "🏨 *Facilities*\n\n• ~24 capsules across 3 sections (Front, Middle, Back)\n• Each capsule: personal light, USB port, power outlet, privacy curtain\n• Shared kitchen with fridge & microwave\n• Laundry (RM5/load)\n• Living room area\n• Free WiFi\n\n🎥 Video tour: https://www.youtube.com/watch?v=6Ux11oBZaQQ",
-        "ms": "🏨 *Kemudahan*\n\n• ~24 kapsul dalam 3 seksyen (Depan, Tengah, Belakang)\n• Setiap kapsul: lampu peribadi, port USB, soket kuasa, langsir privasi\n• Dapur kongsi dengan peti sejuk & ketuhar gelombang mikro\n• Dobi (RM5/cucian)\n• Ruang tamu\n• WiFi percuma\n\n🎥 Video lawatan: https://www.youtube.com/watch?v=6Ux11oBZaQQ",
-        "zh": "🏨 *设施*\n\n• 约24个胶囊，分3个区域（前、中、后）\n• 每个胶囊：个人灯、USB接口、电源插座、隐私帘\n• 共享厨房（冰箱和微波炉）\n• 洗衣（RM5/次）\n• 客厅区域\n• 免费WiFi\n\n🎥 视频导览: https://www.youtube.com/watch?v=6Ux11oBZaQQ"
+        "en": "🏨 *Facilities*\n\n• Each capsule: personal light, USB port, power outlet, privacy curtain\n• Shared kitchen with fridge, microwave & coffee machine\n• Hot showers (24/7) with hair dryer\n• Work-friendly desks\n• Outdoor relaxation area\n• Laundry (RM5/load)\n• Living room area\n• Free WiFi\n\n🎥 Video tour: https://www.youtube.com/watch?v=6Ux11oBZaQQ",
+        "ms": "🏨 *Kemudahan*\n\n• Setiap kapsul: lampu peribadi, port USB, soket kuasa, langsir privasi\n• Dapur kongsi dengan peti sejuk, ketuhar gelombang mikro & mesin kopi\n• Pancuran air panas (24/7) dengan pengering rambut\n• Meja kerja\n• Kawasan rehat luar\n• Dobi (RM5/cucian)\n• Ruang tamu\n• WiFi percuma\n\n🎥 Video lawatan: https://www.youtube.com/watch?v=6Ux11oBZaQQ",
+        "zh": "🏨 *设施*\n\n• 每个胶囊：个人灯、USB接口、电源插座、隐私帘\n• 共享厨房（冰箱、微波炉和咖啡机）\n• 热水淋浴（24/7）配吹风机\n• 工作桌\n• 户外休息区\n• 洗衣（RM5/次）\n• 客厅区域\n• 免费WiFi\n\n🎥 视频导览: https://www.youtube.com/watch?v=6Ux11oBZaQQ"
       }
     },
     {
@@ -59,9 +59,9 @@
     {
       "intent": "payment",
       "response": {
-        "en": "🏦 *Payment Info*\n\nBank: *Maybank*\nAccount: *5511 2865 2007*\nName: *Pelangi Capsule Hostel*\n\nPayment methods: DuitNow QR (Touch 'n Go, Boost, ShopeePay, GrabPay), Bank transfer, Cash\n\nAfter payment, please send your receipt/screenshot here and we'll confirm it! — Rainbow 🌈",
-        "ms": "🏦 *Info Pembayaran*\n\nBank: *Maybank*\nAkaun: *5511 2865 2007*\nNama: *Pelangi Capsule Hostel*\n\nKaedah bayaran: DuitNow QR (Touch 'n Go, Boost, ShopeePay, GrabPay), Pindahan bank, Tunai\n\nSelepas bayar, sila hantar resit/tangkap skrin di sini dan kami akan sahkan! — Rainbow 🌈",
-        "zh": "🏦 *付款信息*\n\n银行: *Maybank*\n账号: *5511 2865 2007*\n户名: *Pelangi Capsule Hostel*\n\n付款方式: DuitNow QR（Touch 'n Go、Boost、ShopeePay、GrabPay）、银行转账、现金\n\n付款后请将收据/截图发送到这里，我们会确认！— Rainbow 🌈"
+        "en": "🏦 *Payment Info*\n\nBank: *Maybank*\nAccount: *551128652007*\nName: *Pelangi Capsule Hostel*\n\nPayment methods: DuitNow QR (Touch 'n Go, Boost, ShopeePay, GrabPay), Bank transfer, Cash\n\nAfter payment, please send your receipt/screenshot here and we'll confirm it! — Rainbow 🌈",
+        "ms": "🏦 *Info Pembayaran*\n\nBank: *Maybank*\nAkaun: *551128652007*\nNama: *Pelangi Capsule Hostel*\n\nKaedah bayaran: DuitNow QR (Touch 'n Go, Boost, ShopeePay, GrabPay), Pindahan bank, Tunai\n\nSelepas bayar, sila hantar resit/tangkap skrin di sini dan kami akan sahkan! — Rainbow 🌈",
+        "zh": "🏦 *付款信息*\n\n银行: *Maybank*\n账号: *551128652007*\n户名: *Pelangi Capsule Hostel*\n\n付款方式: DuitNow QR（Touch 'n Go、Boost、ShopeePay、GrabPay）、银行转账、现金\n\n付款后请将收据/截图发送到这里，我们会确认！— Rainbow 🌈"
       }
     },
     {
@@ -69,7 +69,7 @@
       "response": {
         "en": "Hello, welcome to Pelangi Capsule Hostel",
         "ms": "Hai, selamat datang ke Pelangi Capsule Hostel",
-        "zh": "Hello, welcome to Pelangi Capsule Hostel"
+        "zh": "您好，欢迎来到彩虹胶囊旅舍！"
       }
     },
     {
@@ -77,7 +77,7 @@
       "response": {
         "en": "You're welcome, have a great day",
         "ms": "Terima kasih, semoga hari anda baik",
-        "zh": ""
+        "zh": "不客气，祝您愉快！"
       }
     },
     {
@@ -123,9 +123,9 @@
     {
       "intent": "extra_amenity_request",
       "response": {
-        "en": "We can provide extra towels or pillows. Please ask our on-site staff Maya — she can deliver them to your capsule.",
-        "ms": "Kami boleh sediakan tuala atau bantal tambahan. Sila minta dari staf kami Maya yang bertugas — dia boleh hantar ke kapsul anda.",
-        "zh": "我们可以提供额外毛巾或枕头。请向我们的现场工作人员 Maya 索取，她会送到您的胶囊房。"
+        "en": "Of course! Contact our on-site staff Maya via WhatsApp at +60127088789 and she can deliver extra towels, pillows, or blankets to your capsule. Just let her know what you need!",
+        "ms": "Tentu! Hubungi staf kami Maya melalui WhatsApp di +60127088789 dan dia boleh hantar tuala, bantal, atau selimut tambahan ke kapsul anda. Beritahu dia apa yang anda perlukan!",
+        "zh": "当然可以！通过WhatsApp联系我们的现场工作人员Maya（+60127088789），她可以将额外的毛巾、枕头或毯子送到您的胶囊房。只需告诉她您需要什么！"
       }
     },
     {
@@ -134,6 +134,30 @@
         "en": "The **bathroom** and **shower** are at the **back** of our capsule area. **Toilets** and hot water are in that shared space — follow the corridor past the capsules. The **location** is clearly marked!",
         "ms": "**Bilik air** dan **pancuran mandi** berada di **belakang** kawasan kapsul kami. **Tandas** dan pancuran air panas ada di ruang kongsi itu — ikut koridor melepasi kapsul. **Lokasi** jelas ditandakan!",
         "zh": "**浴室**和**淋浴间**在胶囊区的**后面**。**厕所**和热水淋浴都在那边的共享区域，沿走廊经过胶囊房即可。**位置**有明确标示！"
+      }
+    },
+    {
+      "intent": "billing_dispute",
+      "response": {
+        "en": "I'm sorry to hear that. We will **review** your bill and **investigate** — if there was an overcharge we'll discuss a **refund**. Our staff will contact you shortly. — Rainbow 🌈",
+        "ms": "Maaf mendengar itu. Kami akan **semak** bil anda dan **siasat** — jika ada lebihan caj kami akan bincang **refund**. Staf kami akan hubungi anda tidak lama lagi. — Rainbow 🌈",
+        "zh": "很抱歉听到这个消息。我们会**复核**您的账单并**调查**——如有多收将商议**退款**。工作人员会尽快联系您。— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "late_checkout_request",
+      "response": {
+        "en": "Late checkout is **free** (subject to availability)! Standard checkout is 12:00 PM. If you'd like to stay later, please let us know your preferred time and we'll check availability. No extra charge if space is available. — Rainbow 🌈",
+        "ms": "Late checkout adalah **percuma** (bergantung kepada ketersediaan)! Checkout biasa 12:00 PM. Jika anda ingin keluar lewat, beritahu kami masa yang anda mahukan dan kami akan semak ketersediaan. Tiada caj tambahan jika ada ruang. — Rainbow 🌈",
+        "zh": "延迟退房**免费**（视房态而定）！标准退房时间为中午12:00。如果您想晚点退房，请告知您希望的时间，我们会检查可用性。有空房的话不收额外费用。— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "forgot_item_post_checkout",
+      "response": {
+        "en": "Oh no! I'm sorry you **left** your items behind. 😢\n\n**Contact us immediately:** WhatsApp/call +60127088789\n\nWe have a **Lost and Found** system. Please provide:\n1. Item description (what, color, brand)\n2. Where you think you left it (capsule number, common area)\n3. Check-out date\n\nWe'll search and confirm within 24 hours.\n\n**Pickup Options:**\n• Pickup in person (9 AM - 6 PM)\n• Shipping to your address (shipping fee applies)\n• Hold for your next visit (up to 30 days)\n\n**Urgent items (passport, ID):** We prioritize immediate notification and secure storage.\n\n— Rainbow 🌈",
+        "ms": "Oh tidak! Maaf anda **tertinggal** barang. 😢\n\n**Hubungi kami segera:** WhatsApp/panggil +60127088789\n\nKami ada sistem **Barang Tertinggal** (Lost and Found). Sila berikan:\n1. Penerangan item (apa, warna, jenama)\n2. Di mana anda fikir anda tertinggal (nombor kapsul, kawasan umum)\n3. Tarikh check-out\n\nKami akan cari dan confirm dalam 24 jam.\n\n**Pilihan Ambil:**\n• Ambil sendiri (9 AM - 6 PM)\n• Penghantaran ke alamat anda (caj penghantaran dikenakan)\n• Simpan untuk lawatan seterusnya (sehingga 30 hari)\n\n**Item penting (pasport, ID):** Kami utamakan pemberitahuan segera dan penyimpanan selamat.\n\n— Rainbow 🌈",
+        "zh": "哦不！很抱歉您**遗落**了物品。😢\n\n**立即联系我们：** WhatsApp/致电 +60127088789\n\n我们有**失物招领**系统。请提供：\n1. 物品描述（什么、颜色、品牌）\n2. 您认为遗落的地方（胶囊号码、公共区域）\n3. 退房日期\n\n我们将在24小时内搜索并确认。\n\n**领取选项：**\n• 亲自领取（上午9点 - 下午6点）\n• 邮寄到您的地址（需支付邮费）\n• 保留到您下次光临（最多30天）\n\n**紧急物品（护照、身份证）：** 我们优先处理并安全保管。\n\n— Rainbow 🌈"
       }
     }
   ],

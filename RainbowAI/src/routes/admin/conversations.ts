@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import multer from 'multer';
-import { listConversations, getConversation, deleteConversation, getResponseTimeStats, getContactDetails, updateContactDetails, togglePin, toggleFavourite, markConversationAsRead } from '../../assistant/conversation-logger.js';
+import { listConversations, getConversation, deleteConversation, getResponseTimeStats, getContactDetails, updateContactDetails, togglePin, toggleFavourite, markConversationAsRead, updateConversationMode } from '../../assistant/conversation-logger.js';
 import { whatsappManager } from '../../lib/baileys-client.js';
 import { translateText } from '../../assistant/ai-client.js';
 
@@ -249,6 +249,206 @@ router.post('/translate', async (req: Request, res: Response) => {
     res.json({ translated, targetLang });
   } catch (err: any) {
     console.error('[Admin] Translation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── RESPONSE MODES (Autopilot/Copilot/Manual) ─────────────────────────
+
+// Get pending approvals for a conversation
+router.get('/conversations/:phone/approvals', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { getApprovalsByPhone } = await import('../../assistant/approval-queue.js');
+    const approvals = getApprovalsByPhone(phone);
+    res.json({ approvals });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Approve and send a queued response
+router.post('/conversations/:phone/approvals/:id/approve', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { id } = req.params;
+    const { editedResponse } = req.body;
+
+    const { approveAndSend, getApproval } = await import('../../assistant/approval-queue.js');
+    const approval = getApproval(id);
+
+    if (!approval) {
+      res.status(404).json({ error: 'Approval not found or expired' });
+      return;
+    }
+
+    const finalResponse = editedResponse || approval.suggestedResponse;
+
+    // Send to guest
+    const { sendWhatsAppMessage } = await import('../../lib/baileys-client.js');
+    const log = await getConversation(phone);
+    const instanceId = log?.instanceId;
+    await sendWhatsAppMessage(phone, finalResponse, instanceId);
+
+    // Log as sent
+    const { logMessage } = await import('../../assistant/conversation-logger.js');
+    await logMessage(phone, approval.pushName, 'assistant', finalResponse, {
+      manual: false,
+      approved_from_queue: true,
+      approval_id: id,
+      was_edited: !!editedResponse,
+      instanceId
+    });
+
+    // Remove from queue
+    approveAndSend(id, editedResponse);
+
+    console.log(`[Copilot] Approved and sent response for ${phone} (approval: ${id})`);
+    res.json({ ok: true, sent: finalResponse });
+  } catch (err: any) {
+    console.error('[Copilot] Approval failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reject a queued response
+router.post('/conversations/:phone/approvals/:id/reject', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rejectApproval } = await import('../../assistant/approval-queue.js');
+
+    if (!rejectApproval(id)) {
+      res.status(404).json({ error: 'Approval not found or expired' });
+      return;
+    }
+
+    console.log(`[Copilot] Rejected approval: ${id}`);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate AI suggestion without sending (Manual mode)
+router.post('/conversations/:phone/suggest', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { context } = req.body; // Optional: staff can provide context
+
+    const log = await getConversation(phone);
+    if (!log) {
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
+    }
+
+    // Get conversation history
+    const { getMessages, getOrCreate } = await import('../../assistant/conversation.js');
+    const convo = getOrCreate(phone, log.pushName);
+    const messages = getMessages(phone);
+
+    // Get last user message
+    const lastUserMsg = messages.filter((m) => m.role === 'user').pop();
+    if (!lastUserMsg) {
+      res.status(400).json({ error: 'No user message to respond to' });
+      return;
+    }
+
+    // Generate AI suggestion (reuse existing KB + AI logic)
+    const { buildChatMessages, callAI } = await import('../../assistant/ai-client.js');
+    const { getKnowledgeContext } = await import('../../assistant/knowledge-base.js');
+    const { configStore } = await import('../../assistant/config-store.js');
+
+    const settings = configStore.getSettings();
+    const kbContext = await getKnowledgeContext(lastUserMsg.content, convo.language);
+
+    // Use manual mode AI provider if configured
+    const providerHint = settings.response_modes?.manual?.ai_help_provider;
+
+    const chatMessages = buildChatMessages(
+      settings.system_prompt,
+      kbContext.context,
+      messages.slice(-5), // Last 5 messages
+      lastUserMsg.content,
+      convo.language,
+      context // Staff-provided context
+    );
+
+    const result = await callAI(chatMessages, 'chat', providerHint);
+
+    console.log(`[Manual Mode] Generated AI suggestion for ${phone}`);
+    res.json({
+      suggestion: result.response,
+      metadata: {
+        provider: result.provider,
+        model: result.model,
+        kbFiles: kbContext.filesUsed
+      }
+    });
+  } catch (err: any) {
+    console.error('[Manual Mode] Suggestion failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Set response mode for a conversation
+router.post('/conversations/:phone/mode', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { mode, setAsGlobalDefault } = req.body;
+
+    if (!['autopilot', 'copilot', 'manual'].includes(mode)) {
+      res.status(400).json({ error: 'Invalid mode. Must be: autopilot, copilot, or manual' });
+      return;
+    }
+
+    // If setting as global default, update settings.json
+    if (setAsGlobalDefault) {
+      const { configStore } = await import('../../assistant/config-store.js');
+      const settings = configStore.getSettings();
+
+      // Ensure settings object exists
+      if (!settings) {
+        res.status(500).json({ error: 'Settings not loaded' });
+        return;
+      }
+
+      // Initialize response_modes if it doesn't exist
+      if (!settings.response_modes) {
+        settings.response_modes = {
+          default_mode: mode,
+          description: 'Global default response mode: autopilot (AI auto-sends), copilot (AI suggests, staff approves), or manual (staff writes, AI helps on request)',
+          copilot: {
+            auto_approve_confidence: 0.95,
+            auto_approve_intents: ['greeting', 'thanks', 'wifi'],
+            queue_timeout_minutes: 30,
+            description: 'Auto-approve high-confidence responses for simple intents'
+          },
+          manual: {
+            show_ai_suggestions: true,
+            ai_help_provider: 'groq-llama',
+            description: "Show AI suggestions when 'Help me' clicked"
+          }
+        };
+      } else {
+        settings.response_modes.default_mode = mode;
+      }
+
+      configStore.setSettings(settings);
+      console.log(`[Mode Change] Set global default to ${mode} mode`);
+    }
+
+    // Always update per-conversation mode (in-memory + disk)
+    const { getOrCreate, updateSlots } = await import('../../assistant/conversation.js');
+    const log = await getConversation(phone);
+    const convo = getOrCreate(phone, log?.pushName || 'Guest');
+
+    updateSlots(phone, { responseMode: mode });
+    // Persist to disk so mode survives navigation and restarts
+    await updateConversationMode(phone, mode);
+
+    console.log(`[Mode Change] Set ${phone} to ${mode} mode${setAsGlobalDefault ? ' (and global default)' : ''}`);
+    res.json({ ok: true, mode, globalDefaultUpdated: !!setAsGlobalDefault });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });

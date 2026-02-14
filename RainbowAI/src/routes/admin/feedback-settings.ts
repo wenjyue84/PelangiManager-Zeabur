@@ -7,9 +7,9 @@ import { configStore } from '../../assistant/config-store.js';
 
 const router = Router();
 
-// ─── GET /api/rainbow/feedback/settings ─────────────────────────────
+// ─── GET /api/feedback/settings ─────────────────────────────
 // Get current feedback settings
-router.get('/rainbow/feedback/settings', async (_req: Request, res: Response) => {
+router.get('/feedback/settings', async (_req: Request, res: Response) => {
   try {
     const settings = await db
       .select()
@@ -50,9 +50,9 @@ router.get('/rainbow/feedback/settings', async (_req: Request, res: Response) =>
   }
 });
 
-// ─── PATCH /api/rainbow/feedback/settings ───────────────────────────
+// ─── PATCH /api/feedback/settings ───────────────────────────
 // Update feedback settings (hot-reload)
-router.patch('/rainbow/feedback/settings', async (req: Request, res: Response) => {
+router.patch('/feedback/settings', async (req: Request, res: Response) => {
   try {
     const validated = updateFeedbackSettingsSchema.parse(req.body);
 

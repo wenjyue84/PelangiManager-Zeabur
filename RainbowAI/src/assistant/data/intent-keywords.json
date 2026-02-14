@@ -3,35 +3,107 @@
     {
       "intent": "greeting",
       "keywords": {
-        "en": ["hi", "hello", "hey", "helo", "hai", "good morning", "good afternoon", "good evening", "good night"],
-        "ms": ["hai", "helo", "apa khabar", "selamat pagi", "selamat petang", "selamat malam", "assalamualaikum", "salam"],
-        "zh": ["你好", "嗨", "您好", "早安", "午安", "晚安"]
+        "en": [
+          "hi",
+          "hello",
+          "hey",
+          "helo",
+          "hai",
+          "good morning",
+          "good afternoon",
+          "good evening",
+          "good night"
+        ],
+        "ms": [
+          "hai",
+          "helo",
+          "apa khabar",
+          "selamat pagi",
+          "selamat petang",
+          "selamat malam",
+          "assalamualaikum",
+          "salam"
+        ],
+        "zh": [
+          "你好",
+          "嗨",
+          "您好",
+          "早安",
+          "午安",
+          "晚安"
+        ]
       }
     },
     {
       "intent": "thanks",
       "keywords": {
-        "en": ["thank you", "thanks", "tq", "tqvm", "thx", "ty", "tysm", "appreciate", "appreciate it"],
-        "ms": ["terima kasih", "tq", "tqvm", "thanks", "terima ksh"],
-        "zh": ["谢谢", "谢了", "多谢", "感谢", "谢谢你"]
+        "en": [
+          "thank you",
+          "thanks",
+          "tq",
+          "tqvm",
+          "thx",
+          "ty",
+          "tysm",
+          "appreciate",
+          "appreciate it"
+        ],
+        "ms": [
+          "terima kasih",
+          "tq",
+          "tqvm",
+          "thanks",
+          "terima ksh"
+        ],
+        "zh": [
+          "谢谢",
+          "谢了",
+          "多谢",
+          "感谢",
+          "谢谢你"
+        ]
       }
     },
     {
       "intent": "wifi",
       "keywords": {
         "en": [
-          "wifi password", "wi-fi password", "wifi", "wi-fi", "internet password",
-          "network password", "wifi code", "internet code", "how to connect wifi",
-          "how to connect internet", "whats the wifi", "wifi pw", "internet pw",
-          "password", "pw", "internet", "network"
+          "wifi password",
+          "wi-fi password",
+          "wifi",
+          "wi-fi",
+          "internet password",
+          "network password",
+          "wifi code",
+          "internet code",
+          "how to connect wifi",
+          "how to connect internet",
+          "whats the wifi",
+          "wifi pw",
+          "internet pw",
+          "password",
+          "pw",
+          "internet",
+          "network"
         ],
         "ms": [
-          "kata laluan wifi", "password wifi", "kod wifi", "sambung wifi",
-          "internet password", "macam mana nak sambung wifi", "wifi apa"
+          "kata laluan wifi",
+          "password wifi",
+          "kod wifi",
+          "sambung wifi",
+          "internet password",
+          "macam mana nak sambung wifi",
+          "wifi apa"
         ],
         "zh": [
-          "wifi密码", "无线密码", "网络密码", "怎么连wifi", "如何连接wifi",
-          "wifi是什么", "无线网络", "wifi叫什么"
+          "wifi密码",
+          "无线密码",
+          "网络密码",
+          "怎么连wifi",
+          "如何连接wifi",
+          "wifi是什么",
+          "无线网络",
+          "wifi叫什么"
         ]
       }
     },
@@ -39,17 +111,87 @@
       "intent": "checkin_info",
       "keywords": {
         "en": [
-          "check in", "check-in", "checkin", "how to check in",
-          "check in time", "when can i check in", "what time check in",
-          "check in process", "early check in", "when can i arrive"
+          "check in",
+          "check-in",
+          "checkin",
+          "check in time",
+          "when can i check in",
+          "what time check in",
+          "check in process",
+          "early check in",
+          "when can i arrive"
         ],
         "ms": [
-          "check in", "daftar masuk", "masa check in", "bila boleh check in",
-          "jam berapa check in", "proses check in", "macam mana check in"
+          "check in",
+          "daftar masuk",
+          "masa check in",
+          "bila boleh check in",
+          "jam berapa check in"
         ],
         "zh": [
-          "入住", "办理入住", "如何办理入住", "入住时间",
-          "什么时候可以入住", "几点入住", "怎么入住"
+          "入住",
+          "入住时间",
+          "什么时候可以入住",
+          "几点入住"
+        ]
+      }
+    },
+    {
+      "intent": "check_in_arrival",
+      "keywords": {
+        "en": [
+          "i want to check in",
+          "want to check in",
+          "i am checking in",
+          "checking in",
+          "i have arrived",
+          "i arrived",
+          "i'm here",
+          "im here",
+          "arrived at hostel",
+          "i'm at the hostel",
+          "at your hostel",
+          "ready to check in",
+          "here to check in",
+          "need to check in",
+          "check in now",
+          "checking in now",
+          "arrived now",
+          "how to check in",
+          "how do i check in"
+        ],
+        "ms": [
+          "saya nak check in",
+          "nak check in",
+          "saya check in",
+          "saya dah sampai",
+          "dah sampai",
+          "saya kat hostel",
+          "kat hostel",
+          "ready check in",
+          "ready nak check in",
+          "perlu check in",
+          "check in sekarang",
+          "dah sampai sekarang",
+          "macam mana check in",
+          "cara check in"
+        ],
+        "zh": [
+          "我要办理入住",
+          "要入住",
+          "我在办理入住",
+          "办理入住中",
+          "我已经到了",
+          "我到了",
+          "我在这里",
+          "到旅舍了",
+          "我在旅舍",
+          "准备入住",
+          "需要入住",
+          "现在入住",
+          "现在办理入住",
+          "怎么入住",
+          "如何办理入住"
         ]
       }
     },
@@ -57,17 +199,69 @@
       "intent": "checkout_info",
       "keywords": {
         "en": [
-          "check out", "check-out", "checkout", "check out time",
-          "what time check out", "when to check out", "late check out",
-          "what time leave", "when do i leave"
+          "check out",
+          "check-out",
+          "checkout",
+          "check out time",
+          "what time check out",
+          "when to check out",
+          "what time leave",
+          "when do i leave"
         ],
         "ms": [
-          "check out", "daftar keluar", "masa check out", "bila kena check out",
-          "jam berapa check out", "waktu check out", "late check out"
+          "check out",
+          "daftar keluar",
+          "masa check out",
+          "bila kena check out",
+          "jam berapa check out",
+          "waktu check out"
         ],
         "zh": [
-          "退房", "退房时间", "几点退房", "什么时候退房",
-          "延迟退房", "晚点退房", "怎么退房"
+          "退房",
+          "退房时间",
+          "几点退房",
+          "什么时候退房",
+          "怎么退房"
+        ]
+      }
+    },
+    {
+      "intent": "late_checkout_request",
+      "keywords": {
+        "en": [
+          "late checkout",
+          "late check out",
+          "late check-out",
+          "extend checkout",
+          "stay later",
+          "checkout late",
+          "can i checkout at",
+          "checkout at 3pm",
+          "checkout at 2pm",
+          "checkout at 1pm",
+          "stay longer",
+          "extend stay"
+        ],
+        "ms": [
+          "late checkout",
+          "late check out",
+          "checkout lewat",
+          "keluar lewat",
+          "lewat check out",
+          "sambung stay",
+          "lanjut stay",
+          "boleh checkout",
+          "checkout jam"
+        ],
+        "zh": [
+          "延迟退房",
+          "晚点退房",
+          "延长退房",
+          "晚一点退房",
+          "能不能晚点退",
+          "可以延迟退房吗",
+          "延长入住",
+          "多住一会"
         ]
       }
     },
@@ -75,42 +269,105 @@
       "intent": "pricing",
       "keywords": {
         "en": [
-          "how much", "price", "pricing", "cost", "rate", "how much per day",
-          "how much per night", "booking price", "room rate", "how much for a day"
+          "how much",
+          "price",
+          "pricing",
+          "cost",
+          "rate",
+          "how much per day",
+          "how much per night",
+          "booking price",
+          "room rate",
+          "how much for a day"
         ],
         "ms": [
-          "berapa harga", "harga", "kos", "kadar", "harga sehari",
-          "harga semalam", "berapa", "berapa ringgit"
+          "berapa harga",
+          "harga",
+          "kos",
+          "kadar",
+          "harga sehari",
+          "harga semalam",
+          "berapa",
+          "berapa ringgit"
         ],
         "zh": [
-          "多少钱", "价格", "费用", "一天多少", "一晚多少",
-          "房价", "多少", "要多少钱"
+          "多少钱",
+          "价格",
+          "费用",
+          "一天多少",
+          "一晚多少",
+          "房价",
+          "多少",
+          "要多少钱"
         ]
       }
     },
     {
       "intent": "farewell",
       "keywords": {
-        "en": ["bye", "goodbye", "see you", "farewell", "catch you later", "take care", "see ya", "later"],
-        "ms": ["bye", "selamat tinggal", "jumpa lagi", "sampai jumpa", "jaga diri"],
-        "zh": ["再见", "拜拜", "回头见", "下次见", "保重"]
+        "en": [
+          "bye",
+          "goodbye",
+          "see you",
+          "farewell",
+          "catch you later",
+          "take care",
+          "see ya",
+          "later"
+        ],
+        "ms": [
+          "bye",
+          "selamat tinggal",
+          "jumpa lagi",
+          "sampai jumpa",
+          "jaga diri"
+        ],
+        "zh": [
+          "再见",
+          "拜拜",
+          "回头见",
+          "下次见",
+          "保重"
+        ]
       }
     },
     {
       "intent": "directions",
       "keywords": {
         "en": [
-          "directions", "where", "location", "address", "map",
-          "how to get", "how to go", "how to reach", "how to find",
-          "google map", "navigate", "where are you"
+          "directions",
+          "where",
+          "location",
+          "address",
+          "map",
+          "how to get",
+          "how to go",
+          "how to reach",
+          "how to find",
+          "google map",
+          "navigate",
+          "where are you"
         ],
         "ms": [
-          "direction", "di mana", "lokasi", "alamat", "map",
-          "macam mana nak pergi", "di mana tempat", "lokasi kamu"
+          "direction",
+          "di mana",
+          "lokasi",
+          "alamat",
+          "map",
+          "macam mana nak pergi",
+          "di mana tempat",
+          "lokasi kamu"
         ],
         "zh": [
-          "地址", "位置", "怎么走", "在哪", "路线",
-          "怎么去", "地图", "导航", "你在哪"
+          "地址",
+          "位置",
+          "怎么走",
+          "在哪",
+          "路线",
+          "怎么去",
+          "地图",
+          "导航",
+          "你在哪"
         ]
       }
     },
@@ -118,16 +375,33 @@
       "intent": "availability",
       "keywords": {
         "en": [
-          "available", "availability", "any room", "any capsule",
-          "any bed", "vacancy", "got room", "have room", "still available"
+          "available",
+          "availability",
+          "any room",
+          "any capsule",
+          "any bed",
+          "vacancy",
+          "got room",
+          "have room",
+          "still available"
         ],
         "ms": [
-          "available", "ada bilik", "ada katil", "ada kosong",
-          "masih ada", "ada lagi", "tempat kosong"
+          "available",
+          "ada bilik",
+          "ada katil",
+          "ada kosong",
+          "masih ada",
+          "ada lagi",
+          "tempat kosong"
         ],
         "zh": [
-          "有没有房", "还有房吗", "空房", "还有位", "有没有位",
-          "还有吗", "有房间吗"
+          "有没有房",
+          "还有房吗",
+          "空房",
+          "还有位",
+          "有没有位",
+          "还有吗",
+          "有房间吗"
         ]
       }
     },
@@ -135,16 +409,32 @@
       "intent": "booking",
       "keywords": {
         "en": [
-          "book", "booking", "reserve", "reservation", "make a booking",
-          "want to book", "want to stay", "want to reserve"
+          "book",
+          "booking",
+          "reserve",
+          "reservation",
+          "make a booking",
+          "want to book",
+          "want to stay",
+          "want to reserve"
         ],
         "ms": [
-          "book", "booking", "tempah", "tempahan", "nak book",
-          "nak tempah", "saya nak booking"
+          "book",
+          "booking",
+          "tempah",
+          "tempahan",
+          "nak book",
+          "nak tempah",
+          "saya nak booking"
         ],
         "zh": [
-          "预订", "预定", "订房", "我要订", "预约",
-          "想订", "想订房"
+          "预订",
+          "预定",
+          "订房",
+          "我要订",
+          "预约",
+          "想订",
+          "想订房"
         ]
       }
     },
@@ -152,16 +442,69 @@
       "intent": "complaint",
       "keywords": {
         "en": [
-          "complain", "complaint", "broken", "dirty", "noisy",
-          "loud", "uncomfortable", "issue", "problem", "not working"
+          "complain",
+          "complaint",
+          "broken",
+          "dirty",
+          "noisy",
+          "loud",
+          "uncomfortable",
+          "issue",
+          "problem",
+          "not working"
         ],
         "ms": [
-          "complain", "aduan", "rosak", "kotor", "bising",
-          "masalah", "tak selesa", "tak jalan", "bermasalah"
+          "complain",
+          "aduan",
+          "rosak",
+          "kotor",
+          "bising",
+          "masalah",
+          "tak selesa",
+          "tak jalan",
+          "bermasalah"
         ],
         "zh": [
-          "投诉", "坏了", "脏", "太吵", "有问题",
-          "不舒服", "不能用", "故障"
+          "投诉",
+          "坏了",
+          "脏",
+          "太吵",
+          "有问题",
+          "不舒服",
+          "不能用",
+          "故障"
+        ]
+      }
+    },
+    {
+      "intent": "post_checkout_complaint",
+      "keywords": {
+        "en": [
+          "after checkout",
+          "after check out",
+          "post checkout",
+          "post-checkout",
+          "complain after",
+          "complaint after",
+          "poor service",
+          "bad service",
+          "left and want to complain",
+          "checkout complaint"
+        ],
+        "ms": [
+          "lepas check out",
+          "lepas checkout",
+          "aduan lepas checkout",
+          "complain lepas keluar",
+          "servis tak baik"
+        ],
+        "zh": [
+          "退房后",
+          "退房以后",
+          "退房后投诉",
+          "离开后投诉",
+          "服务不好",
+          "想投诉服务"
         ]
       }
     },
@@ -169,16 +512,33 @@
       "intent": "contact_staff",
       "keywords": {
         "en": [
-          "staff", "manager", "human", "person", "real person",
-          "talk to", "speak to", "contact", "call someone"
+          "staff",
+          "manager",
+          "human",
+          "person",
+          "real person",
+          "talk to",
+          "speak to",
+          "contact",
+          "call someone"
         ],
         "ms": [
-          "staff", "pekerja", "pengurus", "manager", "manusia",
-          "cakap dengan orang", "jumpa staff"
+          "staff",
+          "pekerja",
+          "pengurus",
+          "manager",
+          "manusia",
+          "cakap dengan orang",
+          "jumpa staff"
         ],
         "zh": [
-          "联系", "工作人员", "找人", "真人", "客服",
-          "经理", "员工"
+          "联系",
+          "工作人员",
+          "找人",
+          "真人",
+          "客服",
+          "经理",
+          "员工"
         ]
       }
     },
@@ -186,16 +546,35 @@
       "intent": "facilities",
       "keywords": {
         "en": [
-          "facilities", "kitchen", "laundry", "bathroom", "shower",
-          "towel", "parking", "locker", "amenities"
+          "facilities",
+          "kitchen",
+          "laundry",
+          "bathroom",
+          "shower",
+          "towel",
+          "parking",
+          "locker",
+          "amenities"
         ],
         "ms": [
-          "kemudahan", "dapur", "dobi", "bilik air", "tuala",
-          "parking", "locker", "tandas"
+          "kemudahan",
+          "dapur",
+          "dobi",
+          "bilik air",
+          "tuala",
+          "parking",
+          "locker",
+          "tandas"
         ],
         "zh": [
-          "设施", "厨房", "洗衣", "浴室", "毛巾",
-          "停车", "储物柜", "设备"
+          "设施",
+          "厨房",
+          "洗衣",
+          "浴室",
+          "毛巾",
+          "停车",
+          "储物柜",
+          "设备"
         ]
       }
     },
@@ -203,16 +582,33 @@
       "intent": "rules",
       "keywords": {
         "en": [
-          "rules", "policy", "regulation", "smoking", "quiet hours",
-          "pet", "allowed", "can i", "is it okay"
+          "rules",
+          "policy",
+          "regulation",
+          "smoking",
+          "quiet hours",
+          "pet",
+          "allowed",
+          "can i",
+          "is it okay"
         ],
         "ms": [
-          "peraturan", "rule", "dasar", "merokok", "boleh",
-          "boleh ke", "dibenarkan"
+          "peraturan",
+          "rule",
+          "dasar",
+          "merokok",
+          "boleh",
+          "boleh ke",
+          "dibenarkan"
         ],
         "zh": [
-          "规则", "规定", "可以吗", "允许", "能不能",
-          "吸烟", "宠物"
+          "规则",
+          "规定",
+          "可以吗",
+          "允许",
+          "能不能",
+          "吸烟",
+          "宠物"
         ]
       }
     },
@@ -220,16 +616,32 @@
       "intent": "payment",
       "keywords": {
         "en": [
-          "pay", "payment", "bank account", "bank transfer", "bank details",
-          "transfer", "how to pay", "payment method"
+          "pay",
+          "payment",
+          "bank account",
+          "bank transfer",
+          "bank details",
+          "transfer",
+          "how to pay",
+          "payment method"
         ],
         "ms": [
-          "bayar", "bayaran", "akaun bank", "transfer", "pindahan",
-          "macam mana nak bayar", "cara bayar"
+          "bayar",
+          "bayaran",
+          "akaun bank",
+          "transfer",
+          "pindahan",
+          "macam mana nak bayar",
+          "cara bayar"
         ],
         "zh": [
-          "付款", "银行", "转账", "怎么付", "付钱",
-          "支付方式", "如何付款"
+          "付款",
+          "银行",
+          "转账",
+          "怎么付",
+          "付钱",
+          "支付方式",
+          "如何付款"
         ]
       }
     },
@@ -237,16 +649,119 @@
       "intent": "theft",
       "keywords": {
         "en": [
-          "stolen", "theft", "rob", "robbed", "robbery", "missing",
-          "took my", "stole", "thief", "missing items", "lost items", "someone took"
+          "stolen",
+          "theft",
+          "rob",
+          "robbed",
+          "robbery",
+          "missing",
+          "took my",
+          "stole",
+          "thief",
+          "missing items",
+          "lost items",
+          "someone took",
+          "someone stole",
+          "laptop",
+          "phone",
+          "wallet",
+          "bag",
+          "belongings",
+          "safe",
+          "from the safe",
+          "missing from safe",
+          "from safe",
+          "jewelry missing",
+          "items missing from safe",
+          "safe broken",
+          "things missing from safe"
         ],
         "ms": [
-          "dicuri", "kecurian", "dirompak", "rompak", "hilang",
-          "ambil barang", "pencuri", "barang hilang", "kena curi"
+          "dicuri",
+          "kecurian",
+          "dirompak",
+          "rompak",
+          "hilang",
+          "ambil barang",
+          "pencuri",
+          "barang hilang",
+          "kena curi",
+          "peti besi",
+          "dari peti besi",
+          "hilang dari peti besi",
+          "barang hilang dari peti besi"
         ],
         "zh": [
-          "被偷", "盗窃", "被抢", "抢劫", "丢失",
-          "偷了", "小偷", "失窃", "东西不见了"
+          "被偷",
+          "盗窃",
+          "被抢",
+          "抢劫",
+          "丢失",
+          "偷了",
+          "小偷",
+          "失窃",
+          "东西不见了",
+          "保险箱",
+          "从保险箱",
+          "保险箱里不见了",
+          "保险箱里丢了"
+        ]
+      }
+    },
+    {
+      "intent": "theft_report",
+      "keywords": {
+        "en": [
+          "stolen",
+          "theft",
+          "rob",
+          "robbed",
+          "robbery",
+          "missing",
+          "took my",
+          "stole",
+          "thief",
+          "missing items",
+          "lost items",
+          "someone took",
+          "safe",
+          "from the safe",
+          "missing from safe",
+          "from safe",
+          "jewelry missing",
+          "items missing from safe",
+          "safe broken",
+          "things missing from safe"
+        ],
+        "ms": [
+          "dicuri",
+          "kecurian",
+          "dirompak",
+          "rompak",
+          "hilang",
+          "ambil barang",
+          "pencuri",
+          "barang hilang",
+          "kena curi",
+          "peti besi",
+          "dari peti besi",
+          "hilang dari peti besi",
+          "barang hilang dari peti besi"
+        ],
+        "zh": [
+          "被偷",
+          "盗窃",
+          "被抢",
+          "抢劫",
+          "丢失",
+          "偷了",
+          "小偷",
+          "失窃",
+          "东西不见了",
+          "保险箱",
+          "从保险箱",
+          "保险箱里不见了",
+          "保险箱里丢了"
         ]
       }
     },
@@ -254,16 +769,36 @@
       "intent": "card_locked",
       "keywords": {
         "en": [
-          "locked out", "card locked", "locked inside", "card inside capsule",
-          "cant get out", "cant open", "door locked", "key inside", "card stuck"
+          "locked out",
+          "card locked",
+          "locked inside",
+          "card inside capsule",
+          "cant get out",
+          "cant open",
+          "door locked",
+          "key inside",
+          "card stuck",
+          "my card is locked inside"
         ],
         "ms": [
-          "terkunci", "kad terkunci", "kad dalam capsule", "tak boleh keluar",
-          "tak boleh buka", "pintu terkunci", "kunci dalam", "kad tersekat"
+          "terkunci",
+          "kad terkunci",
+          "kad dalam capsule",
+          "tak boleh keluar",
+          "tak boleh buka",
+          "pintu terkunci",
+          "kunci dalam",
+          "kad tersekat"
         ],
         "zh": [
-          "锁在里面", "卡锁在", "门锁了", "出不去",
-          "打不开", "钥匙在里面", "卡在里面", "被锁了"
+          "锁在里面",
+          "卡锁在",
+          "门锁了",
+          "出不去",
+          "打不开",
+          "钥匙在里面",
+          "卡在里面",
+          "被锁了"
         ]
       }
     },
@@ -271,33 +806,105 @@
       "intent": "tourist_guide",
       "keywords": {
         "en": [
-          "tourist", "tourism", "attraction", "places to visit", "things to do",
-          "where to go", "sightseeing", "must visit", "recommend places", "tourist spots"
+          "tourist",
+          "tourism",
+          "attraction",
+          "places to visit",
+          "things to do",
+          "where to go",
+          "sightseeing",
+          "must visit",
+          "recommend places",
+          "tourist spots",
+          "nearby attractions",
+          "nearby",
+          "LEGOLAND",
+          "tourist spots near hostel",
+          "suggest places to explore"
         ],
         "ms": [
-          "pelancongan", "tempat menarik", "tempat lawatan", "nak pergi mana",
-          "aktiviti", "jalan-jalan", "tempat best", "recommend tempat"
+          "pelancongan",
+          "tempat menarik",
+          "tempat lawatan",
+          "nak pergi mana",
+          "aktiviti",
+          "jalan-jalan",
+          "tempat best",
+          "recommend tempat"
         ],
         "zh": [
-          "旅游", "景点", "观光", "去哪玩", "游览",
-          "好玩的地方", "推荐景点", "必去的地方", "旅游景点"
+          "旅游",
+          "景点",
+          "观光",
+          "去哪玩",
+          "游览",
+          "好玩的地方",
+          "推荐景点",
+          "必去的地方",
+          "旅游景点"
         ]
       }
     },
     {
-      "intent": "lower_deck",
+      "intent": "lower_deck_preference",
       "keywords": {
         "en": [
-          "lower deck", "lower bed", "bottom bunk", "prefer lower", "lower capsule",
-          "bottom capsule", "ground level", "even number", "not top"
+          "lower deck",
+          "lower bed",
+          "bottom bunk",
+          "prefer lower",
+          "lower capsule",
+          "bottom capsule",
+          "ground level",
+          "even number",
+          "not top",
+          "can i get lower",
+          "want lower deck",
+          "i prefer lower",
+          "lower level",
+          "bottom level",
+          "C2",
+          "C4",
+          "C6",
+          "even capsule",
+          "bottom bed",
+          "not upper",
+          "ground floor"
         ],
         "ms": [
-          "lower deck", "bawah", "prefer bawah", "capsule bawah",
-          "tingkat bawah", "tak nak atas", "nombor genap"
+          "lower deck",
+          "bawah",
+          "prefer bawah",
+          "capsule bawah",
+          "tingkat bawah",
+          "tak nak atas",
+          "nombor genap",
+          "boleh dapat lower",
+          "nak lower deck",
+          "saya prefer bawah",
+          "tingkat bawah",
+          "C2",
+          "C4",
+          "C6",
+          "capsule genap",
+          "tak nak upper"
         ],
         "zh": [
-          "下铺", "下层", "底层", "不要上铺",
-          "下面的", "偶数", "下面一层"
+          "下铺",
+          "下层",
+          "底层",
+          "不要上铺",
+          "下面的",
+          "偶数",
+          "下面一层",
+          "可以下铺吗",
+          "我要下铺",
+          "我喜欢下层",
+          "C2",
+          "C4",
+          "C6",
+          "偶数房",
+          "不要上层"
         ]
       }
     },
@@ -305,14 +912,130 @@
       "intent": "facility_orientation",
       "keywords": {
         "en": [
-          "where is bathroom", "where is toilet", "where is shower", "where is kitchen",
-          "bathroom location", "toilet location", "shower location", "kitchen location"
+          "where is bathroom",
+          "where is toilet",
+          "where is shower",
+          "where is kitchen",
+          "bathroom location",
+          "toilet location",
+          "shower location",
+          "kitchen location"
         ],
         "ms": [
-          "di mana bilik air", "di mana tandas", "kemana bilik air", "di mana dapur"
+          "di mana bilik air",
+          "di mana tandas",
+          "kemana bilik air",
+          "di mana dapur"
         ],
         "zh": [
-          "浴室在哪", "厕所在哪", "淋浴在哪", "厨房在哪"
+          "浴室在哪",
+          "厕所在哪",
+          "淋浴在哪",
+          "厨房在哪"
+        ]
+      }
+    },
+    {
+      "intent": "billing_dispute",
+      "keywords": {
+        "en": [
+          "overcharge",
+          "overcharged",
+          "overcharged by RM",
+          "overcharged by rm",
+          "wrong bill",
+          "incorrect charge",
+          "billing dispute",
+          "billing error",
+          "charged too much",
+          "refund for overcharge",
+          "bill wrong",
+          "invoice mistake"
+        ],
+        "ms": [
+          "overcharge",
+          "overcharged",
+          "saya di overcharge",
+          "bill salah",
+          "caj salah",
+          "pertikaian bil",
+          "billing salah",
+          "charge lebih",
+          "refund overcharge",
+          "bil tak betul",
+          "invoice ada salah"
+        ],
+        "zh": [
+          "多收",
+          "被多收费",
+          "账单错误",
+          "收费有误",
+          "退多收的费用",
+          "账单不对",
+          "发票有错",
+          "收多了"
+        ]
+      }
+    },
+    {
+      "intent": "complaint",
+      "keywords": {
+        "en": [
+          "i have a complaint",
+          "complaint about",
+          "complain about",
+          "have a complaint",
+          "want to complain",
+          "complaint",
+          "complain",
+          "issue with",
+          "problem with",
+          "about my room",
+          "room problem",
+          "room issue"
+        ],
+        "ms": [
+          "saya ada aduan",
+          "aduan tentang",
+          "nak complain",
+          "ada aduan",
+          "complain",
+          "aduan",
+          "masalah dengan",
+          "tentang bilik",
+          "masalah bilik"
+        ],
+        "zh": [
+          "我有投诉",
+          "投诉关于",
+          "想投诉",
+          "投诉",
+          "有问题",
+          "关于房间",
+          "房间问题"
+        ]
+      }
+    },
+    {
+      "intent": "general_complaint_in_stay",
+      "keywords": {
+        "en": [
+          "uncomfortable",
+          "not comfortable",
+          "not happy",
+          "dissatisfied",
+          "unhappy"
+        ],
+        "ms": [
+          "tak selesa",
+          "tidak selesa",
+          "tak puas hati",
+          "tidak senang"
+        ],
+        "zh": [
+          "不舒服",
+          "不满意",
+          "不高兴"
         ]
       }
     }

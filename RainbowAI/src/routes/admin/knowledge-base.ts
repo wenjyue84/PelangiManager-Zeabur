@@ -208,7 +208,7 @@ Return ONLY valid JSON (no markdown fences):
   try {
     const raw = await chat(prompt, [], `Generate static reply for intent: ${intent}`);
     const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseJsonFromLLM<{ en?: string; ms?: string; zh?: string }>(cleaned);
     const response = {
       en: typeof parsed.en === 'string' ? parsed.en : '',
       ms: typeof parsed.ms === 'string' ? parsed.ms : '',
@@ -224,6 +224,78 @@ Return ONLY valid JSON (no markdown fences):
 
 const LANG_ORDER: Array<'en' | 'ms' | 'zh'> = ['en', 'ms', 'zh'];
 const LANG_NAMES = { en: 'English', ms: 'Malay', zh: 'Chinese' };
+
+/** Repair LLM JSON: escape control chars and unescaped " inside string values so JSON.parse succeeds. */
+function repairJsonFromLLM(s: string): string {
+  let out = '';
+  let i = 0;
+  let inString = false;
+  while (i < s.length) {
+    const c = s[i];
+    if (!inString) {
+      out += c;
+      if (c === '"') inString = true;
+      i++;
+      continue;
+    }
+    if (c === '\\') {
+      out += c;
+      if (i + 1 < s.length) {
+        out += s[i + 1];
+        i += 2;
+      } else {
+        i++;
+      }
+      continue;
+    }
+    if (c === '"') {
+      let j = i + 1;
+      while (j < s.length && /[\s]/.test(s[j])) j++;
+      const next = j < s.length ? s[j] : '';
+      if (next === ',' || next === '}' || next === '"' || next === ':') {
+        out += c;
+        inString = false;
+        i++;
+        continue;
+      }
+      out += '\\"';
+      i++;
+      continue;
+    }
+    if (c === '\n') {
+      out += '\\n';
+      i++;
+      continue;
+    }
+    if (c === '\r') {
+      out += '\\r';
+      i++;
+      continue;
+    }
+    if (c === '\t') {
+      out += '\\t';
+      i++;
+      continue;
+    }
+    const code = c.charCodeAt(0);
+    if (code < 32 && c !== '\n' && c !== '\r' && c !== '\t') {
+      out += ' ';
+      i++;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+function parseJsonFromLLM<T = unknown>(cleaned: string): T {
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    return JSON.parse(repairJsonFromLLM(cleaned)) as T;
+  }
+}
 
 router.post('/knowledge/translate', async (req: Request, res: Response) => {
   const { en, ms, zh } = req.body || {};
@@ -248,7 +320,7 @@ router.post('/knowledge/translate', async (req: Request, res: Response) => {
 
 Translate it to ${targetLangs.map(l => LANG_NAMES[l]).join(' and ')}. Keep the same tone (warm, concise). Suitable for guest messages. No emoji unless the original has them.
 
-Return ONLY valid JSON (no markdown, no code fence) with exactly three keys: "en", "ms", "zh". Use the EXACT original text for the "${sourceLang}" key. For the other two keys, provide your translation.
+Return ONLY valid JSON (no markdown, no code fence) with exactly three keys: "en", "ms", "zh". Use the EXACT original text for the "${sourceLang}" key. For the other two keys, provide your translation. Inside JSON string values, escape double quotes as \\" and newlines as \\n.
 
 Original (${LANG_NAMES[sourceLang]}):
 ${sourceText}
@@ -258,7 +330,7 @@ JSON:`;
   try {
     const raw = await chat(prompt, [], 'Translate quick reply to EN/MS/ZH');
     const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseJsonFromLLM<{ en?: string; ms?: string; zh?: string }>(cleaned);
     // Keep existing non-empty; fill missing from LLM
     const result = {
       en: current.en || (typeof parsed.en === 'string' ? parsed.en.trim() : ''),
@@ -286,12 +358,12 @@ router.post('/knowledge/generate-draft', async (req: Request, res: Response) => 
       ? `The user wants a reply for: "${topic}". `
       : 'The user wants a new static reply. Choose a useful topic that fits the knowledge base (e.g. breakfast, parking, luggage storage). ';
 
-    const prompt = `You are a helpful assistant for Pelangi Capsule Hostel (capsule hostel in Johor Bahru). Your task is to propose ONE new intent reply for their WhatsApp bot, based ONLY on the knowledge base below.
+    const prompt = `You are a helpful assistant for Pelangi Capsule Hostel (capsule hostel in Johor Bahru). Your task is to propose ONE intent reply for their WhatsApp bot, based ONLY on the knowledge base below.
 
 ${topicHint}
 
 Rules:
-1. Suggest an "intent" in snake_case (e.g. breakfast_info, luggage_storage, parking_info). It must be a new intent key, not a duplicate of common ones like greeting, thanks, pricing, wifi, directions, checkin_info, checkout_info, facilities, rules, payment.
+1. Identify the most specific "intent" key for this request. Use snake_case (e.g. breakfast_info, luggage_storage, extra_amenity_request). You MAY use an existing intent key if it fits the topic efficiently.
 2. Suggest a "phase" — the guest journey category this reply belongs to. Use exactly one of: GENERAL_SUPPORT, PRE_ARRIVAL, ARRIVAL_CHECKIN, DURING_STAY, CHECKOUT_DEPARTURE, POST_CHECKOUT.
 3. Generate "response" with three keys: "en" (English), "ms" (Malay), "zh" (Chinese). Use ONLY information from the knowledge base. Keep each under 300 characters. Be warm and concise; suitable for WhatsApp. Do not sign as Rainbow or overuse emojis.
 
@@ -304,7 +376,7 @@ Return ONLY valid JSON (no markdown fences, no code block):
 
     const raw = await chat(prompt, [], 'Generate draft intent reply with category');
     const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseJsonFromLLM<{ intent?: string; phase?: string; response?: { en?: string; ms?: string; zh?: string }; en?: string }>(cleaned);
 
     const intent = (typeof parsed.intent === 'string' ? parsed.intent.replace(/\s+/g, '_').replace(/[^a-z0-9_]/gi, '').toLowerCase() : '') || 'custom_reply';
     let phase = typeof parsed.phase === 'string' ? parsed.phase.toUpperCase() : 'GENERAL_SUPPORT';

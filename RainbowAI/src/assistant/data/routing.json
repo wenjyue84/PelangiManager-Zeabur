@@ -9,6 +9,9 @@
     "action": "workflow",
     "workflow_id": "escalate"
   },
+  "unknown": {
+    "action": "llm_reply"
+  },
   "pricing": {
     "action": "static_reply"
   },
@@ -113,9 +116,6 @@
     "workflow_id": "escalate"
   },
   "review_feedback": {
-    "action": "llm_reply"
-  },
-  "unknown": {
     "action": "llm_reply"
   },
   "complaint": {

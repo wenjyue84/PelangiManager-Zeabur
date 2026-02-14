@@ -17,7 +17,7 @@ If you notice an **extra charge** or **billing error**:
 
 1. **Contact us immediately:** WhatsApp/call +60127088789
 2. We'll **review** the charge with our records
-3. If error confirmed, we'll process a **refund** or **adjustment** within 3-5 business days
+3. If error confirmed, we'll process a **refund** or **adjustment**
 
 **Common billing questions:**
 - **Late checkout fee:** Free if space available; charged only if we had to decline a booking

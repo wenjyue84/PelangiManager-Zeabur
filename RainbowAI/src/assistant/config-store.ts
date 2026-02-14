@@ -20,6 +20,8 @@ export interface IntentEntry {
   flags: string;
   enabled: boolean;
   min_confidence?: number;
+  /** When true, current date/time is injected into LLM context when replying to this intent (e.g. early check-in, late checkout). */
+  time_sensitive?: boolean;
 }
 
 export interface IntentsData {
@@ -100,8 +102,15 @@ export interface WorkflowStep {
   // Optional action to execute before/after sending message
   action?: {
     type: 'send_to_staff' | 'escalate' | 'forward_payment' |
-          'check_availability' | 'check_lower_deck' | 'get_police_gps';
+    'check_availability' | 'check_lower_deck' | 'get_police_gps';
     params?: Record<string, any>;
+  };
+
+  // NEW: AI Evaluation for smart branching
+  evaluation?: {
+    prompt: string;
+    outcomes: Record<string, string>; // "yes" -> "step_id"
+    defaultNextId: string;
   };
 }
 
@@ -198,6 +207,20 @@ class ConfigStore extends EventEmitter {
 
   getRouting(): RoutingData {
     return this.routing;
+  }
+
+  /** Intent categories marked time_sensitive (e.g. check_in_arrival, late_checkout_request). */
+  getTimeSensitiveIntentSet(): Set<string> {
+    const set = new Set<string>();
+    const categories = (this.intents as { categories?: Array<{ intents?: IntentEntry[] }> }).categories;
+    if (!Array.isArray(categories)) return set;
+    for (const phase of categories) {
+      const intents = phase.intents || [];
+      for (const entry of intents) {
+        if (entry.time_sensitive === true) set.add(entry.category);
+      }
+    }
+    return set;
   }
 
   // ─── Setters (save + emit reload) ───────────────────────────────

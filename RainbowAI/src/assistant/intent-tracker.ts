@@ -16,7 +16,7 @@ export async function trackIntentPrediction(
   model?: string
 ): Promise<void> {
   try {
-    await db.insert(intentPredictions).values({
+    await db.insert(intentPredictions as any).values({
       conversationId,
       phoneNumber,
       messageText,
@@ -50,9 +50,9 @@ export async function markIntentCorrection(
     // Find the most recent prediction for this conversation
     const prediction = await db
       .select()
-      .from(intentPredictions)
-      .where(eq(intentPredictions.conversationId, conversationId))
-      .orderBy(desc(intentPredictions.createdAt))
+      .from(intentPredictions as any)
+      .where(eq((intentPredictions as any).conversationId, conversationId))
+      .orderBy(desc((intentPredictions as any).createdAt))
       .limit(1);
 
     if (prediction.length === 0) {
@@ -60,22 +60,23 @@ export async function markIntentCorrection(
       return;
     }
 
-    const predictionId = prediction[0].id;
-    const wasCorrect = prediction[0].predictedIntent === actualIntent;
+    const row = prediction[0] as any;
+    const predictionId = row.id;
+    const wasCorrect = row.predictedIntent === actualIntent;
 
     await db
-      .update(intentPredictions)
+      .update(intentPredictions as any)
       .set({
         actualIntent,
         wasCorrect,
         correctionSource,
         correctedAt: new Date(),
       })
-      .where(eq(intentPredictions.id, predictionId));
+      .where(eq((intentPredictions as any).id, predictionId));
 
     console.log(
       `[Intent Tracker] ${wasCorrect ? '✅' : '❌'} Correction: ` +
-      `predicted '${prediction[0].predictedIntent}' → actual '${actualIntent}' ` +
+      `predicted '${row.predictedIntent}' → actual '${actualIntent}' ` +
       `(source: ${correctionSource})`
     );
   } catch (error) {
@@ -91,23 +92,23 @@ export async function markIntentCorrect(conversationId: string): Promise<void> {
   try {
     const prediction = await db
       .select()
-      .from(intentPredictions)
-      .where(eq(intentPredictions.conversationId, conversationId))
-      .orderBy(desc(intentPredictions.createdAt))
+      .from(intentPredictions as any)
+      .where(eq((intentPredictions as any).conversationId, conversationId))
+      .orderBy(desc((intentPredictions as any).createdAt))
       .limit(1);
 
     if (prediction.length === 0) return;
 
-    const row = prediction[0];
+    const row = prediction[0] as any;
     await db
-      .update(intentPredictions)
+      .update(intentPredictions as any)
       .set({
         actualIntent: row.predictedIntent,
         wasCorrect: true,
         correctionSource: 'feedback',
         correctedAt: new Date(),
       })
-      .where(eq(intentPredictions.id, row.id));
+      .where(eq((intentPredictions as any).id, row.id));
 
     console.log(`[Intent Tracker] ✅ Marked correct: ${row.predictedIntent} (feedback)`);
   } catch (error) {

@@ -334,3 +334,319 @@ Dashboard is working when you see:
 ### Key Lesson
 **Environment variables require server restart!** Unlike React hot-reload, Node.js servers must be restarted to pick up `.env` changes. Always restart after modifying environment configuration.
 
+---
+
+## Issue: Rainbow Dashboard "Loading..." on Normal Refresh (Browser Cache) - 2026-02-14
+
+### Symptom
+- Navigate to `http://localhost:3002/understanding` → Shows dashboard instead of understanding tab
+- Normal refresh (F5) → Stuck on "Loading..." for all tabs
+- Hard refresh (Ctrl+Shift+R) → Works perfectly
+- Must do hard refresh every time = annoying
+
+### Root Cause: The Photocopy Problem
+
+Think of your browser like a **librarian with a photocopy machine**:
+
+1. **First visit:** Librarian fetches the book (HTML) and chapters (JS/CSS files), makes photocopies for next time
+2. **Normal refresh (F5):** Librarian fetches fresh HTML but uses OLD photocopied JS/CSS from filing cabinet
+3. **Hard refresh (Ctrl+Shift+R):** Librarian throws away ALL photocopies and fetches everything fresh
+
+**The chicken-and-egg problem:**
+- We added `cache: 'no-store'` to JavaScript files to prevent caching
+- But Chrome was using the OLD cached JavaScript that didn't have the fix yet
+- The fix that prevents caching was itself being cached!
+
+**Why server headers weren't enough:**
+Even with `Cache-Control: no-store, no-cache` headers from server, the browser's `fetch()` API uses `cache: 'default'` mode. In default mode, the browser checks its HTTP cache BEFORE looking at server headers → stale cache wins.
+
+### Why React/Vite Doesn't Have This Problem
+
+React build generates files like:
+```
+index-a1b2c3d4.js      ← hash changes when code changes
+styles-e5f6g7h8.css    ← different hash = different URL
+```
+
+Different content = different filename = browser can't serve stale cache (never seen that URL before).
+
+Rainbow dashboard uses vanilla JS with **stable filenames**:
+```html
+<script src="/public/js/core/tabs.js"></script>  ← same URL forever
+```
+
+No matter how many times you change `tabs.js`, the URL stays the same → browser happily serves old photocopy.
+
+### Solution: Auto-Versioning (Mimic Vite's Approach)
+
+**Applied 5 fixes:**
+
+1. **Path-to-hash URL normalization** (`rainbow-admin.html` + `tabs.js`)
+   - Before: `/understanding` → `/` (lost tab name)
+   - After: `/understanding` → `/#understanding` (preserves tab)
+
+2. **Template fetch cache-busting** (`tabs.js`)
+   ```javascript
+   // Before
+   const response = await fetch(`/api/rainbow/templates/${templateName}`);
+
+   // After
+   const response = await fetch(`/api/rainbow/templates/${templateName}`, { cache: 'no-store' });
+   ```
+
+3. **API wrapper cache-busting** (`utils.js`)
+   ```javascript
+   // Before
+   const res = await fetch(API + path, { headers: {...} });
+
+   // After
+   const res = await fetch(API + path, { cache: 'no-store', headers: {...} });
+   ```
+
+4. **Disabled ETags** (`index.ts`)
+   ```typescript
+   app.set('etag', false);  // Global
+   express.static(path, { etag: false, lastModified: false });  // Static files
+   ```
+
+5. **Auto-versioning all JS/CSS URLs** (`index.ts` - THE KEY FIX)
+   ```typescript
+   function getDashboardHtml(): string {
+     let html = readFileSync(...);
+     // Inject fresh timestamp into every JS/CSS URL
+     const v = Date.now();
+     html = html.replace(/(src|href)="(\/public\/[^"]+\.(js|css))"/g, `$1="$2?v=${v}"`);
+     return html;
+   }
+   ```
+
+   **Result:**
+   ```html
+   <!-- Before -->
+   <script src="/public/js/core/tabs.js"></script>
+
+   <!-- After (every page load gets NEW URL) -->
+   <script src="/public/js/core/tabs.js?v=1771056694571"></script>
+   ```
+
+6. **Meta cache tags** (`rainbow-admin.html`)
+   ```html
+   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+   <meta http-equiv="Pragma" content="no-cache">
+   <meta http-equiv="Expires" content="0">
+   ```
+
+### How Auto-Versioning Works
+
+**Every page load:**
+1. Server reads `rainbow-admin.html`
+2. Injects `?v=<current_timestamp>` into all `/public/*.js` and `/public/*.css` URLs
+3. Browser sees: `tabs.js?v=1771056694571`
+4. Next page load: `tabs.js?v=1771056700000` (different timestamp)
+5. Browser thinks it's a NEW URL it's never cached → fetches fresh
+
+This mimics Vite's content hashing but simpler:
+- Vite: `app-a1b2c3d4.js` (hash from file content, only changes when content changes)
+- Our approach: `app.js?v=timestamp` (changes every load, less efficient but works)
+
+### Testing & Verification
+
+**Initial setup (ONE TIME ONLY):**
+```bash
+# Do ONE hard refresh to pick up the auto-versioning code
+# Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+```
+
+**After that, normal refresh works forever:**
+```bash
+# Navigate to any tab
+http://localhost:3002/understanding
+http://localhost:3002/chat-simulator
+http://localhost:3002/settings
+
+# Normal refresh (F5) - should work without "Loading..."
+# No more hard refresh needed!
+```
+
+**Verify auto-versioning is active:**
+```bash
+curl -s http://localhost:3002/ | grep -E 'src=.*\.js\?v=|href=.*\.css\?v='
+```
+
+**Expected output:**
+```html
+<link rel="stylesheet" href="/public/css/rainbow-styles.css?v=1771056694571">
+<script src="/public/js/core/tabs.js?v=1771056694571"></script>
+<script src="/public/js/core/utils.js?v=1771056694571"></script>
+```
+
+### Defense-in-Depth Caching Protection
+
+Now has **4 layers** of anti-cache protection:
+
+1. **Server headers** (`Cache-Control: no-store, no-cache, must-revalidate`)
+2. **HTML meta tags** (`<meta http-equiv="Cache-Control">`)
+3. **Client-side fetch** (`cache: 'no-store'` in all AJAX calls)
+4. **Auto-versioned URLs** (`?v=timestamp` forces fresh fetch every load) ⭐ KEY FIX
+
+### Performance Impact
+
+**Development:** Zero impact (localhost is fast, ~50KB of JS/CSS files total)
+
+**Production (if deployed):**
+- Every page load re-downloads all JS/CSS (~50KB total)
+- Better approach for production: Use Vite bundler (content-hashed filenames, cacheable between deploys)
+- Current approach: Optimized for developer experience, not production scale
+
+### Why Not Just Use React?
+
+**Cost-benefit analysis:**
+- **Vanilla JS + auto-versioning:** 2 lines of code, solves problem permanently
+- **React rewrite:** 1-2 weeks of work, rewriting ~10 tabs (2000+ lines of `live-chat.js` alone)
+- **Verdict:** Not worth it for a caching issue. React makes sense for NEW dashboards, not retrofitting working code.
+
+### Files Modified
+
+1. `RainbowAI/src/index.ts` - Auto-versioning in `getDashboardHtml()`, disabled ETags
+2. `RainbowAI/src/public/rainbow-admin.html` - Path-to-hash normalization, meta cache tags
+3. `RainbowAI/src/public/js/core/tabs.js` - Path-to-hash normalization, `cache: 'no-store'` on template fetch
+4. `RainbowAI/src/public/js/core/utils.js` - `cache: 'no-store'` on all API calls
+
+### Key Lessons
+
+1. **Browser cache is aggressive** - `no-cache` headers aren't enough for sub-resources (JS/CSS) on normal refresh
+2. **Content hashing > timestamps** - Vite's approach (hash in filename) is smarter but requires bundler
+3. **Auto-versioning works** - `?v=timestamp` is the server-side equivalent of content hashing
+4. **Defense in depth** - Multiple anti-cache layers ensure it works across all browsers
+5. **One hard refresh needed** - After applying the fix, users need ONE hard refresh to pick up the auto-versioning code
+
+### Quick Reference
+
+**If "Loading..." returns after code changes:**
+```bash
+# 1. Check auto-versioning is active
+curl -s http://localhost:3002/ | grep '?v='
+
+# 2. If missing, restart MCP server
+cd RainbowAI && npm run dev
+
+# 3. Do ONE hard refresh in browser
+# Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+
+# 4. Normal refresh should work forever after that
+```
+
+**Resolution:** ✅ Solved with auto-versioned JS/CSS URLs. Normal refresh now works permanently after one-time hard refresh.
+
+---
+
+## Guest Messages Not Showing in Live Simulation + No Auto-Refresh
+
+**Date:** 2026-02-14
+**Issue:** Guest (user) messages missing in Live Simulation tab, and new WhatsApp messages don't appear automatically
+**Status:** ✅ RESOLVED
+
+---
+
+### Problem Summary
+
+Two related issues in the Live Simulation tab (`#chat-simulator/live-simulation`):
+1. Guest messages (white bubbles, left side) not rendered — only bot/AI messages visible
+2. New WhatsApp messages don't appear automatically (3-second auto-refresh broken)
+
+Live Chat tab (`#live-chat`) was unaffected — different JS module.
+
+---
+
+### Root Causes (Two Bugs)
+
+#### Bug 1: Temporal Dead Zone (TDZ) in `real-chat.js`
+
+**File:** `RainbowAI/src/public/js/modules/real-chat.js`
+
+The `renderChatView` function used `const msgIndex` **before** its declaration, but only inside the `if (isGuest)` branch. Bot messages skipped the branch and worked fine.
+
+```javascript
+// BROKEN: msgIndex used at line 431 (inside if-isGuest)
+if (isGuest) {
+  footer += '...onclick="openAddToTrainingExampleModal(' + msgIndex + ')"...';
+}
+// ... 19 lines later ...
+// DECLARED at line 450 (too late for guest messages!)
+const msgIndex = log.messages.indexOf(msg);
+```
+
+**Fix:** Moved `const msgIndex` declaration before its first use.
+
+#### Bug 2: DOM Element Destruction in `renderConversationList`
+
+**File:** `RainbowAI/src/public/js/modules/real-chat.js`
+
+`loadChatSimulator` called `loadRealChat()` **twice** in quick succession:
+1. Via `switchSimulatorTab('live-simulation')` (fire-and-forget)
+2. Directly with `await loadRealChat()` (awaited)
+
+The first call's `renderConversationList` set `list.innerHTML = ...` which **destroyed** the `<div id="rc-sidebar-empty">` child element. The second call then did `document.getElementById('rc-sidebar-empty')` → returned `null` → crashed on `empty.style.display = 'none'`.
+
+This crash happened inside `loadRealChat`'s `try` block, causing ALL subsequent code to be skipped — including the `setInterval` that sets up the 3-second auto-refresh.
+
+**Chain:** Dual call → element destroyed → null crash → auto-refresh never created → new messages never appear.
+
+**Fix (two parts):**
+
+1. **`renderConversationList`:** Detach `rc-sidebar-empty` before any `innerHTML` operation, then re-attach it afterward:
+```javascript
+// Detach before innerHTML to prevent destruction
+if (empty && empty.parentNode) empty.parentNode.removeChild(empty);
+// ... set innerHTML ...
+// Re-attach (hidden) so future calls can find it
+if (empty) { empty.style.display = 'none'; list.appendChild(empty); }
+```
+
+2. **`loadChatSimulator`:** Removed the duplicate `await loadRealChat()` call since `switchSimulatorTab` already invokes it.
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `RainbowAI/src/public/js/modules/real-chat.js` | Fixed TDZ bug (moved `const msgIndex`); Fixed element destruction in `renderConversationList` |
+| `RainbowAI/src/public/js/legacy-functions.js` | Removed duplicate `loadRealChat()` call from `loadChatSimulator` |
+
+---
+
+### Diagnostic Steps
+
+```bash
+# 1. Check for JS errors (the key diagnostic)
+agent-browser open http://localhost:3002/#chat-simulator/live-simulation
+agent-browser errors
+# Look for: "Cannot read properties of null (reading 'style')"
+# Or: "Cannot access 'msgIndex' before initialization"
+
+# 2. Count guest vs AI bubbles
+agent-browser eval "document.querySelectorAll('.rc-bubble-wrap.guest').length"
+# Should be > 0
+
+# 3. Check auto-refresh is alive
+agent-browser eval "document.getElementById('rc-last-refresh')?.textContent"
+# Should show recent time like "Updated 3s ago", NOT "4m ago"
+
+# 4. Verify by navigating from another tab (the actual failure path)
+agent-browser open http://localhost:3002/#dashboard
+agent-browser wait 2000
+agent-browser eval "window.location.hash = '#chat-simulator/live-simulation'"
+agent-browser wait 4000
+agent-browser eval "document.querySelectorAll('.rc-bubble-wrap.guest').length + ' guest'"
+```
+
+---
+
+### Lessons Learned
+
+1. **Never use `innerHTML` when the container holds persistent elements** — `innerHTML = ...` destroys ALL children, including elements referenced by ID elsewhere. Always detach important children first.
+2. **Avoid duplicate async function calls** — When `switchSimulatorTab` already calls `loadRealChat()`, calling it again from `loadChatSimulator` creates race conditions where the first call's DOM changes break the second call.
+3. **JavaScript TDZ is silent until the branch executes** — `const` declarations hoisted to block scope but uninitialized. Using them before declaration throws `ReferenceError`, but only when that code path actually runs (guest messages hit the branch, bot messages didn't).
+4. **Auto-refresh failures are caused by setup failures** — If `setInterval` is inside a `try` block that crashes before reaching it, the interval is never created. Guard DOM operations with null checks to prevent cascade failures.
+

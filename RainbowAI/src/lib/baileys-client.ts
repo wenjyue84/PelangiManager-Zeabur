@@ -4,6 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import type { IncomingMessage, MessageType } from '../assistant/types.js';
 import { trackWhatsAppConnected, trackWhatsAppDisconnected, trackWhatsAppUnlinked } from './activity-tracker.js';
+import { notifyAdminDisconnection, notifyAdminUnlink, notifyAdminReconnect } from './admin-notifier.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.WHATSAPP_DATA_DIR || path.resolve(__dirname, '../../whatsapp-data');
@@ -173,17 +174,23 @@ class WhatsAppInstance {
         if (statusCode !== DisconnectReason.loggedOut) {
           this.reconnectAttempts++;
           if (this.reconnectAttempts > WhatsAppInstance.MAX_RECONNECT_ATTEMPTS) {
-            console.log(`[Baileys:${this.id}] Stopped reconnecting after ${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS} attempts (last code: ${statusCode}). Open dashboard to restart/scan QR.`);
-            trackWhatsAppDisconnected(this.id, `code ${statusCode}, stopped after ${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS} attempts`);
+            const reason = `code ${statusCode}, stopped after ${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS} attempts`;
+            console.warn(`[Baileys:${this.id}] ${reason}. Please visit dashboard to restart.`);
+            notifyAdminDisconnection(this.id, this.label, reason).catch(err => {
+              console.error(`[Baileys:${this.id}] Failed to notify admin of disconnection:`, err.message);
+            });
             this.reconnectTimeout = null;
             return;
           }
+
           // 408 = request timeout — use longer delay to avoid rapid retry spam
           const is408 = statusCode === 408;
           const baseDelay = this.reconnectTimeout ? 5000 : (is408 ? 30000 : 2000);
           const delay = Math.min(baseDelay * this.reconnectAttempts, 60000);
+
           console.log(`[Baileys:${this.id}] Disconnected (code: ${statusCode}), reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS})...`);
           trackWhatsAppDisconnected(this.id, `code ${statusCode}, reconnecting (${this.reconnectAttempts}/${WhatsAppInstance.MAX_RECONNECT_ATTEMPTS})`);
+
           if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
           this.reconnectTimeout = setTimeout(() => {
             this.reconnectTimeout = null;
@@ -203,6 +210,7 @@ class WhatsAppInstance {
         }
       } else if (connection === 'open') {
         this.qr = null;
+        const wasReconnecting = this.reconnectAttempts > 0;
         this.reconnectAttempts = 0;
         // Clear unlinked status when reconnected
         this.unlinkedFromWhatsApp = false;
@@ -212,8 +220,15 @@ class WhatsAppInstance {
         this.lastConnectedAt = new Date().toISOString();
         this.onFirstConnect?.(); // Persist firstConnectedAt in config if not yet set
         const user = (this.sock as any)?.user;
-        console.log(`[Baileys:${this.id}] Connected: ${user?.name || 'Unknown'} (${user?.id?.split(':')[0] || '?'})`);
-        trackWhatsAppConnected(this.id, user?.name, user?.id?.split(':')[0]);
+        const userPhone = user?.id?.split(':')[0] || '?';
+        console.log(`[Baileys:${this.id}] Connected: ${user?.name || 'Unknown'} (${userPhone})`);
+        trackWhatsAppConnected(this.id, user?.name, userPhone);
+        // Notify admin of reconnection (only if this was a reconnect, not initial connect)
+        if (wasReconnecting) {
+          notifyAdminReconnect(this.id, this.label, userPhone).catch(err => {
+            console.error(`[Baileys:${this.id}] Failed to notify admin of reconnection:`, err.message);
+          });
+        }
       }
     });
 
@@ -512,7 +527,8 @@ class WhatsAppManager {
 
     // Start the instance
     await this.startInstanceFromConfig(cfg);
-    return this.instances.get(id)!.getStatus();
+    const s = this.instances.get(id)!.getStatus();
+    return { ...s, firstConnectedAt: null };
   }
 
   async removeInstance(id: string): Promise<void> {
@@ -543,7 +559,9 @@ class WhatsAppManager {
     entry.label = trimLabel;
     instance.label = trimLabel;
     if (config) this.saveConfig(config);
-    return instance.getStatus();
+
+    const s = instance.getStatus();
+    return { ...s, firstConnectedAt: entry.firstConnectedAt ?? null };
   }
 
   async logoutInstance(id: string): Promise<void> {
@@ -687,6 +705,10 @@ class WhatsAppManager {
 
     if (!notifierInstance || notifierInstance.state !== 'open') {
       console.error(`[WhatsAppManager] No connected instance available to send unlink notification for "${unlinkedId}"`);
+      // Still notify admin via admin notifier (will use any available instance)
+      notifyAdminUnlink(unlinkedId, unlinkedLabel, unlinkedPhone).catch(err => {
+        console.error(`[WhatsAppManager] Failed to notify admin of unlink:`, err.message);
+      });
       return;
     }
 
@@ -702,6 +724,11 @@ class WhatsAppManager {
     } catch (err: any) {
       console.error(`[WhatsAppManager] Failed to send unlink notification:`, err.message);
     }
+
+    // Also notify system admin
+    notifyAdminUnlink(unlinkedId, unlinkedLabel, unlinkedPhone).catch(err => {
+      console.error(`[WhatsAppManager] Failed to notify admin of unlink:`, err.message);
+    });
   }
 
   private loadConfig(): InstancesFile | null {

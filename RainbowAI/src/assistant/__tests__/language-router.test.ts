@@ -40,6 +40,10 @@ describe('LanguageRouter', () => {
       expect(router.detectLanguage('assalamualaikum')).toBe('ms');
       expect(router.detectLanguage('selamat tinggal')).toBe('ms');
     });
+
+    test('should detect colloquial Malay (e.g. bole check in awal)', () => {
+      expect(router.detectLanguage('Bole check in awal?')).toBe('ms');
+    });
   });
 
   describe('Chinese Detection', () => {

@@ -434,9 +434,9 @@ function renderActivityEvents() {
         <div class="border-t border-neutral-100 pt-2 mt-2">
           <button type="button" onclick="toggleActivityExpand()" class="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition" aria-expanded="${_activityExpanded}">
             ${_activityExpanded
-              ? '<span>Show less</span><svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>'
-              : `<span>Show more (${hiddenCount} more)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
-            }
+        ? '<span>Show less</span><svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>'
+        : `<span>Show more (${hiddenCount} more)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
+      }
           </button>
         </div>
       ` : ''}
@@ -972,7 +972,7 @@ async function loadIntents() {
 
       // Add phase header
       rows.push('<tr class="bg-gradient-to-r from-primary-50 to-transparent border-b-2 border-primary-200">');
-      rows.push('  <td colspan="6" class="py-3 px-3">');
+      rows.push('  <td colspan="7" class="py-3 px-3">');
       rows.push('    <div class="flex items-center gap-2">');
       rows.push('      <span class="font-semibold text-primary-700 text-sm uppercase tracking-wide">' + esc(phaseName) + '</span>');
       rows.push('      <span class="text-xs text-neutral-500">— ' + esc(phaseDesc) + '</span>');
@@ -988,6 +988,7 @@ async function loadIntents() {
         const route = routingData[intent]?.action || 'llm_reply';
         const wfId = routingData[intent]?.workflow_id || '';
         const enabled = intentData.enabled !== undefined ? intentData.enabled : true;
+        const timeSensitive = intentData.time_sensitive === true;
         const hasStatic = staticIntentNames.has(intent);
         const needsStatic = route === 'static_reply';
         const isUnknown = intent === 'unknown';
@@ -1020,6 +1021,7 @@ async function loadIntents() {
             </td>
             <td class="py-2.5 pr-3 text-xs"><span class="text-neutral-400 cursor-not-allowed">0.50</span></td>
             <td class="py-2.5 pr-3 text-xs"><span class="text-neutral-400">—</span></td>
+            <td class="py-2.5 pr-3 text-xs"><span class="text-neutral-400">—</span></td>
             <td class="py-2.5">
               <span class="text-xs px-2 py-1 text-neutral-300 cursor-not-allowed">Protected</span>
             </td>
@@ -1051,6 +1053,9 @@ async function loadIntents() {
           rows.push('    <input type="number" min="0" max="1" step="0.05" value="' + minConf.toFixed(2) + '" onchange="changeConfidence(\'' + esc(intent) + '\', this.value, this)" class="text-xs border rounded px-2 py-1 w-16 text-center font-mono ' + confColor + '">');
           rows.push('  </td>');
           rows.push('  <td class="py-2.5 pr-3 text-xs">' + (warning || (hasStatic ? '<span class="text-success-600">Yes</span>' : '<span class="text-neutral-400">—</span>')) + '</td>');
+          rows.push('  <td class="py-2.5 pr-3">');
+          rows.push('    <label class="inline-flex items-center gap-1 cursor-pointer"><input type="checkbox" ' + (timeSensitive ? 'checked' : '') + ' onchange="toggleTimeSensitive(\'' + esc(intent) + '\', this.checked)" class="rounded border-neutral-300 text-primary-600"><span class="text-xs text-neutral-600">On</span></label>');
+          rows.push('  </td>');
           rows.push('  <td class="py-2.5">');
           rows.push('    <button onclick="deleteIntent(\'' + esc(intent) + '\')" class="text-xs px-2 py-1 text-danger-500 hover:bg-danger-50 rounded">Delete</button>');
           rows.push('  </td>');
@@ -1059,7 +1064,7 @@ async function loadIntents() {
       }
     }
 
-    el.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="6" class="text-neutral-400 py-4 text-center">No intents configured</td></tr>';
+    el.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="7" class="text-neutral-400 py-4 text-center">No intents configured</td></tr>';
     renderTemplateButtons();
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -1099,6 +1104,14 @@ async function toggleIntent(category, enabled) {
   try {
     await api('/intents/' + encodeURIComponent(category), { method: 'PUT', body: { enabled } });
     toast(category + ': ' + (enabled ? 'enabled' : 'disabled'));
+    loadIntents();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function toggleTimeSensitive(category, timeSensitive) {
+  try {
+    await api('/intents/' + encodeURIComponent(category), { method: 'PUT', body: { time_sensitive: timeSensitive } });
+    toast(category + ': time-sensitive ' + (timeSensitive ? 'on' : 'off'));
     loadIntents();
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -2285,9 +2298,14 @@ let settingsProviders = [];
 async function loadSettings() {
   try {
     const d = await api('/settings');
+    const adminNotifs = await api('/admin-notifications');
     settingsProviders = (d.ai?.providers || []).sort((a, b) => a.priority - b.priority);
     // CRITICAL: Load intent classification models (port 3002 only!)
     intentClassificationModels = (d.ai?.intent_classification_models || []).sort((a, b) => a.priority - b.priority);
+
+    // Store operators globally for easy access
+    window.currentOperators = adminNotifs.operators || [];
+
     const el = document.getElementById('settings-content');
     el.innerHTML = `
       <!-- Settings Templates Section -->
@@ -2325,16 +2343,16 @@ async function loadSettings() {
       <div class="bg-white border rounded-2xl p-5">
         <div class="flex items-center justify-between mb-3">
           <div class="flex-1">
-            <h3 class="font-semibold text-neutral-700 mb-1"><span class="section-tip" data-tip="LLM providers used for generating chat replies (T5 tier). Ordered by priority — the first enabled &amp; available provider is used. If it fails, the next one in line is tried automatically.">AI Providers <svg class="tip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span></h3>
+            <h3 class="font-semibold text-neutral-700 mb-1"><span class="section-tip" data-tip="LLM models used for generating chat replies (T5 tier). Ordered by priority — the first enabled &amp; available model is used. If it fails, the next one in line is tried automatically.">AI Models <svg class="tip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span></h3>
             <div class="flex items-center gap-1 text-xs text-neutral-400">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <span>Used by</span>
               <a href="#" onclick="switchTab('intent-manager');return false" class="text-primary-500 hover:text-primary-600 underline font-medium">
-                Intent Manager → T4 LLM Providers
+                Intent Manager → T4 LLM Models
               </a>
             </div>
           </div>
-          <button onclick="showAddProvider()" class="text-xs bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg transition">+ Add Provider</button>
+          <button onclick="showAddProvider()" class="text-xs bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg transition">+ Add Model</button>
         </div>
         <div id="providers-list" class="space-y-2"></div>
         <div id="provider-form-container" class="hidden mt-3"></div>
@@ -2502,11 +2520,115 @@ async function loadSettings() {
         </div>
       </div>
 
+      <!-- System Admin Section -->
+      <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+        <h3 class="font-semibold text-lg mb-3 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          System Admin
+        </h3>
+        <p class="text-sm text-neutral-600 mb-4">Receives system alerts (WhatsApp disconnections, server startup, etc.)</p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">Phone Number</label>
+            <div class="flex gap-2">
+              <input
+                type="tel"
+                id="system-admin-phone-input"
+                value="${esc(adminNotifs.systemAdminPhone || '')}"
+                placeholder="60127088789"
+                class="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+              <button
+                onclick="updateSystemAdminPhone()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+          <div class="border-t border-blue-200 pt-3">
+            <label class="block text-sm font-medium text-neutral-700 mb-2">System Notification Types</label>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  id="notify-enabled"
+                  ${adminNotifs.enabled ? 'checked' : ''}
+                  onchange="updateAdminNotifPrefs()"
+                  class="rounded"
+                />
+                <span>Enable system notifications</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm ml-6">
+                <input
+                  type="checkbox"
+                  id="notify-disconnect"
+                  ${adminNotifs.notifyOnDisconnect ? 'checked' : ''}
+                  onchange="updateAdminNotifPrefs()"
+                  class="rounded"
+                />
+                <span>Instance disconnections</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm ml-6">
+                <input
+                  type="checkbox"
+                  id="notify-unlink"
+                  ${adminNotifs.notifyOnUnlink ? 'checked' : ''}
+                  onchange="updateAdminNotifPrefs()"
+                  class="rounded"
+                />
+                <span>Instance unlinked from WhatsApp</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm ml-6">
+                <input
+                  type="checkbox"
+                  id="notify-reconnect"
+                  ${adminNotifs.notifyOnReconnect ? 'checked' : ''}
+                  onchange="updateAdminNotifPrefs()"
+                  class="rounded"
+                />
+                <span>Instance reconnections & server startup</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Capsule Operators Section -->
+      <div class="bg-green-50 border border-green-200 rounded-2xl p-5">
+        <h3 class="font-semibold text-lg mb-3 flex items-center gap-2">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Capsule Operators
+        </h3>
+        <p class="text-sm text-neutral-600 mb-4">Receives operational messages (workflow completions, check-ins). Auto-escalates if no reply within set time.</p>
+
+        <div id="operators-list" class="space-y-2 mb-3">
+          <!-- Will be populated by renderOperatorsList() -->
+        </div>
+
+        <button
+          onclick="addOperator()"
+          class="w-full px-4 py-2 border-2 border-dashed border-green-400 text-green-700 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Operator
+        </button>
+      </div>
+
       <button onclick="saveSettings()" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-2xl text-sm transition">Save Settings</button>
     `;
     renderProvidersList();
     renderIntentClassificationModelsList(); // CRITICAL: Render intent classification models (port 3002 only)
     renderSettingsTemplateButtons(); // Render settings template buttons
+    renderOperatorsList(); // Render capsule operators list
     autoTestAllProviders();
     setupConversationManagementListeners(); // Setup conversation management UI
   } catch (e) { toast(e.message, 'error'); }
@@ -2548,7 +2670,7 @@ function renderProvidersList() {
   const el = document.getElementById('providers-list');
   if (!el) return;
   if (settingsProviders.length === 0) {
-    el.innerHTML = '<p class="text-sm text-neutral-400 italic">No providers configured. Click "Add Provider" to get started.</p>';
+    el.innerHTML = '<p class="text-sm text-neutral-400 italic">No models configured. Click "Add Model" to get started.</p>';
     return;
   }
 
@@ -2611,7 +2733,7 @@ function renderProvidersList() {
     return html;
   };
 
-  el.innerHTML = renderGroup(active, '✅ Active Providers', 'text-green-700', false) + renderGroup(inactive, '⏸️ Inactive Providers', 'text-neutral-500', true);
+  el.innerHTML = renderGroup(active, '✅ Active Models', 'text-green-700', false) + renderGroup(inactive, '⏸️ Inactive Models', 'text-neutral-500', true);
 }
 
 function toggleInactiveProviders() {
@@ -2995,6 +3117,148 @@ async function saveSettings() {
     });
     toast('Settings saved (including conversation management & sentiment analysis)');
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ─── Admin Notification Settings ────────────────────────────────────
+async function updateSystemAdminPhone() {
+  try {
+    const input = document.getElementById('system-admin-phone-input');
+    const phone = input.value.trim();
+    if (!phone) {
+      toast('Please enter a phone number', 'error');
+      return;
+    }
+    await api('/admin-notifications/system-admin-phone', { method: 'PUT', body: { phone } });
+    toast('System admin phone updated successfully');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function updateAdminNotifPrefs() {
+  try {
+    const enabled = document.getElementById('notify-enabled').checked;
+    const notifyDisconnect = document.getElementById('notify-disconnect').checked;
+    const notifyUnlink = document.getElementById('notify-unlink').checked;
+    const notifyReconnect = document.getElementById('notify-reconnect').checked;
+
+    await api('/admin-notifications/preferences', {
+      method: 'PUT',
+      body: { enabled, notifyDisconnect, notifyUnlink, notifyReconnect }
+    });
+    toast('Notification preferences updated');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function renderOperatorsList() {
+  const container = document.getElementById('operators-list');
+  if (!container || !window.currentOperators) return;
+
+  if (window.currentOperators.length === 0) {
+    container.innerHTML = `
+      <div class="text-center text-neutral-500 py-4 text-sm">
+        No operators configured. Click "Add Operator" to get started.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = window.currentOperators.map((op, index) => `
+    <div class="bg-white border rounded-lg p-3 flex items-center gap-3">
+      <div class="flex-shrink-0 w-8 h-8 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold">
+        ${index + 1}
+      </div>
+      <div class="flex-1 grid grid-cols-3 gap-2">
+        <div>
+          <input
+            type="text"
+            value="${esc(op.label)}"
+            placeholder="Label (e.g., Operator 1)"
+            onchange="updateOperatorField(${index}, 'label', this.value)"
+            class="w-full px-2 py-1 border rounded text-sm"
+          />
+        </div>
+        <div>
+          <input
+            type="tel"
+            value="${esc(op.phone)}"
+            placeholder="60127088789"
+            onchange="updateOperatorField(${index}, 'phone', this.value)"
+            class="w-full px-2 py-1 border rounded text-sm"
+          />
+        </div>
+        <div class="flex items-center gap-1">
+          <input
+            type="number"
+            value="${op.fallbackMinutes}"
+            min="1"
+            onchange="updateOperatorField(${index}, 'fallbackMinutes', parseInt(this.value))"
+            class="w-16 px-2 py-1 border rounded text-sm"
+          />
+          <span class="text-xs text-neutral-500">min</span>
+        </div>
+      </div>
+      <button
+        onclick="removeOperator(${index})"
+        class="flex-shrink-0 p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+        title="Remove operator"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function addOperator() {
+  if (!window.currentOperators) window.currentOperators = [];
+
+  const newOperator = {
+    phone: '',
+    label: `Operator ${window.currentOperators.length + 1}`,
+    fallbackMinutes: 5
+  };
+
+  window.currentOperators.push(newOperator);
+  renderOperatorsList();
+  saveOperators();
+}
+
+function removeOperator(index) {
+  if (!window.currentOperators) return;
+
+  if (window.currentOperators.length === 1) {
+    toast('You must have at least one operator', 'error');
+    return;
+  }
+
+  if (confirm(`Remove ${window.currentOperators[index].label}?`)) {
+    window.currentOperators.splice(index, 1);
+    renderOperatorsList();
+    saveOperators();
+  }
+}
+
+function updateOperatorField(index, field, value) {
+  if (!window.currentOperators || !window.currentOperators[index]) return;
+
+  window.currentOperators[index][field] = value;
+  saveOperators();
+}
+
+async function saveOperators() {
+  try {
+    await api('/admin-notifications/operators', {
+      method: 'PUT',
+      body: { operators: window.currentOperators }
+    });
+    toast('Operators saved');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -3401,30 +3665,11 @@ function renderChatMessages() {
     if (msg.role === 'user') {
       return `<div class="flex justify-end"><div class="bg-primary-500 text-white rounded-2xl px-4 py-2 max-w-md"><div class="text-sm">${esc(msg.content)}</div></div></div>`;
     } else {
-      // Detection method badge with icons (display names: Priority Keywords, Smart Matching, Learning Examples, AI Fallback)
-      const sourceLabels = {
-        'regex': '🚨 Priority Keywords',
-        'fuzzy': '⚡ Smart Matching',
-        'semantic': '📚 Learning Examples',
-        'llm': '🤖 AI Fallback'
-      };
-      const sourceColors = {
-        'regex': 'bg-red-50 text-red-700',
-        'fuzzy': 'bg-yellow-50 text-yellow-700',
-        'semantic': 'bg-purple-50 text-purple-700',
-        'llm': 'bg-blue-50 text-blue-700'
-      };
-      const sourceLabel = msg.meta?.source ? (sourceLabels[msg.meta.source] || msg.meta.source) : '';
-      const sourceColor = msg.meta?.source ? sourceColors[msg.meta.source] || 'bg-neutral-50 text-neutral-700' : '';
-      const sourceBadge = sourceLabel ? `<span class="px-1.5 py-0.5 ${sourceColor} rounded font-medium text-xs">${sourceLabel}</span>` : '';
-      const kbBadges = msg.meta?.kbFiles && msg.meta.kbFiles.length > 0
-        ? `<div class="mt-1 flex items-center gap-1 flex-wrap"><span class="text-neutral-400">📂</span>${msg.meta.kbFiles.map(f => `<span onclick="openKBFileFromPreview('${esc(f)}')" class="px-1.5 py-0.5 bg-violet-50 text-violet-700 rounded font-mono text-xs cursor-pointer hover:bg-violet-100 transition" title="Click to view ${esc(f)}">${esc(f)}</span>`).join('')}</div>`
-        : '';
-      const hMsgTypeIcons = { 'info': 'ℹ️', 'problem': '⚠️', 'complaint': '🔴' };
-      const hMsgTypeColors = { 'info': 'bg-green-50 text-green-700', 'problem': 'bg-orange-50 text-orange-700', 'complaint': 'bg-red-50 text-red-700' };
-      const hMsgType = msg.meta?.messageType || 'info';
-      const hMsgTypeBadge = msg.meta?.messageType ? `<span class="px-1.5 py-0.5 ${hMsgTypeColors[hMsgType] || 'bg-green-50 text-green-700'} rounded font-medium text-xs">${hMsgTypeIcons[hMsgType] || 'ℹ️'} ${hMsgType}</span>` : '';
-      const hOverrideBadge = msg.meta?.problemOverride ? `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-medium text-xs">🔀 Override</span>` : '';
+      // Use shared MetadataBadges component for badge generation
+      const sourceBadge = MetadataBadges.getTierBadge(msg.meta?.source);
+      const kbBadges = MetadataBadges.getKBFilesBadge(msg.meta?.kbFiles);
+      const hMsgTypeBadge = MetadataBadges.getMessageTypeBadge(msg.meta?.messageType);
+      const hOverrideBadge = MetadataBadges.getOverrideBadge(msg.meta?.problemOverride);
 
       // Editable static reply / workflow / system message: full inline-edit UI + clickable message body
       const em = msg.meta?.editMeta;
@@ -3437,10 +3682,11 @@ function renderChatMessages() {
         if (em.type === 'template') { editLabel = 'System Message'; editBadgeColor = 'bg-sky-50 text-sky-700 border-sky-200'; }
         const langs = em.languages || { en: '', ms: '', zh: '' };
         const sourceLabel = em.type === 'knowledge' ? `Quick Reply: ${em.intent}` : em.type === 'workflow' ? `${em.workflowName || em.workflowId} → Step ${(em.stepIndex || 0) + 1}` : `Template: ${em.templateKey || ''}`;
-        const editBtnHtml = `<button onclick="toggleInlineEdit('${editId}')" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 ${editBadgeColor} border rounded text-xs cursor-pointer hover:opacity-80 transition" title="Click to edit this ${editLabel}">✏️ ${editLabel}</button>`;
+        const editBtnHtml = '<button onclick="toggleInlineEdit(\'' + editId + '\')" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 ' + editBadgeColor + ' border rounded text-xs cursor-pointer hover:opacity-80 transition" title="Click to edit this ' + (editLabel || 'reply') + '" role="button" tabindex="0">✏️ ' + editLabel + '</button>';
         const alsoTemplateHtml = (em.alsoTemplate)
-          ? `<button onclick="toggleInlineEdit('${editId}-tmpl')" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded text-xs cursor-pointer hover:opacity-80 transition" title="Also edit the System Message version">✏️ System Message</button>`
+          ? '<button onclick="toggleInlineEdit(\'' + editId + '-tmpl\')" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded text-xs cursor-pointer hover:opacity-80 transition" title="Also edit the System Message version">✏️ System Message</button>'
           : '';
+        const langBadge = MetadataBadges.getLanguageBadge(msg.meta.detectedLanguage);
         const editPanelHtml = `
         <div id="${editId}" class="hidden mt-2 pt-2 border-t border-dashed" data-edit-meta='${JSON.stringify(em).replace(/'/g, "&#39;")}'>
           <div class="flex items-center justify-between mb-1.5">
@@ -3480,10 +3726,23 @@ function renderChatMessages() {
         const contentOnclick = `onclick="toggleInlineEdit('${editId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleInlineEdit('${editId}')}" title="Click to edit this ${editLabel || 'reply'}" role="button" tabindex="0"`;
         return `<div class="flex justify-start"><div class="bg-white border rounded-2xl px-4 py-2 max-w-md group">
         <div id="${editId}-text" class="text-sm whitespace-pre-wrap ${contentClickable}" ${contentOnclick}>${esc(msg.content)}</div>
-        <div class="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs text-neutral-500 flex-wrap">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}<span class="px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded font-mono">${esc(msg.meta.intent)}</span><span class="px-1.5 py-0.5 bg-success-50 text-success-700 rounded">${esc(msg.meta.routedAction)}</span>${msg.meta.model ? `<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono text-xs">${esc(msg.meta.model)}</span>` : ''}${msg.meta.responseTime ? `<span class="px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">${msg.meta.responseTime >= 1000 ? (msg.meta.responseTime / 1000).toFixed(1) + 's' : msg.meta.responseTime + 'ms'}</span>` : ''}${msg.meta.confidence ? `<span>${(msg.meta.confidence * 100).toFixed(0)}%</span>` : ''}${editBtnHtml}${alsoTemplateHtml}</div>${kbBadges}${editPanelHtml}${alsoTemplatePanelHtml}</div></div>`;
+        <div class="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs text-neutral-500 flex-wrap">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}<span class="px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded font-mono">${esc(msg.meta.intent)}</span><span class="px-1.5 py-0.5 bg-success-50 text-success-700 rounded">${esc(msg.meta.routedAction)}</span>${langBadge}${msg.meta.model ? `<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono text-xs">${esc(msg.meta.model)}</span>` : ''}${msg.meta.responseTime ? `<span class="px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">${msg.meta.responseTime >= 1000 ? (msg.meta.responseTime / 1000).toFixed(1) + 's' : msg.meta.responseTime + 'ms'}</span>` : ''}${msg.meta.confidence ? `<span>${(msg.meta.confidence * 100).toFixed(0)}%</span>` : ''}${editBtnHtml}${alsoTemplateHtml}</div>${kbBadges}${editPanelHtml}${alsoTemplatePanelHtml}</div></div>`;
       }
 
-      return `<div class="flex justify-start"><div class="bg-white border rounded-2xl px-4 py-2 max-w-md"><div class="text-sm whitespace-pre-wrap">${esc(msg.content)}</div>${msg.meta ? `<div class="mt-2 pt-2 border-t flex items-center gap-2 text-xs text-neutral-500">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}<span class="px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded font-mono">${esc(msg.meta.intent)}</span><span class="px-1.5 py-0.5 bg-success-50 text-success-700 rounded">${esc(msg.meta.routedAction)}</span>${msg.meta.model ? `<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono text-xs">${esc(msg.meta.model)}</span>` : ''}${msg.meta.responseTime ? `<span class="px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">${msg.meta.responseTime >= 1000 ? (msg.meta.responseTime / 1000).toFixed(1) + 's' : msg.meta.responseTime + 'ms'}</span>` : ''}${msg.meta.confidence ? `<span>${(msg.meta.confidence * 100).toFixed(0)}%</span>` : ''}</div>${kbBadges}` : ''}</div></div>`;
+      const isSystem = hasSystemContent(msg.content);
+      const displayContent = isSystem ? formatSystemContent(msg.content) : getUserMessage(msg.content);
+      const systemClass = isSystem ? ' lc-system-msg' : '';
+
+      const langBadge = MetadataBadges.getLanguageBadge(msg.meta?.detectedLanguage);
+      const intentBadge = MetadataBadges.getIntentBadge(msg.meta?.intent);
+      const actionBadge = MetadataBadges.getActionBadge(msg.meta?.routedAction);
+      const modelBadge = MetadataBadges.getModelBadge(msg.meta?.model);
+      const timeBadge = MetadataBadges.getResponseTimeBadge(msg.meta?.responseTime);
+      const confBadge = MetadataBadges.getConfidenceBadge(msg.meta?.confidence);
+
+      const contentHtml = `<div class="text-sm whitespace-pre-wrap">${isSystem ? displayContent : esc(displayContent)}</div>`;
+
+      return `<div class="flex justify-start"><div class="bg-white border rounded-2xl px-4 py-2 max-w-md${systemClass}">${contentHtml}${msg.meta ? `<div class="mt-2 pt-2 border-t flex items-center gap-2 text-xs text-neutral-500">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}${intentBadge}${actionBadge}${langBadge}${modelBadge}${timeBadge}${confBadge}</div>${kbBadges}` : ''}</div></div>`;
     }
   }).join('');
   messagesEl.scrollTop = 0;
@@ -3491,14 +3750,8 @@ function renderChatMessages() {
   if (lastMsg.role === 'assistant' && lastMsg.meta) {
     const timeStr = lastMsg.meta.responseTime ? (lastMsg.meta.responseTime >= 1000 ? (lastMsg.meta.responseTime / 1000).toFixed(1) + 's' : lastMsg.meta.responseTime + 'ms') : 'N/A';
 
-    // Get detection method badge (display names)
-    const sourceLabelsMeta = {
-      'regex': '🚨 Priority Keywords',
-      'fuzzy': '⚡ Smart Matching',
-      'semantic': '📚 Learning Examples',
-      'llm': '🤖 AI Fallback'
-    };
-    const detectionMethod = lastMsg.meta.source ? (sourceLabelsMeta[lastMsg.meta.source] || lastMsg.meta.source) : '';
+    // Get detection method label (using shared component)
+    const detectionMethod = MetadataBadges.getTierLabel(lastMsg.meta.source);
     const detectionPrefix = detectionMethod ? `Detection: <b>${detectionMethod}</b> | ` : '';
     const kbFilesStr = lastMsg.meta.kbFiles && lastMsg.meta.kbFiles.length > 0 ? ` | KB: <b>${lastMsg.meta.kbFiles.join(', ')}</b>` : '';
     const hMsgTypeStr = lastMsg.meta.messageType ? ` | Type: <b>${lastMsg.meta.messageType}</b>` : '';
@@ -3576,9 +3829,15 @@ async function sendChatMessage(event) {
 
   try {
     // Send to API (exclude last user message from history)
+    // Use 90s timeout for long messages/conversations
     const result = await api('/preview/chat', {
       method: 'POST',
-      body: { message, history: session.history.slice(0, -1) }
+      body: {
+        message,
+        history: session.history.slice(0, -1),
+        sessionId: session.id
+      },
+      timeout: 90000
     });
 
     // Remove typing indicator
@@ -3634,47 +3893,23 @@ async function sendChatMessage(event) {
     const sourceColorMsg = result.source ? sourceColorsMsg[result.source] || 'bg-neutral-50 text-neutral-700' : '';
     const sourceBadgeMsg = sourceLabelMsg ? `<span class="px-1.5 py-0.5 ${sourceColorMsg} rounded font-medium text-xs">${sourceLabelMsg}</span>` : '';
 
-    // Message type badge (info/problem/complaint)
-    const msgTypeIcons = { 'info': 'ℹ️', 'problem': '⚠️', 'complaint': '🔴' };
-    const msgTypeColors = { 'info': 'bg-green-50 text-green-700', 'problem': 'bg-orange-50 text-orange-700', 'complaint': 'bg-red-50 text-red-700' };
-    const msgType = result.messageType || 'info';
-    const msgTypeBadge = `<span class="px-1.5 py-0.5 ${msgTypeColors[msgType] || 'bg-green-50 text-green-700'} rounded font-medium text-xs">${msgTypeIcons[msgType] || 'ℹ️'} ${msgType}</span>`;
-    const overrideBadge = result.problemOverride ? `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-medium text-xs">🔀 Override → LLM</span>` : '';
-
-    // Sentiment badge
-    const sentimentIcons = { 'positive': '😊', 'neutral': '😐', 'negative': '😠' };
-    const sentimentColors = { 'positive': 'bg-green-100 text-green-800', 'neutral': 'bg-gray-100 text-gray-700', 'negative': 'bg-red-100 text-red-800' };
-    const sentiment = result.sentiment;
-    const sentimentBadge = sentiment ? `<span class="px-1.5 py-0.5 ${sentimentColors[sentiment]} rounded font-medium text-xs">${sentimentIcons[sentiment]} ${sentiment}</span>` : '';
-
-    // KB files badge (only shown when LLM was used)
-    const kbFilesBadge = result.kbFiles && result.kbFiles.length > 0
-      ? `<div class="mt-1 flex items-center gap-1 flex-wrap">
-           <span class="text-neutral-400">📂</span>
-           ${result.kbFiles.map(f => `<span onclick="openKBFileFromPreview('${f}')" class="px-1.5 py-0.5 bg-violet-50 text-violet-700 rounded font-mono text-xs cursor-pointer hover:bg-violet-100 transition" title="Click to view ${f}">${esc(f)}</span>`).join('')}
-         </div>`
-      : '';
+    // Use shared MetadataBadges component for badge generation
+    const msgTypeBadge = MetadataBadges.getMessageTypeBadge(result.messageType);
+    const overrideBadge = result.problemOverride ? '<span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-medium text-xs">🔀 Override → LLM</span>' : '';
+    const sentimentBadge = MetadataBadges.getSentimentBadge(result.sentiment);
+    const kbFilesBadge = MetadataBadges.getKBFilesBadge(result.kbFiles);
 
     // ── Inline Edit Support (em, isEditable, editId already set above) ──
 
-    // Determine edit label and icon
-    let editLabel = '';
-    let editBadgeColor = '';
-    if (em) {
-      if (em.type === 'knowledge') { editLabel = 'Quick Reply'; editBadgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200'; }
-      if (em.type === 'workflow') { editLabel = 'Workflow Step'; editBadgeColor = 'bg-indigo-50 text-indigo-700 border-indigo-200'; }
-      if (em.type === 'template') { editLabel = 'System Message'; editBadgeColor = 'bg-sky-50 text-sky-700 border-sky-200'; }
-    }
+    // Determine edit label using shared component
+    const editTypeInfo2 = em ? (MetadataBadges.EDIT_TYPES[em.type] || { label: 'Edit', color: 'bg-neutral-50 text-neutral-700 border-neutral-200' }) : null;
+    const editLabel = editTypeInfo2 ? editTypeInfo2.label : '';
 
-    // Build edit button (pencil icon) for editable responses
-    const editBtnHtml = isEditable
-      ? `<button onclick="toggleInlineEdit('${editId}')" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 ${editBadgeColor} border rounded text-xs cursor-pointer hover:opacity-80 transition" title="Click to edit this ${editLabel}">✏️ ${editLabel}</button>`
-      : '';
+    // Build edit button using shared component
+    const editBtnHtml = isEditable ? MetadataBadges.getEditButton(em, editId) : '';
 
-    // Also-template edit link
-    const alsoTemplateHtml = (em && em.alsoTemplate)
-      ? `<button onclick="toggleInlineEdit('${editId}-tmpl')" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded text-xs cursor-pointer hover:opacity-80 transition" title="Also edit the System Message version">✏️ System Message</button>`
-      : '';
+    // Also-template edit link using shared component
+    const alsoTemplateHtml = (em && em.alsoTemplate) ? MetadataBadges.getAlsoTemplateButton(em.alsoTemplate, editId) : '';
 
     // Build inline edit panel (hidden by default)
     let editPanelHtml = '';
@@ -3740,9 +3975,17 @@ async function sendChatMessage(event) {
         </div>`;
     }
 
+    const langMap = { 'en': 'EN', 'ms': 'BM', 'zh': 'ZH' };
+    const langCode = result.detectedLanguage;
+    const langBadge = langCode ? `<span class="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 rounded font-medium text-xs">${langMap[langCode] || langCode.toUpperCase()}</span>` : '';
+
+    const isSystem = hasSystemContent(result.message);
+    const displayContent = isSystem ? formatSystemContent(result.message) : getUserMessage(result.message);
+    const systemClass = isSystem ? ' lc-system-msg' : '';
+
     assistantMsgEl.innerHTML = `
-      <div class="bg-white border rounded-2xl px-4 py-2 max-w-md ${isEditable ? 'group' : ''}">
-        <div id="${editId}-text" class="text-sm whitespace-pre-wrap ${isEditable ? 'cursor-pointer hover:bg-neutral-50 rounded -mx-1 px-1 py-0.5 transition' : ''}" ${isEditable ? `onclick="toggleInlineEdit('${editId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleInlineEdit('${editId}')}" title="Click to edit this ${editLabel || 'reply'}" role="button" tabindex="0"` : ''}>${esc(result.message)}</div>
+      <div class="bg-white border rounded-2xl px-4 py-2 max-w-md ${isEditable ? 'group' : ''}${systemClass}">
+        <div id="${editId}-text" class="text-sm whitespace-pre-wrap ${isEditable ? 'cursor-pointer hover:bg-neutral-50 rounded -mx-1 px-1 py-0.5 transition' : ''}" ${isEditable ? `onclick="toggleInlineEdit('${editId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleInlineEdit('${editId}')}" title="Click to edit this ${editLabel || 'reply'}" role="button" tabindex="0"` : ''}>${isSystem ? displayContent : esc(displayContent)}</div>
         <div class="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs text-neutral-500 flex-wrap">
           ${sourceBadgeMsg}
           ${msgTypeBadge}
@@ -3750,6 +3993,7 @@ async function sendChatMessage(event) {
           ${overrideBadge}
           <span class="px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded font-mono">${esc(result.intent)}</span>
           <span class="px-1.5 py-0.5 bg-success-50 text-success-700 rounded">${esc(result.routedAction)}</span>
+          ${langBadge}
           ${result.model && result.model !== 'none' ? `<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono text-xs">${esc(result.model)}</span>` : ''}
           ${result.responseTime ? `<span class="px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">${result.responseTime >= 1000 ? (result.responseTime / 1000).toFixed(1) + 's' : result.responseTime + 'ms'}</span>` : ''}
           ${result.confidence ? `<span>${(result.confidence * 100).toFixed(0)}%</span>` : ''}
@@ -3783,7 +4027,10 @@ async function sendChatMessage(event) {
     const msgTypeStr = result.messageType ? ` | Type: <b>${result.messageType}</b>` : '';
     const sentimentStr = result.sentiment ? ` | Sentiment: <b>${result.sentiment === 'positive' ? '😊 positive' : result.sentiment === 'negative' ? '😠 negative' : '😐 neutral'}</b>` : '';
     const overrideStr = result.problemOverride ? ' | <b style="color:#d97706">🔀 Problem Override</b>' : '';
-    metaEl.innerHTML = `Detection: <b>${detectionMethod}</b> | Intent: <b>${esc(result.intent)}</b> | Routed to: <b>${esc(result.routedAction)}</b>${msgTypeStr}${sentimentStr}${overrideStr}${result.model ? ` | Model: <b>${esc(result.model)}</b>` : ''} | Time: <b>${timeStr}</b> | Confidence: ${result.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'N/A'}${kbFilesStr}`;
+
+    const langDisplay = langCode ? (langMap[langCode] || langCode.toUpperCase()) : '?';
+    const langStr = ` | Lang: <b>${langDisplay}</b>`;
+    metaEl.innerHTML = `Detection: <b>${detectionMethod}</b>${langStr} | Intent: <b>${esc(result.intent)}</b> | Routed to: <b>${esc(result.routedAction)}</b>${msgTypeStr}${sentimentStr}${overrideStr}${result.model ? ` | Model: <b>${esc(result.model)}</b>` : ''} | Time: <b>${timeStr}</b> | Confidence: ${result.confidence ? (result.confidence * 100).toFixed(0) + '%' : 'N/A'}${kbFilesStr}`;
 
   } catch (error) {
     // Remove typing indicator
@@ -3902,7 +4149,7 @@ let autotestHistory = []; // Store history of test runs
 let importedReports = []; // Store imported HTML reports
 
 // Load autotest history from localStorage on page load
-function loadAutotestHistory() {
+async function loadAutotestHistory() {
   try {
     const saved = localStorage.getItem('rainbow-autotest-history');
     if (saved) {
@@ -3918,12 +4165,12 @@ function loadAutotestHistory() {
     autotestHistory = [];
   }
 
-  // Load imported reports
-  loadImportedReports();
+  // Load imported reports (async - scans for new reports)
+  await loadImportedReports();
 }
 
-// Load imported reports from localStorage
-function loadImportedReports() {
+// Load imported reports from localStorage + scan for new reports
+async function loadImportedReports() {
   try {
     const saved = localStorage.getItem('rainbow-imported-reports');
     if (saved) {
@@ -3984,6 +4231,28 @@ function loadImportedReports() {
       ];
       saveImportedReports();
     }
+
+    // Scan for new reports from scripts (auto-import)
+    try {
+      const response = await fetch('/api/rainbow/tests/scan-reports');
+      if (response.ok) {
+        const data = await response.json();
+        const scannedReports = data.reports || [];
+
+        // Merge with existing reports (avoid duplicates by filename)
+        const existingFilenames = new Set(importedReports.map(r => r.filename));
+        const newReports = scannedReports.filter(r => !existingFilenames.has(r.filename));
+
+        if (newReports.length > 0) {
+          console.log(`[Test History] Auto-imported ${newReports.length} new reports from scripts`);
+          importedReports = [...importedReports, ...newReports];
+          saveImportedReports();
+          updateHistoryButtonVisibility();
+        }
+      }
+    } catch (e) {
+      console.warn('Could not scan for new reports:', e);
+    }
   } catch (e) {
     console.error('Error loading imported reports:', e);
     importedReports = [];
@@ -4029,8 +4298,8 @@ function updateHistoryButtonVisibility() {
     }
   }
 
-  // The autotest panel button only shows after running tests
-  if (historyBtn && hasHistory) {
+  // Autotest panel History button is always visible so users can view (or open empty) history even while a run is in progress
+  if (historyBtn) {
     historyBtn.classList.remove('hidden');
   }
 }
@@ -5671,12 +5940,6 @@ function renderScenarioCard(result) {
 // ─── Autotest History Functions ────────────────────────────────────
 
 function showAutotestHistory() {
-  // Don't open if no history
-  if (autotestHistory.length === 0 && importedReports.length === 0) {
-    alert('No test history available yet. Run the Autotest Suite to start building history.');
-    return;
-  }
-
   const modal = document.getElementById('autotest-history-modal');
   const listEl = document.getElementById('autotest-history-list');
 
@@ -5742,7 +6005,7 @@ function closeAutotestHistory() {
 
 function openImportedReport(filename) {
   // Open the imported HTML report in a new tab
-  const reportPath = `/reports/autotest/${filename}`;
+  const reportPath = `/public/reports/autotest/${filename}`;
   window.open(reportPath, '_blank');
 }
 
@@ -6024,7 +6287,7 @@ async function loadIntentManagerData() {
 }
 
 // ─── Tier Expand/Collapse ──────────────────────────────────────
-function toggleTier(tierId) {
+function toggleTier(tierId, updateHash = true) {
   const content = document.getElementById(tierId + '-content');
   const btn = document.getElementById(tierId + '-toggle-btn');
   if (!content || !btn) return;
@@ -6035,63 +6298,120 @@ function toggleTier(tierId) {
     btn.classList.add('is-expanded');
     btn.setAttribute('aria-expanded', 'true');
     btn.setAttribute('aria-label', 'Collapse section');
+
+    // Update hash
+    if (updateHash) {
+      // Only update if we are on the understanding tab
+      // (Though toggleTier is likely only used there)
+      const newHash = `understanding/${tierId}`;
+      if (window.location.hash.slice(1) !== newHash) {
+        window.location.hash = newHash;
+      }
+    }
   } else {
     content.classList.add('hidden');
     btn.classList.remove('is-expanded');
     btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-label', 'Expand section');
+
+    // Clear hash if it matches this tier
+    if (updateHash) {
+      const currentHash = window.location.hash.slice(1);
+      if (currentHash === `understanding/${tierId}`) {
+        window.location.hash = 'understanding';
+      }
+    }
   }
 }
 
 // ─── Tier State Management ─────────────────────────────────────
-function loadTierStates() {
-  const savedStates = localStorage.getItem('tierStates');
-  const defaultStates = {
-    tier1: true,
-    tier2: true,
-    tier3: true,
-    tier4: true // Always true, cannot be changed
-  };
+async function loadTierStates() {
+  try {
+    const res = await fetch('/api/rainbow/intent-manager/tiers');
+    if (res.ok) {
+      const tiers = await res.json();
+      updateTierUI(tiers);
+      updateTier4StatusLabel(document.getElementById('tier4-enabled').checked);
+      return;
+    }
+  } catch (e) {
+    console.warn('Could not load tiers from API, using localStorage:', e);
+  }
 
+  const savedStates = localStorage.getItem('tierStates');
+  const defaultStates = { tier1: true, tier2: true, tier3: true, tier4: true };
   const states = savedStates ? JSON.parse(savedStates) : defaultStates;
 
-  // Apply states to checkboxes
   document.getElementById('tier1-enabled').checked = states.tier1;
   document.getElementById('tier2-enabled').checked = states.tier2;
   document.getElementById('tier3-enabled').checked = states.tier3;
-  document.getElementById('tier4-enabled').checked = true; // Always true
+  document.getElementById('tier4-enabled').checked = states.tier4;
+  updateTier4StatusLabel(states.tier4);
+}
+
+function updateTier4StatusLabel(enabled) {
+  const el = document.getElementById('tier4-status-label');
+  if (el) el.textContent = enabled ? 'Enabled' : 'Disabled';
 }
 
 function setupTierToggles() {
-  // T1 toggle
   document.getElementById('tier1-enabled').addEventListener('change', (e) => {
     saveTierState('tier1', e.target.checked);
     toast(`Priority Keywords ${e.target.checked ? 'Enabled' : 'Disabled'}`, 'info');
   });
 
-  // T2 toggle
   document.getElementById('tier2-enabled').addEventListener('change', (e) => {
     saveTierState('tier2', e.target.checked);
     toast(`Smart Matching ${e.target.checked ? 'Enabled' : 'Disabled'}`, 'info');
   });
 
-  // T3 toggle
   document.getElementById('tier3-enabled').addEventListener('change', (e) => {
     saveTierState('tier3', e.target.checked);
     toast(`Learning Examples ${e.target.checked ? 'Enabled' : 'Disabled'}`, 'info');
   });
 
-  // T4 is always enabled, no event listener needed
+  document.getElementById('tier4-enabled').addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    if (!enabled) {
+      const msg = 'If you disable AI Fallback, all messages that don\'t match the other tiers will be classified as **Others** (system fallback intent). Others is in GENERAL_SUPPORT and cannot be deleted or turned off.\n\nAre you sure you want to disable AI Fallback?';
+      if (!confirm(msg)) {
+        e.target.checked = true;
+        updateTier4StatusLabel(true);
+        return;
+      }
+    }
+    await saveTierState('tier4', enabled);
+    updateTier4StatusLabel(enabled);
+    toast(`AI Fallback ${enabled ? 'Enabled' : 'Disabled'}`, enabled ? 'success' : 'info');
+  });
 }
 
-function saveTierState(tier, enabled) {
+async function saveTierState(tier, enabled) {
   const savedStates = localStorage.getItem('tierStates');
   const states = savedStates ? JSON.parse(savedStates) : {};
-
   states[tier] = enabled;
-  states.tier4 = true; // Always ensure T4 is true
-
   localStorage.setItem('tierStates', JSON.stringify(states));
+
+  const tierPayload = {
+    tier1: { tiers: { tier1_emergency: { enabled } } },
+    tier2: { tiers: { tier2_fuzzy: { enabled } } },
+    tier3: { tiers: { tier3_semantic: { enabled } } },
+    tier4: { tiers: { tier4_llm: { enabled } } }
+  };
+  const body = tierPayload[tier];
+  if (body) {
+    try {
+      const res = await fetch('/api/rainbow/intent-manager/tiers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error('Failed to save');
+    } catch (err) {
+      console.error('Failed to save tier state:', err);
+      toast('Failed to save tier state', 'error');
+    }
+  }
 }
 
 function renderIntentList() {
@@ -6107,14 +6427,29 @@ function renderIntentList() {
   }).join('');
 }
 
+function getExampleCount(examples) {
+  if (!examples) return 0;
+  if (Array.isArray(examples)) return examples.length;
+  if (typeof examples === 'object') return Object.values(examples).flat().length;
+  return 0;
+}
+
+function getExamplesList(examples) {
+  if (!examples) return [];
+  if (Array.isArray(examples)) return examples.slice();
+  if (typeof examples === 'object') return Object.values(examples).flat();
+  return [];
+}
+
 function renderExampleIntentList() {
   const list = document.getElementById('im-example-intent-list');
   if (!imExamplesData) return;
 
   list.innerHTML = imExamplesData.intents.map(intent => {
+    const count = getExampleCount(intent.examples);
     return `<button onclick="selectExampleIntent('${intent.intent}')" class="im-example-intent-btn w-full text-left px-3 py-2 rounded-2xl text-sm hover:bg-neutral-100 transition" data-intent="${intent.intent}">
       <div class="font-medium">${intent.intent}</div>
-      <div class="text-xs text-neutral-500">${intent.examples.length} examples</div>
+      <div class="text-xs text-neutral-500">${count} examples</div>
     </button>`;
   }).join('');
 }
@@ -6186,11 +6521,11 @@ function renderExamples() {
   const intentData = imExamplesData.intents.find(i => i.intent === imCurrentExampleIntent);
   if (!intentData) return;
 
-  const examples = intentData.examples || [];
+  const examples = getExamplesList(intentData.examples);
   const listEl = document.getElementById('im-example-list');
   const countEl = document.getElementById('im-example-count');
 
-  countEl.textContent = examples.length;
+  if (countEl) countEl.textContent = examples.length;
   listEl.innerHTML = examples.map(ex => `
     <span class="inline-flex items-center gap-1 bg-success-50 text-success-700 px-3 py-1 rounded-full text-sm">
       ${esc(ex)}
@@ -6294,12 +6629,16 @@ function addExample() {
   const intentData = imExamplesData.intents.find(i => i.intent === imCurrentExampleIntent);
   if (!intentData) return;
 
-  if (intentData.examples.includes(example)) {
-    toast('Example already exists', 'error');
-    return;
+  const ex = intentData.examples;
+  if (Array.isArray(ex)) {
+    if (ex.includes(example)) { toast('Example already exists', 'error'); return; }
+    ex.push(example);
+  } else if (ex && typeof ex === 'object') {
+    const flat = getExamplesList(ex);
+    if (flat.includes(example)) { toast('Example already exists', 'error'); return; }
+    if (!ex.en) ex.en = [];
+    ex.en.push(example);
   }
-
-  intentData.examples.push(example);
   input.value = '';
   renderExamples();
 }
@@ -6308,7 +6647,15 @@ function removeExample(example) {
   const intentData = imExamplesData.intents.find(i => i.intent === imCurrentExampleIntent);
   if (!intentData) return;
 
-  intentData.examples = intentData.examples.filter(e => e !== example);
+  const ex = intentData.examples;
+  if (Array.isArray(ex)) {
+    intentData.examples = ex.filter(e => e !== example);
+  } else if (ex && typeof ex === 'object') {
+    for (const lang of Object.keys(ex)) {
+      const idx = ex[lang].indexOf(example);
+      if (idx !== -1) { ex[lang].splice(idx, 1); break; }
+    }
+  }
   renderExamples();
 }
 
@@ -6565,6 +6912,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 30,
       contextTTL: 60
+    },
+    llm: {
+      defaultProviderId: 'groq-llama',
+      thresholds: { fuzzy: 0.95, semantic: 0.72, layer2: 0.85, llm: 0.65 },
+      maxTokens: 300,
+      temperature: 0.05
     }
   },
   't2-performance': {
@@ -6581,6 +6934,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 10,
       contextTTL: 15
+    },
+    llm: {
+      defaultProviderId: 'groq-llama-8b',
+      thresholds: { fuzzy: 0.85, semantic: 0.60, layer2: 0.75, llm: 0.55 },
+      maxTokens: 100,
+      temperature: 0.05
     }
   },
   't3-balanced': {
@@ -6597,6 +6956,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 20,
       contextTTL: 30
+    },
+    llm: {
+      defaultProviderId: 'groq-llama-8b',
+      thresholds: { fuzzy: 0.80, semantic: 0.70, layer2: 0.80, llm: 0.60 },
+      maxTokens: 500,
+      temperature: 0.1
     }
   },
   't4-smart-fast': {
@@ -6613,6 +6978,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 15,
       contextTTL: 25
+    },
+    llm: {
+      defaultProviderId: 'groq-llama-8b',
+      thresholds: { fuzzy: 0.86, semantic: 0.65, layer2: 0.80, llm: 0.58 },
+      maxTokens: 150,
+      temperature: 0.08
     }
   },
   't5-tiered-hybrid': {
@@ -6629,6 +7000,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 15,
       contextTTL: 20
+    },
+    llm: {
+      defaultProviderId: 'groq-llama-8b',
+      thresholds: { fuzzy: 0.90, semantic: 0.671, layer2: 0.82, llm: 0.60 },
+      maxTokens: 200,
+      temperature: 0.08
     }
   },
   't6-emergency': {
@@ -6645,6 +7022,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 25,
       contextTTL: 45
+    },
+    llm: {
+      defaultProviderId: 'groq-llama',
+      thresholds: { fuzzy: 0.75, semantic: 0.67, layer2: 0.85, llm: 0.65 },
+      maxTokens: 250,
+      temperature: 0.05
     }
   },
   't7-multilang': {
@@ -6661,6 +7044,12 @@ const INTENT_TEMPLATES = {
       trackSlots: true,
       maxHistoryMessages: 18,
       contextTTL: 35
+    },
+    llm: {
+      defaultProviderId: 'ollama-gemini-flash',
+      thresholds: { fuzzy: 0.82, semantic: 0.63, layer2: 0.80, llm: 0.62 },
+      maxTokens: 200,
+      temperature: 0.1
     }
   }
 };
@@ -6677,7 +7066,7 @@ async function applyIntentTemplate(templateId, event) {
     return;
   }
 
-  if (!confirm('Apply template "' + template.name + '"? This will override current tier settings.')) {
+  if (!confirm('Apply template "' + template.name + '"? This will override current tier settings and the T4 LLM model (AI Fallback).')) {
     return;
   }
 
@@ -7103,6 +7492,8 @@ async function loadRegexPatterns() {
   }
 }
 
+const REGEX_LANG_LABELS = { en: 'EN', ms: 'MS', zh: 'ZH' };
+
 function renderRegexPatterns() {
   const list = document.getElementById('im-regex-list');
   if (!imRegexPatterns || imRegexPatterns.length === 0) {
@@ -7110,21 +7501,45 @@ function renderRegexPatterns() {
     return;
   }
 
-  list.innerHTML = imRegexPatterns.map((item, idx) => `
-    <div class="flex items-center gap-2 bg-danger-50 rounded-2xl p-2">
-      <code class="flex-1 text-xs font-mono text-danger-700">${esc(item.pattern)}</code>
-      <span class="text-xs text-neutral-600">${esc(item.description || '')}</span>
-      <button onclick="removeRegexPattern(${idx})" class="text-danger-500 hover:text-danger-700 px-2">×</button>
-    </div>
-  `).join('');
+  const byLang = { en: [], ms: [], zh: [], _other: [] };
+  imRegexPatterns.forEach((item, idx) => {
+    const lang = item.language && (item.language === 'en' || item.language === 'ms' || item.language === 'zh') ? item.language : '_other';
+    byLang[lang].push({ ...item, _idx: idx });
+  });
+
+  const sections = [
+    { key: 'en', title: 'English' },
+    { key: 'ms', title: 'Malay' },
+    { key: 'zh', title: 'Chinese' },
+    { key: '_other', title: 'Other' }
+  ];
+
+  list.innerHTML = sections.map(({ key, title }) => {
+    const items = byLang[key];
+    if (!items.length) return '';
+    const rows = items.map(({ pattern, description, language, _idx }) => {
+      const badge = key === '_other' ? '' : `<span class="text-xs font-medium px-1.5 py-0.5 rounded bg-primary-100 text-primary-700">${REGEX_LANG_LABELS[language] || language || '—'}</span>`;
+      return `
+        <div class="flex items-center gap-2 bg-danger-50 rounded-2xl p-2">
+          ${badge}
+          <code class="flex-1 text-xs font-mono text-danger-700 min-w-0">${esc(pattern)}</code>
+          <span class="text-xs text-neutral-600 shrink-0">${esc(description || '')}</span>
+          <button onclick="removeRegexPattern(${_idx})" class="text-danger-500 hover:text-danger-700 px-2 shrink-0" aria-label="Remove">×</button>
+        </div>
+      `;
+    }).join('');
+    return `<div class="space-y-2"><div class="text-xs font-semibold text-neutral-500">${esc(title)}</div><div class="space-y-1">${rows}</div></div>`;
+  }).filter(Boolean).join('');
 }
 
 function addRegexPattern() {
   const patternInput = document.getElementById('im-regex-pattern');
   const descInput = document.getElementById('im-regex-description');
+  const langSelect = document.getElementById('im-regex-language');
 
   const pattern = patternInput.value.trim();
   const description = descInput.value.trim();
+  const language = (langSelect && langSelect.value) ? langSelect.value : 'en';
 
   if (!pattern) {
     toast('Please enter a regex pattern', 'error');
@@ -7133,7 +7548,6 @@ function addRegexPattern() {
 
   // Validate regex syntax
   try {
-    // Try to parse the regex (supports /pattern/flags format)
     if (pattern.startsWith('/')) {
       const parts = pattern.match(/^\/(.+?)\/([gimuy]*)$/);
       if (!parts) throw new Error('Invalid regex format');
@@ -7146,7 +7560,7 @@ function addRegexPattern() {
     return;
   }
 
-  imRegexPatterns.push({ pattern, description });
+  imRegexPatterns.push({ pattern, description, language });
   patternInput.value = '';
   descInput.value = '';
   renderRegexPatterns();
@@ -7211,7 +7625,7 @@ function scrollToElement(elementId) {
   }, 100);
 }
 
-// Scroll to AI Providers section in Settings tab
+// Scroll to AI Models section in Settings tab
 function scrollToProviders() {
   setTimeout(() => {
     const providersSection = document.getElementById('providers-list');
@@ -7236,9 +7650,25 @@ async function loadLLMSettings() {
       fetch('/api/rainbow/intent-manager/llm-settings'),
       fetch('/api/rainbow/intent-manager/llm-settings/available-providers')
     ]);
-    imLLMSettings = await settingsRes.json();
-    t4AllProviders = await providersRes.json();
+    imLLMSettings = settingsRes.ok ? await settingsRes.json() : { thresholds: {}, selectedProviders: [], defaultProviderId: '' };
+    if (!settingsRes.ok) {
+      toast('Could not load LLM settings', 'error');
+    }
+    const providersBody = await providersRes.json();
+    t4AllProviders = Array.isArray(providersBody) ? providersBody : [];
+    if (!providersRes.ok || !Array.isArray(providersBody)) {
+      if (!providersRes.ok) toast('Could not load model list', 'error');
+      t4AllProviders = [];
+    }
     t4SelectedProviders = Array.isArray(imLLMSettings.selectedProviders) ? [...imLLMSettings.selectedProviders] : [];
+
+    // Populate default model dropdown (single choice, like Settings)
+    const defaultSelect = document.getElementById('t4-default-provider');
+    if (defaultSelect) {
+      defaultSelect.innerHTML = '<option value="">Use master (Settings → AI Models)</option>' +
+        (t4AllProviders.map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.enabled ? '' : ' (disabled)'}</option>`).join('') || '');
+      defaultSelect.value = imLLMSettings.defaultProviderId || '';
+    }
 
     // Populate form fields
     document.getElementById('llm-threshold-fuzzy').value = imLLMSettings.thresholds?.fuzzy || 0.80;
@@ -7431,6 +7861,7 @@ async function autoSaveT4Providers() {
   // Debounce for 500ms to avoid excessive API calls
   autoSaveT4Timer = setTimeout(async () => {
     try {
+      const defaultEl = document.getElementById('t4-default-provider');
       const settings = {
         thresholds: {
           fuzzy: parseFloat(document.getElementById('llm-threshold-fuzzy').value),
@@ -7438,6 +7869,7 @@ async function autoSaveT4Providers() {
           layer2: parseFloat(document.getElementById('llm-threshold-layer2').value),
           llm: parseFloat(document.getElementById('llm-threshold-llm').value)
         },
+        defaultProviderId: (defaultEl && defaultEl.value) ? defaultEl.value : '',
         selectedProviders: t4SelectedProviders.sort((a, b) => a.priority - b.priority),
         maxTokens: parseInt(document.getElementById('llm-max-tokens').value),
         temperature: parseFloat(document.getElementById('llm-temperature').value),
@@ -7491,6 +7923,7 @@ async function testT4Provider(id) {
 }
 
 async function saveLLMSettings() {
+  const defaultEl = document.getElementById('t4-default-provider');
   const settings = {
     thresholds: {
       fuzzy: parseFloat(document.getElementById('llm-threshold-fuzzy').value),
@@ -7500,6 +7933,7 @@ async function saveLLMSettings() {
       lowConfidence: parseFloat(document.getElementById('llm-threshold-low-confidence').value),
       mediumConfidence: parseFloat(document.getElementById('llm-threshold-medium-confidence').value)
     },
+    defaultProviderId: (defaultEl && defaultEl.value) ? defaultEl.value : '',
     selectedProviders: t4SelectedProviders.sort((a, b) => a.priority - b.priority),
     maxTokens: parseInt(document.getElementById('llm-max-tokens').value),
     temperature: parseFloat(document.getElementById('llm-temperature').value),
@@ -7971,6 +8405,152 @@ async function refreshIntentAccuracy() {
 }
 
 // ═════════════════════════════════════════════════════════════════════
+// Feedback Settings
+// ═════════════════════════════════════════════════════════════════════
+
+const ALL_INTENTS = [
+  'greeting', 'thanks', 'contact_staff', 'pricing', 'availability', 'booking',
+  'directions', 'facilities_info', 'rules_policy', 'payment_info', 'payment_made',
+  'checkin_info', 'checkout_info', 'check_in_arrival', 'lower_deck_preference',
+  'wifi', 'facility_orientation', 'climate_control_complaint', 'noise_complaint',
+  'cleanliness_complaint', 'facility_malfunction', 'card_locked', 'theft_report',
+  'general_complaint_in_stay', 'extra_amenity_request', 'tourist_guide',
+  'checkout_procedure', 'late_checkout_request', 'luggage_storage', 'billing_inquiry',
+  'forgot_item_post_checkout', 'post_checkout_complaint', 'billing_dispute',
+  'review_feedback', 'general', 'unknown', 'escalate', 'acknowledgment'
+];
+
+let fbSettingsOpen = false;
+let fbSettingsLoaded = false;
+let fbOriginalSettings = null;
+
+function toggleFeedbackSettings() {
+  fbSettingsOpen = !fbSettingsOpen;
+  var panel = document.getElementById('fb-settings-panel');
+  var chevron = document.getElementById('fb-settings-chevron');
+  if (fbSettingsOpen) {
+    panel.classList.remove('hidden');
+    chevron.style.transform = 'rotate(180deg)';
+    if (!fbSettingsLoaded) loadFeedbackSettings_();
+  } else {
+    panel.classList.add('hidden');
+    chevron.style.transform = '';
+  }
+}
+
+async function loadFeedbackSettings_() {
+  try {
+    document.getElementById('fb-settings-loading').classList.remove('hidden');
+    document.getElementById('fb-settings-form').classList.add('hidden');
+
+    var res = await api('/feedback/settings');
+    var s = res.settings;
+    fbOriginalSettings = JSON.parse(JSON.stringify(s));
+    fbSettingsLoaded = true;
+
+    // Populate form
+    document.getElementById('fb-enabled').checked = s.enabled;
+    document.getElementById('fb-frequency').value = s.frequency_minutes;
+    document.getElementById('fb-timeout').value = s.timeout_minutes;
+    document.getElementById('fb-prompt-en').value = s.prompts.en;
+    document.getElementById('fb-prompt-ms').value = s.prompts.ms;
+    document.getElementById('fb-prompt-zh').value = s.prompts.zh;
+
+    // Build skip intents checkboxes
+    var skipSet = new Set(s.skip_intents || []);
+    var container = document.getElementById('fb-skip-intents');
+    container.innerHTML = ALL_INTENTS.map(function (intent) {
+      var checked = skipSet.has(intent) ? ' checked' : '';
+      var label = intent.replace(/_/g, ' ');
+      return '<label class="flex items-center gap-1.5 text-xs cursor-pointer py-0.5">' +
+        '<input type="checkbox" class="fb-skip-intent w-3.5 h-3.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500" data-intent="' + esc(intent) + '"' + checked + ' onchange="onFeedbackSettingChange()">' +
+        '<span class="text-neutral-700 truncate" title="' + esc(intent) + '">' + esc(label) + '</span>' +
+        '</label>';
+    }).join('');
+
+    // Update status badge
+    updateFbStatusBadge(s.enabled);
+
+    document.getElementById('fb-settings-loading').classList.add('hidden');
+    document.getElementById('fb-settings-form').classList.remove('hidden');
+
+    // Reset dirty state
+    document.getElementById('fb-settings-dirty').classList.add('hidden');
+    document.getElementById('fb-save-btn').disabled = true;
+  } catch (err) {
+    console.error('[Feedback Settings] Load failed:', err);
+    document.getElementById('fb-settings-loading').innerHTML =
+      '<div class="text-red-500 text-sm">Failed to load feedback settings</div>';
+    toast('Failed to load feedback settings', 'error');
+  }
+}
+
+function getCurrentFbSettings() {
+  var skipIntents = [];
+  document.querySelectorAll('.fb-skip-intent:checked').forEach(function (el) {
+    skipIntents.push(el.dataset.intent);
+  });
+  return {
+    enabled: document.getElementById('fb-enabled').checked,
+    frequency_minutes: parseInt(document.getElementById('fb-frequency').value) || 30,
+    timeout_minutes: parseInt(document.getElementById('fb-timeout').value) || 2,
+    skip_intents: skipIntents,
+    prompts: {
+      en: document.getElementById('fb-prompt-en').value,
+      ms: document.getElementById('fb-prompt-ms').value,
+      zh: document.getElementById('fb-prompt-zh').value
+    }
+  };
+}
+
+function onFeedbackSettingChange() {
+  if (!fbOriginalSettings) return;
+  var current = getCurrentFbSettings();
+  var changed = JSON.stringify(current) !== JSON.stringify(fbOriginalSettings);
+  document.getElementById('fb-settings-dirty').classList.toggle('hidden', !changed);
+  document.getElementById('fb-save-btn').disabled = !changed;
+  updateFbStatusBadge(current.enabled);
+}
+
+function updateFbStatusBadge(enabled) {
+  var badge = document.getElementById('fb-settings-status');
+  if (enabled) {
+    badge.textContent = 'Enabled';
+    badge.className = 'text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700';
+  } else {
+    badge.textContent = 'Disabled';
+    badge.className = 'text-xs px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500';
+  }
+}
+
+async function saveFeedbackSettings() {
+  try {
+    var btn = document.getElementById('fb-save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    var settings = getCurrentFbSettings();
+    await api('/feedback/settings', { method: 'PATCH', body: settings });
+
+    fbOriginalSettings = JSON.parse(JSON.stringify(settings));
+    document.getElementById('fb-settings-dirty').classList.add('hidden');
+    btn.textContent = 'Save Settings';
+    toast('Feedback settings saved (hot-reloaded)', 'success');
+  } catch (err) {
+    console.error('[Feedback Settings] Save failed:', err);
+    toast('Failed to save feedback settings: ' + err.message, 'error');
+    document.getElementById('fb-save-btn').disabled = false;
+    document.getElementById('fb-save-btn').textContent = 'Save Settings';
+  }
+}
+
+async function refreshPerformanceData() {
+  toast('Refreshing performance data...', 'info');
+  await Promise.all([loadFeedbackStats(), loadIntentAccuracy()]);
+  toast('Performance data updated', 'success');
+}
+
+// ═════════════════════════════════════════════════════════════════════
 // Utils
 // ═════════════════════════════════════════════════════════════════════
 function esc(s) { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
@@ -8001,8 +8581,81 @@ window.switchTab = function (tab) { if (window.loadTab) window.loadTab(tab); };
 /**
  * Switch between sub-tabs in the Responses tab
  * @param {string} tabName - 'knowledge-base', 'quick-replies', 'workflows', or 'system-messages'
+ * @param {boolean} updateHash - Whether to update the URL hash
  */
-function switchResponseTab(tabName) {
+
+/**
+ * Load System Message templates
+ */
+async function loadStaticTemplates() {
+  try {
+    const templates = await api('/templates');
+    const el = document.getElementById('static-templates');
+    if (!el) return;
+
+    if (Object.keys(templates).length === 0) {
+      el.innerHTML = '<p class="text-neutral-400">No system message templates configured.</p>';
+      return;
+    }
+
+    el.innerHTML = Object.entries(templates).map(([key, content]) => `
+      <div class="border rounded-lg p-3 mb-2">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-sm font-mono text-primary-700">${esc(key)}</span>
+              <span class="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded">System</span>
+            </div>
+            <p class="text-xs text-neutral-600 mt-1 line-clamp-2">${esc(content.en || '')}</p>
+            ${content.ms || content.zh ? `<div class="flex gap-1 mt-1 text-[10px] text-neutral-400">
+              ${content.ms ? '<span title="Malay">MS</span>' : ''}
+              ${content.zh ? '<span title="Chinese">ZH</span>' : ''}
+            </div>` : ''}
+          </div>
+          <button onclick="editTemplate('${esc(key)}')" class="text-xs text-primary-600 hover:text-primary-700 ml-2 px-2 py-1 rounded hover:bg-primary-50 transition">Edit</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    if (document.getElementById('static-templates')) {
+      document.getElementById('static-templates').innerHTML = `<p class="text-danger-500 text-xs">Failed to load templates: ${esc(e.message)}</p>`;
+    }
+  }
+}
+
+/**
+ * Edit a system message template (placeholder)
+ */
+function editTemplate(key) {
+  toast(`Edit template "${key}" - to be implemented`, 'info');
+}
+
+/**
+ * Main loader for Responses tab
+ * Handles sub-tab initialization
+ */
+async function loadResponses(subTab = 'knowledge-base') {
+  // Ensure sub-tab content is visible
+  if (typeof window.switchResponseTab === 'function') {
+    window.switchResponseTab(subTab, false);
+  }
+}
+
+/**
+ * Switch between sub-tabs in the Responses tab
+ * @param {string} tabName - 'knowledge-base', 'quick-replies', 'workflows', or 'system-messages'
+ * @param {boolean} updateHash - Whether to update the URL hash
+ */
+function switchResponseTab(tabName, updateHash = true) {
+  // Update hash if requested
+  if (updateHash) {
+    const newHash = `responses/${tabName}`;
+    if (window.location.hash.slice(1) !== newHash) {
+      window.location.hash = newHash;
+      return; // Let route handler take over
+    }
+  }
+
   // Hide all response tab contents
   document.querySelectorAll('.response-tab-content').forEach(content => {
     content.classList.add('hidden');
@@ -8014,7 +8667,7 @@ function switchResponseTab(tabName) {
     btn.classList.add('text-neutral-500', 'border-transparent');
   });
 
-  // Show selected content (ID format: ${tabName}-tab, not response-${tabName})
+  // Show selected content (ID format: ${tabName}-tab)
   const content = document.getElementById(`${tabName}-tab`);
   if (content) {
     content.classList.remove('hidden');
@@ -8026,13 +8679,34 @@ function switchResponseTab(tabName) {
     button.classList.remove('text-neutral-500', 'border-transparent');
     button.classList.add('text-primary-600', 'border-primary-500');
   }
+
+  // Initialize specific tab logic
+  if (tabName === 'knowledge-base') {
+    if (window.loadKB) window.loadKB();
+  } else if (tabName === 'quick-replies') {
+    if (window.loadStaticReplies) window.loadStaticReplies();
+  } else if (tabName === 'workflows') {
+    if (window.loadWorkflow) window.loadWorkflow();
+  } else if (tabName === 'system-messages') {
+    loadStaticTemplates();
+  }
 }
 
 /**
  * Switch between sub-tabs in the Chat Simulator tab
  * @param {string} tabName - 'quick-test' or 'live-simulation'
+ * @param {boolean} updateHash - Whether to update the URL hash (default: true)
  */
-function switchSimulatorTab(tabName) {
+function switchSimulatorTab(tabName, updateHash = true) {
+  // Update hash if requested
+  if (updateHash) {
+    const newHash = `chat-simulator/${tabName}`;
+    if (window.location.hash.slice(1) !== newHash) {
+      window.location.hash = newHash;
+      return; // Let the hashchange event handle the actual UI switch
+    }
+  }
+
   // Hide all simulator tab contents
   document.querySelectorAll('.simulator-tab-content').forEach(content => {
     content.classList.add('hidden');
@@ -8054,6 +8728,11 @@ function switchSimulatorTab(tabName) {
     content.classList.remove('hidden');
   }
 
+  // Reload Real Chat if switching to that tab (restarts auto-refresh)
+  if (tabName === 'live-simulation' && typeof window.loadRealChat === 'function') {
+    window.loadRealChat();
+  }
+
   // Highlight active button
   const button = document.getElementById(`tab-${tabName}`);
   if (button) {
@@ -8065,15 +8744,6 @@ function switchSimulatorTab(tabName) {
 // ═══════════════════════════════════════════════════════════════
 // NEW TAB LOADER FUNCTIONS (Redesign - 2026-02-12)
 // ═══════════════════════════════════════════════════════════════
-
-/**
- * Load WhatsApp Accounts tab — REMOVED
- * This page has been deprecated. The template shows a "Page Removed" notice.
- * Kept as a no-op to avoid errors if called from old bookmarks/code.
- */
-async function loadWhatsappAccounts() {
-  console.log('[WhatsApp Accounts] Page removed — showing deprecation notice');
-}
 
 /**
  * Load System Status tab (split from old Status tab)
@@ -8136,7 +8806,7 @@ async function loadSystemStatus() {
       }).join('');
     }
 
-    // ── AI Providers (with priority badges, test buttons, auto-test) ──
+    // ── AI Models (with priority badges, test buttons, auto-test) ──
     const aiProviders = (d.ai?.providers || [])
       .filter(p => p.enabled && p.available)
       .sort((a, b) => a.priority - b.priority);
@@ -8183,7 +8853,7 @@ async function loadSystemStatus() {
     const aiStatusEl = document.getElementById('ai-status');
     if (aiStatusEl) {
       if (aiProviders.length === 0) {
-        aiStatusEl.innerHTML = '<p class="text-sm text-neutral-400 py-2">No AI providers configured or enabled</p>';
+        aiStatusEl.innerHTML = '<p class="text-sm text-neutral-400 py-2">No AI models configured or enabled</p>';
       } else {
         aiStatusEl.innerHTML = aiHtml;
       }
@@ -8206,10 +8876,10 @@ async function loadSystemStatus() {
           <div class="text-2xl font-bold ${waColor}">${waText}</div>
           <div class="text-xs text-neutral-500 mt-1 group-hover:text-primary-600">WhatsApp Instances</div>
         </div>
-        <div class="bg-neutral-50 rounded-2xl p-4 text-center cursor-pointer hover:bg-primary-50 hover:shadow-md transition-all duration-200 group" onclick="window.location.hash='settings'; loadTab('settings');" title="View AI Provider Settings">
+        <div class="bg-neutral-50 rounded-2xl p-4 text-center cursor-pointer hover:bg-primary-50 hover:shadow-md transition-all duration-200 group" onclick="window.location.hash='settings'; loadTab('settings');" title="View AI Model Settings">
           <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">🤖</div>
           <div class="text-2xl font-bold text-primary-600">${aiProviders.length}</div>
-          <div class="text-xs text-neutral-500 mt-1 group-hover:text-primary-600">AI Providers Active</div>
+          <div class="text-xs text-neutral-500 mt-1 group-hover:text-primary-600">AI Models Active</div>
         </div>
         <div class="bg-neutral-50 rounded-2xl p-4 text-center cursor-pointer hover:bg-primary-50 hover:shadow-md transition-all duration-200 group" onclick="document.getElementById('server-status')?.closest('.bg-white')?.scrollIntoView({behavior:'smooth',block:'start'});" title="View Server Details">
           <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">🖥️</div>
@@ -8260,73 +8930,20 @@ async function loadSystemStatus() {
 }
 
 /**
- * Load Understanding tab (renamed from Intent Manager)
- */
-async function loadUnderstanding() {
-  // Reuse the existing intent manager loader
-  if (typeof loadIntentManagerData === 'function') {
-    await loadIntentManagerData();
-  }
-}
-
-/**
- * Load Responses tab (merged Static Replies + Workflow + Knowledge Base)
- */
-async function loadResponses() {
-  // Load Quick Replies sub-tab by default (easy → hard: Quick Replies first)
-  switchResponseTab('quick-replies');
-
-  // Initialize KB editor first (default view)
-  if (typeof loadKB === 'function') {
-    try { loadKB(); } catch (e) { console.warn('[Responses] KB init deferred:', e); }
-  }
-
-  // Pre-load static replies data (ready when user switches to Quick Replies tab)
-  if (typeof loadStaticReplies === 'function') {
-    await loadStaticReplies();
-  }
-
-  // Pre-load workflow data (ready when user switches to Workflows tab)
-  if (typeof loadWorkflow === 'function') {
-    await loadWorkflow();
-  }
-}
-
-/**
  * Load Chat Simulator tab (merged Preview + Real Chat)
+ * @param {string|null} subTab - Optional sub-tab ID
  */
-async function loadChatSimulator() {
-  // Load Quick Test sub-tab by default
-  switchSimulatorTab('quick-test');
+async function loadChatSimulator(subTab = null) {
+  // Load specified sub-tab or default to Quick Test
+  const effectiveSubTab = subTab || 'quick-test';
+  // switchSimulatorTab already calls loadRealChat() for live-simulation,
+  // so we don't call it again below to avoid duplicate concurrent calls
+  // that can destroy DOM elements before the second call reads them.
+  switchSimulatorTab(effectiveSubTab, false);
 
   // Load preview chat
   if (typeof loadPreview === 'function') {
     loadPreview();
-  }
-
-  // Load real chat instances
-  if (typeof loadRealChat === 'function') {
-    await loadRealChat();
-  }
-}
-
-/**
- * Load Performance tab (merged Feedback Stats + Intent Accuracy)
- */
-async function loadPerformance() {
-  try {
-    // Load feedback stats
-    if (typeof loadFeedbackStats === 'function') {
-      await loadFeedbackStats();
-    }
-
-    // Load intent accuracy
-    if (typeof loadIntentAccuracy === 'function') {
-      await loadIntentAccuracy();
-    }
-  } catch (err) {
-    console.error('[Performance] Failed to load:', err);
-    toast(err.message, 'error');
   }
 }
 
@@ -8341,13 +8958,14 @@ async function loadTesting() {
 // Export to global scope
 window.switchResponseTab = switchResponseTab;
 window.switchSimulatorTab = switchSimulatorTab;
-window.loadWhatsappAccounts = loadWhatsappAccounts;
 window.loadSystemStatus = loadSystemStatus;
-window.loadUnderstanding = loadUnderstanding;
 window.loadResponses = loadResponses;
 window.loadChatSimulator = loadChatSimulator;
-window.loadPerformance = loadPerformance;
 window.loadTesting = loadTesting;
+window.toggleFeedbackSettings = toggleFeedbackSettings;
+window.onFeedbackSettingChange = onFeedbackSettingChange;
+window.saveFeedbackSettings = saveFeedbackSettings;
+window.refreshPerformanceData = refreshPerformanceData;
 
 // ─── Development Auto-Reload ────────────────────────────────────────
 // Check for updates every 2 seconds in development mode

@@ -13,6 +13,10 @@ let cachedKnowledge = {};
 let cachedWorkflows = {};
 let cachedSettings = {};
 let cachedIntentNames = [];
+/** When true, all Understanding tiers are disabled; only "unknown" is usable. */
+let allTiersDisabled = false;
+
+const ENABLE_TIER_MSG = 'Enable at least one tier (preferably the AI Fallback / LLM tier) in Understanding first.';
 
 // Intent → Workflow mapping (based on available workflows)
 const INTENT_WORKFLOW_MAP = {
@@ -50,6 +54,14 @@ const BALANCED_STATIC_INTENTS = new Set([
  */
 export async function loadIntents() {
   try {
+    let tiers = { tier1_emergency: { enabled: true }, tier2_fuzzy: { enabled: true }, tier3_semantic: { enabled: true }, tier4_llm: { enabled: true } };
+    try {
+      const tr = await fetch('/api/rainbow/intent-manager/tiers');
+      if (tr.ok) tiers = await tr.json();
+    } catch (_) {}
+    const anyEnabled = (tiers.tier1_emergency?.enabled || tiers.tier2_fuzzy?.enabled || tiers.tier3_semantic?.enabled || tiers.tier4_llm?.enabled) === true;
+    allTiersDisabled = !anyEnabled;
+
     const [intentsData, routingData, knowledgeData, workflowsData, settingsData] = await Promise.all([
       api('/intents'),
       api('/routing'),
@@ -73,6 +85,14 @@ export async function loadIntents() {
 
     const rows = [];
 
+    if (allTiersDisabled) {
+      rows.push('<tr class="bg-amber-50 border-b border-amber-200">');
+      rows.push('  <td colspan="7" class="py-2.5 px-3 text-sm text-amber-800">');
+      rows.push('    All Understanding tiers are disabled. Only <strong>unknown</strong> is usable. Enable at least one tier (preferably <strong>AI Fallback</strong>) in <a href="#understanding" onclick="if(typeof switchTab===\'function\')switchTab(\'understanding\');return false" class="underline font-medium text-amber-700 hover:text-amber-900">Understanding</a> to edit intents.');
+      rows.push('  </td>');
+      rows.push('</tr>');
+    }
+
     // Render intents grouped by phase
     for (let i = 0; i < phases.length; i++) {
       const phaseData = phases[i];
@@ -82,7 +102,7 @@ export async function loadIntents() {
 
       // Add phase header
       rows.push('<tr class="bg-gradient-to-r from-primary-50 to-transparent border-b-2 border-primary-200">');
-      rows.push('  <td colspan="6" class="py-3 px-3">');
+      rows.push('  <td colspan="7" class="py-3 px-3">');
       rows.push('    <div class="flex items-center gap-2">');
       rows.push('      <span class="font-semibold text-primary-700 text-sm uppercase tracking-wide">' + esc(phaseName) + '</span>');
       rows.push('      <span class="text-xs text-neutral-500">— ' + esc(phaseDesc) + '</span>');
@@ -98,6 +118,7 @@ export async function loadIntents() {
         const route = routingData[intent]?.action || 'llm_reply';
         const wfId = routingData[intent]?.workflow_id || '';
         const enabled = intentData.enabled !== undefined ? intentData.enabled : true;
+        const timeSensitive = intentData.time_sensitive === true;
         const hasStatic = staticIntentNames.has(intent);
         const needsStatic = route === 'static_reply';
         const isUnknown = intent === 'unknown';
@@ -134,17 +155,22 @@ export async function loadIntents() {
               </td>
               <td class="py-2.5 pr-3 text-xs"><span class="text-neutral-400 cursor-not-allowed">0.50</span></td>
               <td class="py-2.5 pr-3 text-xs"><span class="text-neutral-400">—</span></td>
+              <td class="py-2.5 pr-3 text-xs"><span class="text-neutral-400">—</span></td>
               <td class="py-2.5">
                 <span class="text-xs px-2 py-1 text-neutral-300 cursor-not-allowed">Protected</span>
               </td>
             </tr>
           `);
         } else {
-          rows.push('<tr class="border-b hover:bg-neutral-50" id="intent-row-' + css(intent) + '">');
+          const unusable = allTiersDisabled;
+          const trClass = 'border-b ' + (unusable ? 'intent-row-unusable opacity-60 bg-neutral-100 cursor-not-allowed' : 'hover:bg-neutral-50');
+          const trData = unusable ? ' data-intent-disabled="true"' : '';
+          rows.push('<tr class="' + trClass + '" id="intent-row-' + css(intent) + '"' + trData + '>');
           rows.push('  <td class="py-2.5 pr-3 pl-6">');
           rows.push('    <div class="flex flex-col">');
           rows.push('      <span class="font-mono text-sm">' + esc(intent) + '</span>');
           rows.push('      <span class="text-xs text-neutral-500 mt-0.5">' + esc(professionalTerm) + '</span>');
+          if (unusable) rows.push('      <span class="text-xs text-amber-600 mt-0.5">Unusable — enable a tier in Understanding</span>');
           rows.push('    </div>');
           rows.push('  </td>');
           rows.push('  <td class="py-2.5 pr-3">');
@@ -160,6 +186,9 @@ export async function loadIntents() {
           rows.push('    <input type="number" min="0" max="1" step="0.05" value="' + minConf.toFixed(2) + '" onchange="changeConfidence(\'' + esc(intent) + '\', this.value, this)" class="text-xs border rounded px-2 py-1 w-16 text-center font-mono ' + confColor + '">');
           rows.push('  </td>');
           rows.push('  <td class="py-2.5 pr-3 text-xs">' + (warning || (hasStatic ? '<span class="text-success-600">Yes</span>' : '<span class="text-neutral-400">—</span>')) + '</td>');
+          rows.push('  <td class="py-2.5 pr-3">');
+          rows.push('    <label class="inline-flex items-center gap-1 cursor-pointer"><input type="checkbox" ' + (timeSensitive ? 'checked' : '') + ' onchange="toggleTimeSensitive(\'' + esc(intent) + '\', this.checked)" class="rounded border-neutral-300 text-primary-600"><span class="text-xs text-neutral-600">On</span></label>');
+          rows.push('  </td>');
           rows.push('  <td class="py-2.5">');
           rows.push('    <button onclick="deleteIntent(\'' + esc(intent) + '\')" class="text-xs px-2 py-1 text-danger-500 hover:bg-danger-50 rounded">Delete</button>');
           rows.push('  </td>');
@@ -168,7 +197,16 @@ export async function loadIntents() {
       }
     }
 
-    el.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="6" class="text-neutral-400 py-4 text-center">No intents configured</td></tr>';
+    el.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="7" class="text-neutral-400 py-4 text-center">No intents configured</td></tr>';
+
+    const addBtn = document.querySelector('#tab-intents button[onclick*="showAddIntent"]');
+    if (addBtn) {
+      addBtn.disabled = allTiersDisabled;
+      addBtn.title = allTiersDisabled ? ENABLE_TIER_MSG : '';
+      addBtn.classList.toggle('opacity-50', allTiersDisabled);
+      addBtn.classList.toggle('cursor-not-allowed', allTiersDisabled);
+    }
+
     renderTemplateButtons();
   } catch (e) {
     toast(e.message, 'error');
@@ -179,6 +217,10 @@ export async function loadIntents() {
  * Change routing action for an intent
  */
 export async function changeRouting(intent, action, selectEl) {
+  if (allTiersDisabled && intent !== 'unknown') {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   if (intent === 'unknown') {
     toast('"unknown" intent routing cannot be changed.', 'error');
     loadIntents();
@@ -211,6 +253,10 @@ export async function changeRouting(intent, action, selectEl) {
  * Change workflow ID for an intent
  */
 export async function changeWorkflowId(intent, workflowId) {
+  if (allTiersDisabled && intent !== 'unknown') {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   try {
     await api('/routing/' + encodeURIComponent(intent), { method: 'PATCH', body: { action: 'workflow', workflow_id: workflowId } });
     toast(`${intent} → workflow (${workflowId})`);
@@ -225,6 +271,10 @@ export async function changeWorkflowId(intent, workflowId) {
  * Toggle intent enabled/disabled
  */
 export async function toggleIntent(category, enabled) {
+  if (allTiersDisabled && category !== 'unknown') {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   if (category === 'unknown') {
     toast('"unknown" intent is always enabled.', 'error');
     return;
@@ -239,9 +289,30 @@ export async function toggleIntent(category, enabled) {
 }
 
 /**
+ * Toggle time-sensitive flag for intent (inject current date/time into LLM context when replying)
+ */
+export async function toggleTimeSensitive(category, timeSensitive) {
+  if (allTiersDisabled && category !== 'unknown') {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
+  try {
+    await api('/intents/' + encodeURIComponent(category), { method: 'PUT', body: { time_sensitive: timeSensitive } });
+    toast(category + ': time-sensitive ' + (timeSensitive ? 'on' : 'off'));
+    loadIntents();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+/**
  * Change minimum confidence threshold for intent
  */
 export async function changeConfidence(category, value, inputEl) {
+  if (allTiersDisabled && category !== 'unknown') {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   const val = parseFloat(value);
   if (isNaN(val) || val < 0 || val > 1) {
     toast('Confidence must be between 0 and 1.', 'error');
@@ -266,6 +337,10 @@ export async function changeConfidence(category, value, inputEl) {
  * Delete an intent
  */
 export async function deleteIntent(category) {
+  if (allTiersDisabled && category !== 'unknown') {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   if (category === 'unknown') {
     toast('"unknown" is a protected system intent and cannot be deleted.', 'error');
     return;
@@ -604,12 +679,20 @@ export function submitSaveTemplate(e) {
 
 // Add intent management functions (simplified)
 export function showAddIntent() {
+  if (allTiersDisabled) {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   document.getElementById('add-intent-modal').classList.remove('hidden');
   document.getElementById('add-i-category').focus();
 }
 
 export async function submitAddIntent(e) {
   e.preventDefault();
+  if (allTiersDisabled) {
+    toast(ENABLE_TIER_MSG, 'error');
+    return;
+  }
   const category = document.getElementById('add-i-category').value.trim().toLowerCase().replace(/\s+/g, '_');
   const routingAction = document.getElementById('add-i-routing').value;
   try {

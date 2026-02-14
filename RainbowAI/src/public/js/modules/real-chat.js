@@ -3,21 +3,28 @@
 // ═══════════════════════════════════════════════════════════════════
 //
 // Features:
-// - Real-time WhatsApp conversation logs
+// - Real-time WhatsApp conversation logs (3s auto-refresh with visual feedback)
 // - Multi-instance support with filtering
-// - Developer mode (show AI metadata)
-// - Translation mode (auto-translate replies)
+// - Developer mode with rich metadata badges (uses MetadataBadges component)
+// - Expandable metadata panel per message (KB files, model, tier, routing)
+// - Message search with highlighting (uses SearchPanel component)
+// - Translation mode with live preview (uses shared translation-helper)
 // - Manual reply interface
-// - Auto-refresh every 10 seconds
 //
 // State Management:
-// - Uses StateManager for devMode, translateMode, translateLang (persisted)
+// - Uses StateManager for devMode (persisted)
+// - Translation state managed by translation-helper (translateMode, translateLang)
 // - Module-level variables for runtime state (conversations, activePhone, etc.)
 //
 // Dependencies: StateManager, Utils (api, escapeHtml, formatDateTime, etc.)
+//               MetadataBadges (components/metadata-badges.js)
+//               SearchPanel (components/search-panel.js)
+//               translation-helper (helpers/translation-helper.js)
 // ═══════════════════════════════════════════════════════════════════
 
-const RealChat = (function() {
+import { createTranslationHelper } from '../helpers/translation-helper.js';
+
+const RealChat = (function () {
   // ─── Private State ────────────────────────────────────────────────
 
   // Runtime state (not persisted)
@@ -25,13 +32,64 @@ const RealChat = (function() {
   let _rcActivePhone = null;
   let _rcAutoRefresh = null;
   let _rcInstances = {};  // instanceId -> label map
-  let _rcPendingTranslation = null;  // Stores pending translation data
+  let _rcPendingTranslation = null;  // Stores pending translation data (deprecated - use translationHelper.preview)
   let _rcLastLog = null;  // Last fetched conversation log (for edit modal)
+  let _rcWaStatusPoll = null;
+  let _rcWaWasConnected = null;  // for one-time disconnect alert
+  let _rcSelectedFile = null;  // { file: File, type: 'photo'|'document' }
+  let _rcLastRefreshAt = Date.now(); // For refresh timestamp display
+  let _rcSearchOpen = false;
 
-  // Persisted state managed by StateManager
+  // Translation helper (shared module with live-chat)
+  // Note: api and toast are global functions from utils.js
+  const translationHelper = createTranslationHelper({
+    prefix: 'rc-',
+    api: typeof api !== 'undefined' ? api : window.api,
+    toast: typeof toast !== 'undefined' ? toast : window.toast,
+    onSend: async () => await refreshActiveChat()
+  });
+
+  // Persisted state managed by StateManager (deprecated for translation - use translationHelper)
   // - StateManager.get/set('realChat.devMode')
-  // - StateManager.get/set('realChat.translateMode')
-  // - StateManager.get/set('realChat.translateLang')
+
+  // ─── Auto-refresh UI helpers ──────────────────────────────────────
+
+  /**
+   * Update refresh timestamp indicator
+   */
+  function updateRefreshTimestamp() {
+    const el = document.getElementById('rc-last-refresh');
+    if (!el) return;
+
+    const elapsed = Math.floor((Date.now() - _rcLastRefreshAt) / 1000);
+    if (elapsed < 2) {
+      el.textContent = 'Updated just now';
+    } else if (elapsed < 60) {
+      el.textContent = 'Updated ' + elapsed + 's ago';
+    } else {
+      el.textContent = 'Updated ' + Math.floor(elapsed / 60) + 'm ago';
+    }
+  }
+
+  /**
+   * Flash animation for new messages
+   * @param {number} count - Number of new messages
+   */
+  function flashNewMessages(count) {
+    const container = document.getElementById('rc-messages');
+    if (!container) return;
+
+    // Find the last N bubbles and add flash animation
+    const bubbles = container.querySelectorAll('.rc-bubble-wrap');
+    if (bubbles.length < count) return;
+
+    for (let i = bubbles.length - count; i < bubbles.length; i++) {
+      const bubble = bubbles[i];
+      bubble.classList.add('rc-message-flash');
+      // Remove animation class after it completes
+      setTimeout(() => bubble.classList.remove('rc-message-flash'), 1200);
+    }
+  }
 
   // ─── Developer Mode ───────────────────────────────────────────────
 
@@ -52,32 +110,42 @@ const RealChat = (function() {
       btn.textContent = '🔧 Dev';
     }
 
+    // Show/hide message search toggle
+    const searchToggle = document.getElementById('rc-search-toggle');
+    if (searchToggle) searchToggle.style.display = newMode ? '' : 'none';
+
+    // If dev mode off, close search bar too
+    if (!newMode && _rcSearchOpen) {
+      toggleRcSearch();
+    }
+
     // Re-render current chat to show/hide metadata
     if (_rcActivePhone) refreshActiveChat();
   }
 
-  // ─── Translation Mode ─────────────────────────────────────────────
+  /** Toggle the message search bar */
+  function toggleRcSearch() {
+    _rcSearchOpen = !_rcSearchOpen;
+    if (typeof SearchPanel !== 'undefined') {
+      if (_rcSearchOpen) {
+        SearchPanel.init({ containerId: 'rc-search-container', messagesContainerId: 'rc-messages' });
+        SearchPanel.open();
+      } else {
+        SearchPanel.close();
+      }
+    }
+  }
+
+  // ─── Translation Mode (using shared translation-helper) ──────────
 
   /**
-   * Toggle translation mode (auto-translate manual replies)
+   * Toggle translation mode (with live preview)
    */
   function toggleTranslateMode() {
-    const currentMode = StateManager.get('realChat.translateMode');
-    const newMode = !currentMode;
-    StateManager.set('realChat.translateMode', newMode);
-
+    translationHelper.toggleTranslate();
     const btn = document.getElementById('rc-translate-toggle');
-    const selector = document.getElementById('rc-lang-selector');
-
-    if (newMode) {
-      btn.classList.add('active');
-      btn.textContent = '🌐 Translate ✓';
-      selector.style.display = '';
-      selector.value = StateManager.get('realChat.translateLang');
-    } else {
-      btn.classList.remove('active');
-      btn.textContent = '🌐 Translate';
-      selector.style.display = 'none';
+    if (btn) {
+      btn.textContent = translationHelper.mode ? '🌐 Translate ✓' : '🌐 Translate';
     }
   }
 
@@ -85,8 +153,45 @@ const RealChat = (function() {
    * Handle language selector change
    */
   function handleLangChange() {
-    const selector = document.getElementById('rc-lang-selector');
-    StateManager.set('realChat.translateLang', selector.value);
+    translationHelper.handleLangChange();
+  }
+
+  /**
+   * Handle input change for translation preview
+   */
+  function onInputChange() {
+    translationHelper.onInputTranslate();
+  }
+
+  // ─── WhatsApp connection status (same as Live Chat) ───────────────
+
+  function updateRcConnectionStatus(statusData) {
+    const bar = document.getElementById('rc-wa-status-bar');
+    if (!bar) return;
+    const instances = (statusData && statusData.whatsappInstances) || [];
+    const connected = instances.some(i => i.state === 'open');
+    bar.classList.remove('wa-connected', 'wa-disconnected');
+    bar.classList.add(connected ? 'wa-connected' : 'wa-disconnected');
+    const text = bar.querySelector('.wa-connection-text');
+    if (text) {
+      text.textContent = connected ? 'WhatsApp Connected' : 'Disconnected';
+    }
+    // removed link logic
+    if (_rcWaWasConnected === true && !connected) {
+      _rcWaWasConnected = false;
+      alert('WhatsApp disconnected. Messages cannot be sent. Check Connect \u2192 Dashboard or scan QR at /admin/whatsapp-qr.');
+    } else {
+      _rcWaWasConnected = connected;
+    }
+  }
+
+  async function pollRcConnectionStatus() {
+    const content = document.getElementById('live-simulation-content');
+    if (content && content.classList.contains('hidden')) return;
+    try {
+      const statusData = await api('/status');
+      updateRcConnectionStatus(statusData);
+    } catch (e) { }
   }
 
   // ─── Translation Modal ────────────────────────────────────────────
@@ -162,7 +267,7 @@ const RealChat = (function() {
       // Refresh the chat to show the sent message
       await refreshActiveChat();
     } catch (err) {
-      alert('Failed to send translated message: ' + err.message);
+      alert('Failed to send message: ' + (err.message || 'Unknown error'));
       confirmBtn.disabled = false;
       confirmBtn.textContent = 'Send';
     }
@@ -171,7 +276,7 @@ const RealChat = (function() {
   // ─── Main Load Function ───────────────────────────────────────────
 
   /**
-   * Load Real Chat tab - fetch conversations and setup auto-refresh
+   * Load Real Chat tab - fetch conversations and setup auto-refresh (3s with visual feedback)
    */
   async function loadRealChat() {
     // Restore developer mode button state
@@ -180,6 +285,15 @@ const RealChat = (function() {
     if (devMode) {
       devBtn.classList.add('active');
       devBtn.textContent = '🔧 Dev ✓';
+    }
+
+    // Restore search toggle visibility based on dev mode
+    const searchToggle = document.getElementById('rc-search-toggle');
+    if (searchToggle) searchToggle.style.display = devMode ? '' : 'none';
+
+    // Initialize SearchPanel component
+    if (typeof SearchPanel !== 'undefined') {
+      SearchPanel.init({ containerId: 'rc-search-container', messagesContainerId: 'rc-messages' });
     }
 
     // Restore translation mode button state
@@ -209,24 +323,66 @@ const RealChat = (function() {
           _rcInstances[inst.id] = inst.label || inst.id;
         }
       }
+      updateRcConnectionStatus(statusData);
       buildInstanceFilter();
       renderConversationList(convos);
+      _rcLastRefreshAt = Date.now();
+      updateRefreshTimestamp();
 
-      // Auto-refresh every 10 seconds while on this tab
+      // Feature: Auto-open last active conversation if none selected
+      if (_rcConversations.length > 0 && _rcActivePhone === null) {
+        openConversation(_rcConversations[0].phone);
+      }
+
+      // Auto-refresh every 3 seconds while on this tab
       clearInterval(_rcAutoRefresh);
       _rcAutoRefresh = setInterval(async () => {
         if (document.getElementById('live-simulation-content')?.classList.contains('hidden')) {
           clearInterval(_rcAutoRefresh);
           return;
         }
+
+        // Show refreshing state
+        const indicator = document.getElementById('rc-refresh-indicator');
+        if (indicator) indicator.classList.add('refreshing');
+
         try {
           const fresh = await api('/conversations');
           _rcConversations = fresh;
           buildInstanceFilter(); // Rebuild dropdown to keep counts updated
           renderConversationList(_rcConversations); // Use global _rcConversations, not fresh
-          if (_rcActivePhone) refreshActiveChat();
-        } catch {}
-      }, 10000);
+
+          // Highlight new messages with flash animation
+          if (_rcActivePhone) {
+            const oldCount = _rcLastLog?.messages.length || 0;
+            await refreshActiveChat();
+            const newCount = _rcLastLog?.messages.length || 0;
+            if (newCount > oldCount) {
+              flashNewMessages(newCount - oldCount);
+            }
+          }
+
+          // Update timestamp
+          updateRefreshTimestamp();
+        } catch (e) {
+          console.error('[RealChat] Refresh error:', e);
+        } finally {
+          if (indicator) indicator.classList.remove('refreshing');
+        }
+      }, 3000);
+
+      clearInterval(_rcWaStatusPoll);
+      _rcWaStatusPoll = setInterval(pollRcConnectionStatus, 15000);
+
+      // Update refresh timestamp display every second
+      clearInterval(window._rcTimestampUpdater);
+      window._rcTimestampUpdater = setInterval(() => {
+        if (document.getElementById('live-simulation-content')?.classList.contains('hidden')) {
+          clearInterval(window._rcTimestampUpdater);
+          return;
+        }
+        updateRefreshTimestamp();
+      }, 1000);
     } catch (err) {
       console.error('[RealChat] Failed to load conversations:', err);
     }
@@ -263,7 +419,7 @@ const RealChat = (function() {
       }
 
       html += '<option value="' + escapeHtml(id) + '" title="' + escapeAttr(fullLabel) + '">' +
-              escapeHtml(shortLabel) + ' (' + count + ')</option>';
+        escapeHtml(shortLabel) + ' (' + count + ')</option>';
     }
     // Add "Unknown" option for conversations without instanceId
     const unknownCount = _rcConversations.filter(c => !c.instanceId).length;
@@ -282,43 +438,40 @@ const RealChat = (function() {
    */
   function renderConversationList(conversations) {
     const list = document.getElementById('rc-chat-list');
-    const empty = document.getElementById('rc-sidebar-empty');
+    if (!list) return;
+    let empty = document.getElementById('rc-sidebar-empty');
+
+    // Detach the empty-state element before any innerHTML to prevent it from being destroyed
+    if (empty && empty.parentNode) {
+      empty.parentNode.removeChild(empty);
+    }
+
     if (!conversations.length) {
-      empty.style.display = '';
       list.innerHTML = '';
-      list.appendChild(empty);
+      if (empty) {
+        empty.style.display = '';
+        list.appendChild(empty);
+      }
       return;
     }
-    empty.style.display = 'none';
 
     const searchVal = (document.getElementById('rc-search').value || '').toLowerCase();
     const instanceVal = document.getElementById('rc-instance-filter').value;
-
-    console.log('[RealChat Filter] Selected instance:', instanceVal || '(all)');
-    console.log('[RealChat Filter] Total conversations:', conversations.length);
 
     let filtered = conversations;
     // Filter by instance
     if (instanceVal === '__unknown__') {
       filtered = filtered.filter(c => !c.instanceId);
-      console.log('[RealChat Filter] Filtered to unknown instances:', filtered.length);
     } else if (instanceVal) {
-      const beforeCount = filtered.length;
       filtered = filtered.filter(c => c.instanceId === instanceVal);
-      console.log('[RealChat Filter] Filtered by instance "' + instanceVal + '": ' + beforeCount + ' -> ' + filtered.length);
-      // Debug: show which instanceIds are present
-      const uniqueIds = [...new Set(conversations.map(c => c.instanceId))];
-      console.log('[RealChat Filter] Available instanceIds:', uniqueIds);
     }
     // Filter by search text
     if (searchVal) {
-      const beforeCount = filtered.length;
       filtered = filtered.filter(c =>
         (c.pushName || '').toLowerCase().includes(searchVal) ||
         c.phone.toLowerCase().includes(searchVal) ||
         (c.lastMessage || '').toLowerCase().includes(searchVal)
       );
-      console.log('[RealChat Filter] Filtered by search "' + searchVal + '": ' + beforeCount + ' -> ' + filtered.length);
     }
 
     if (!filtered.length) {
@@ -336,15 +489,21 @@ const RealChat = (function() {
       return '<div class="rc-chat-item' + isActive + '" onclick="openConversation(\'' + escapeAttr(c.phone) + '\')">' +
         '<div class="rc-avatar">' + initials + '</div>' +
         '<div class="rc-chat-info">' +
-          '<div class="rc-chat-name">' + escapeHtml(c.pushName || c.phone) + ' ' + instanceBadge + '</div>' +
-          '<div class="rc-chat-preview">' + escapeHtml(preview) + '</div>' +
+        '<div class="rc-chat-name">' + escapeHtml(c.pushName || c.phone) + ' ' + instanceBadge + '</div>' +
+        '<div class="rc-chat-preview">' + escapeHtml(preview) + '</div>' +
         '</div>' +
         '<div class="rc-chat-meta">' +
-          '<div class="rc-chat-time">' + time + '</div>' +
-          '<div class="rc-chat-count">' + c.messageCount + '</div>' +
+        '<div class="rc-chat-time">' + time + '</div>' +
+        '<div class="rc-chat-count">' + c.messageCount + '</div>' +
         '</div>' +
-      '</div>';
+        '</div>';
     }).join('');
+
+    // Re-attach empty-state element (hidden) so future calls can find it
+    if (empty) {
+      empty.style.display = 'none';
+      list.appendChild(empty);
+    }
   }
 
   /**
@@ -367,6 +526,11 @@ const RealChat = (function() {
     document.querySelectorAll('.rc-chat-item').forEach(el => el.classList.remove('active'));
     const items = document.querySelectorAll('.rc-chat-item');
     items.forEach(el => { if (el.onclick?.toString().includes(phone)) el.classList.add('active'); });
+
+    // Clear any pending file or reply state
+    clearRcFile();
+    // cancelRcReply(); // TODO: Add reply cancel if implemented later
+
 
     try {
       const log = await api('/conversations/' + encodeURIComponent(phone));
@@ -425,6 +589,7 @@ const RealChat = (function() {
       const isGuest = msg.role === 'user';
       const side = isGuest ? 'guest' : 'ai';
       const time = new Date(msg.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const msgIndex = log.messages.indexOf(msg);
 
       let footer = '<span class="rc-bubble-time">' + time + '</span>';
       if (isGuest) {
@@ -447,46 +612,92 @@ const RealChat = (function() {
         (msg.routedAction === 'static_reply' && msg.intent) ||
         (msg.routedAction === 'workflow' && msg.workflowId && msg.stepId)
       );
-      const msgIndex = log.messages.indexOf(msg);
       if (canEdit) {
         footer += '<button type="button" class="rc-bubble-edit" onclick="openRcEditModal(' + msgIndex + ')" title="Save to Responses (static reply / system message / workflow step)">✏️ Edit</button>';
       }
 
-      // Developer mode metadata
+      // Developer mode metadata with rich badges (uses MetadataBadges component)
       let devMeta = '';
-      if (devMode && !isGuest && !msg.manual) {
-        const parts = [];
-        if (msg.source) {
-          const sourceLabels = { regex: '🚨 Priority Keywords', fuzzy: '⚡ Smart Matching', semantic: '📚 Learning Examples', llm: '🤖 AI Fallback' };
-          parts.push('Detection: ' + (sourceLabels[msg.source] || msg.source));
+      let kbFilesBadge = '';
+      if (devMode && !isGuest && !msg.manual && typeof MetadataBadges !== 'undefined') {
+        var badges = MetadataBadges.getMetadataBadges(msg, {
+          showSentiment: true,
+          kbClickHandler: 'openKBFileFromPreview'
+        });
+
+        // Build expandable details rows
+        var detailsId = 'rc-meta-details-' + msgIndex;
+        var detailRows = [];
+        if (msg.source)    detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Tier:</span><span class="rc-detail-value">' + escapeHtml(MetadataBadges.getTierLabel(msg.source)) + ' (' + escapeHtml(msg.source) + ')</span></div>');
+        if (msg.intent)    detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Intent:</span><span class="rc-detail-value">' + escapeHtml(msg.intent) + '</span></div>');
+        if (msg.routedAction) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Action:</span><span class="rc-detail-value">' + escapeHtml(msg.routedAction) + '</span></div>');
+        if (msg.messageType) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Type:</span><span class="rc-detail-value">' + escapeHtml(msg.messageType) + '</span></div>');
+        if (msg.model)     detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Model:</span><span class="rc-detail-value">' + escapeHtml(msg.model) + '</span></div>');
+        if (msg.responseTime) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Time:</span><span class="rc-detail-value">' + (msg.responseTime / 1000).toFixed(2) + 's (' + msg.responseTime + 'ms)</span></div>');
+        if (msg.confidence !== undefined) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Confidence:</span><span class="rc-detail-value">' + (msg.confidence * 100).toFixed(1) + '%</span></div>');
+        if (msg.kbFiles && msg.kbFiles.length > 0) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">KB Files:</span><span class="rc-detail-value">' + msg.kbFiles.map(function(f){ return escapeHtml(f); }).join(', ') + '</span></div>');
+
+        var expandBtn = detailRows.length > 0
+          ? '<button class="rc-dev-expand-btn" onclick="toggleMetaDetails(\'' + detailsId + '\')" title="Show/hide details">&#9660; Details</button>'
+          : '';
+        var detailsPanel = detailRows.length > 0
+          ? '<div id="' + detailsId + '" class="rc-dev-details" style="display:none;">' + detailRows.join('') + '</div>'
+          : '';
+
+        if (badges.inline) {
+          devMeta = '<div class="rc-dev-meta"><div class="rc-dev-badges">' + badges.inline + expandBtn + '</div>' + detailsPanel + '</div>';
         }
+        kbFilesBadge = badges.kbFiles || '';
+      } else if (devMode && !isGuest && !msg.manual) {
+        // Fallback plain text when MetadataBadges not loaded
+        var parts = [];
+        if (msg.source) { var sl = { regex: '🚨 Priority Keywords', fuzzy: '⚡ Smart Matching', semantic: '📚 Learning Examples', llm: '🤖 AI Fallback' }; parts.push('Detection: ' + (sl[msg.source] || msg.source)); }
         if (msg.intent) parts.push('Intent: ' + escapeHtml(msg.intent));
         if (msg.routedAction) parts.push('Routed to: ' + escapeHtml(msg.routedAction));
-        if (msg.messageType) parts.push('Type: ' + escapeHtml(msg.messageType));
         if (msg.model) parts.push('Model: ' + escapeHtml(msg.model));
         if (msg.responseTime) parts.push('Time: ' + (msg.responseTime / 1000).toFixed(1) + 's');
         if (msg.confidence !== undefined) parts.push('Confidence: ' + Math.round(msg.confidence * 100) + '%');
-        if (msg.kbFiles && msg.kbFiles.length > 0) parts.push('KB: ' + msg.kbFiles.map(f => escapeHtml(f)).join(', '));
-
-        if (parts.length > 0) {
-          devMeta = '<div class="rc-dev-meta">' + parts.join(' | ') + '</div>';
-        }
+        if (parts.length > 0) devMeta = '<div class="rc-dev-meta">' + parts.join(' | ') + '</div>';
       }
+
+      const isSystem = hasSystemContent(msg.content);
+      const displayContent = formatMessage(msg.content);
+      const systemClass = isSystem ? ' lc-system-msg' : '';
 
       const textExtra = canEdit ? ' rc-bubble-text-editable cursor-pointer hover:opacity-90' : '';
       const textOnclick = canEdit ? ' onclick="openRcEditModal(' + msgIndex + ')"' : '';
       html += '<div class="rc-bubble-wrap ' + side + '">' +
-        '<div class="rc-bubble ' + side + '">' +
-          '<div class="rc-bubble-text' + textExtra + '"' + textOnclick + ' title="' + (canEdit ? 'Click to edit and save to Responses' : '') + '">' + escapeHtml(msg.content) + '</div>' +
-          '<div class="rc-bubble-footer">' + footer + '</div>' +
-          devMeta +
+        '<div class="rc-bubble ' + side + systemClass + '">' +
+        '<div class="rc-bubble-text' + textExtra + '"' + textOnclick + ' title="' + (canEdit ? 'Click to edit and save to Responses' : '') + '">' + displayContent + '</div>' + // displayContent is already escaped/formatted
+        '<div class="rc-bubble-footer">' + footer + '</div>' +
+        devMeta +
+        kbFilesBadge +
         '</div>' +
-      '</div>';
+        '</div>';
     }
 
     container.innerHTML = html;
     // Scroll to bottom
     container.scrollTop = container.scrollHeight;
+
+    // Re-run search highlighting if search is active
+    if (_rcSearchOpen && typeof SearchPanel !== 'undefined' && SearchPanel.isActive()) {
+      SearchPanel.reapply();
+    }
+  }
+
+  /** Toggle expandable metadata details panel */
+  function toggleMetaDetails(detailsId) {
+    var el = document.getElementById(detailsId);
+    if (!el) return;
+    var hidden = el.style.display === 'none';
+    el.style.display = hidden ? '' : 'none';
+    // Update expand button arrow
+    var parent = el.parentElement;
+    var btn = parent ? parent.querySelector('.rc-dev-expand-btn') : null;
+    if (btn) {
+      btn.innerHTML = hidden ? '&#9650; Details' : '&#9660; Details';
+    }
   }
 
   /**
@@ -497,7 +708,7 @@ const RealChat = (function() {
     try {
       const log = await api('/conversations/' + encodeURIComponent(_rcActivePhone));
       renderChatView(log);
-    } catch {}
+    } catch { }
   }
 
   // ─── Chat Actions ─────────────────────────────────────────────────
@@ -526,37 +737,25 @@ const RealChat = (function() {
     if (!_rcActivePhone) return;
     const input = document.getElementById('rc-input-box');
     const message = input.value.trim();
+
+    // Check for file upload first
+    if (_rcSelectedFile) {
+      await sendRcMedia();
+      return;
+    }
+
     if (!message) return;
 
     const btn = document.getElementById('rc-send-btn');
     btn.disabled = true;
 
     try {
-      const translateMode = StateManager.get('realChat.translateMode');
-      const translateLang = StateManager.get('realChat.translateLang');
-
-      // If translation mode is enabled, translate first and show confirmation
-      if (translateMode && translateLang !== 'en') {
-        try {
-          const result = await api('/translate', {
-            method: 'POST',
-            body: { text: message, targetLang: translateLang }
-          });
-
-          // Store pending translation
-          _rcPendingTranslation = {
-            original: message,
-            translated: result.translated,
-            targetLang: translateLang
-          };
-
-          // Show confirmation modal
-          showTranslateModal();
-          return; // Wait for user confirmation
-        } catch (err) {
-          alert('Translation failed: ' + err.message);
-          btn.disabled = false;
-          return;
+      // Check if translation preview is active (user pressed Enter with preview visible)
+      let messageToSend = message;
+      if (translationHelper.preview) {
+        const translatedMsg = translationHelper.getMessageToSend(false); // false = use translated
+        if (translatedMsg) {
+          messageToSend = translatedMsg.text;
         }
       }
 
@@ -566,42 +765,239 @@ const RealChat = (function() {
 
       await api('/conversations/' + encodeURIComponent(_rcActivePhone) + '/send', {
         method: 'POST',
-        body: { message, instanceId }
+        body: { message: messageToSend, instanceId }
       });
 
-      // Clear input
-      input.value = '';
-      input.style.height = '40px';
+      // Clear input and translation preview
+      translationHelper.clearAfterSend();
 
       // Refresh the chat to show the sent message
       await refreshActiveChat();
     } catch (err) {
-      alert('Failed to send message: ' + err.message);
+      alert('Failed to send message: ' + (err.message || 'Unknown error'));
     } finally {
       btn.disabled = false;
       input.focus();
     }
   }
 
+  // ─── Message Formatting ───────────────────────────────────────────
+
+  function formatMessage(content) {
+    if (!content) return '';
+    if (hasSystemContent(content)) {
+      return formatSystemContent(content);
+    }
+
+    // Media tags: [type: filename]
+    const mediaRegex = /^\[(photo|video|document): (.*?)\]/i;
+    const match = content.match(mediaRegex);
+    if (match) {
+      const type = match[1].toLowerCase();
+      const filename = match[2];
+      let icon = '';
+      if (type === 'photo') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+      else if (type === 'video') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>';
+      else icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>';
+
+      return `<div class="rc-media-placeholder">
+                <div class="rc-file-thumb-icon" style="width:32px;height:32px;background:#e9edef;color:#54656f;">${icon}</div>
+                <div class="rc-media-filename">${escapeHtml(filename)}</div>
+              </div>`;
+    }
+
+    // Standard text (escape and newlines)
+    return escapeHtml(content).replace(/\n/g, '<br>');
+  }
+
+  // ─── File Attachment ──────────────────────────────────────────────
+
+  function toggleRcAttachMenu() {
+    const menu = document.getElementById('rc-attach-menu');
+    if (!menu) return;
+    const isVisible = menu.style.display !== 'none';
+    menu.style.display = isVisible ? 'none' : '';
+  }
+
+  function pickRcFile(type) {
+    const menu = document.getElementById('rc-attach-menu');
+    if (menu) menu.style.display = 'none';
+
+    const input = type === 'photo'
+      ? document.getElementById('rc-file-photo')
+      : document.getElementById('rc-file-doc');
+    if (input) {
+      input.value = '';
+      input.click();
+    }
+  }
+
+  function rcFileSelected(inputEl, type) {
+    if (!inputEl.files || !inputEl.files[0]) return;
+    const file = inputEl.files[0];
+
+    // 16MB limit
+    if (file.size > 16 * 1024 * 1024) {
+      alert('File too large. Maximum size is 16 MB.');
+      inputEl.value = '';
+      return;
+    }
+
+    _rcSelectedFile = { file: file, type: type };
+    showRcFilePreview(file);
+  }
+
+  function showRcFilePreview(file) {
+    const preview = document.getElementById('rc-file-preview');
+    const thumbEl = document.getElementById('rc-file-preview-thumb');
+    const nameEl = document.getElementById('rc-file-preview-name');
+    const sizeEl = document.getElementById('rc-file-preview-size');
+    if (!preview) return;
+
+    if (nameEl) nameEl.textContent = file.name;
+    const sizeKB = file.size / 1024;
+    if (sizeEl) sizeEl.textContent = sizeKB < 1024
+      ? sizeKB.toFixed(1) + ' KB'
+      : (sizeKB / 1024).toFixed(1) + ' MB';
+
+    // Thumbnail
+    if (thumbEl) {
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        thumbEl.innerHTML = '<img src="' + url + '" alt="preview" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">';
+      } else if (file.type.startsWith('video/')) {
+        thumbEl.innerHTML = '<div class="rc-file-thumb-icon" style="background:#e8f5e9;"><svg width="24" height="24" viewBox="0 0 24 24" fill="#00a884"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div>';
+      } else {
+        thumbEl.innerHTML = '<div class="rc-file-thumb-icon" style="background:#e3f2fd;"><svg width="24" height="24" viewBox="0 0 24 24" fill="#1976d2"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></div>';
+      }
+    }
+
+    preview.style.display = '';
+  }
+
+  function clearRcFile() {
+    _rcSelectedFile = null;
+    const preview = document.getElementById('rc-file-preview');
+    if (preview) preview.style.display = 'none';
+    const captionEl = document.getElementById('rc-file-caption');
+    if (captionEl) captionEl.value = '';
+    const photoInput = document.getElementById('rc-file-photo');
+    if (photoInput) photoInput.value = '';
+    const docInput = document.getElementById('rc-file-doc');
+    if (docInput) docInput.value = '';
+  }
+
+  async function sendRcMedia() {
+    if (!_rcActivePhone || !_rcSelectedFile) return;
+
+    const btn = document.getElementById('rc-send-btn');
+    btn.disabled = true;
+
+    const caption = (document.getElementById('rc-file-caption')?.value || '').trim();
+    // Get instanceId
+    const log = _rcConversations.find(c => c.phone === _rcActivePhone);
+    const instanceId = log ? log.instanceId : '';
+
+    const formData = new FormData();
+    formData.append('file', _rcSelectedFile.file);
+    formData.append('caption', caption);
+    formData.append('instanceId', instanceId || '');
+
+    try {
+      const response = await fetch((typeof window !== 'undefined' ? window.API : '') + '/conversations/' + encodeURIComponent(_rcActivePhone) + '/send-media', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+
+      clearRcFile();
+      await refreshActiveChat();
+      if (window.toast) window.toast('Sent ' + (data.mediaType || 'file'), 'success');
+    } catch (err) {
+      alert('Failed to send message: ' + (err.message || 'Unknown error'));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   // ─── Input Handlers ───────────────────────────────────────────────
 
   /**
-   * Auto-resize textarea as user types
+   * Auto-resize textarea as user types and trigger translation preview
    * @param {HTMLTextAreaElement} textarea - Input element
    */
   function autoResizeInput(textarea) {
     textarea.style.height = '40px';
     textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    // Trigger translation preview if mode is enabled
+    onInputChange();
   }
 
   /**
    * Handle Enter key in input box (send message)
+   * Supports translation preview:
+   * - Enter: send translated message (if preview active)
+   * - Ctrl+Enter: send original message (if preview active)
+   * - Shift+Enter: new line
    * @param {KeyboardEvent} event - Keydown event
    */
   function handleInputKeydown(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key !== 'Enter') return;
+    if (event.shiftKey) return; // Shift+Enter = new line (default behavior)
+
+    // If translation preview is active
+    if (translationHelper.preview) {
+      event.preventDefault();
+      if (event.ctrlKey) {
+        // Ctrl+Enter: send original
+        sendOriginalMessage();
+      } else {
+        // Enter: send translated
+        sendManualReply();
+      }
+      return;
+    }
+
+    // No preview: normal send
+    if (!event.ctrlKey) {
       event.preventDefault();
       sendManualReply();
+    }
+  }
+
+  /**
+   * Send original message when translation preview is active (Ctrl+Enter)
+   */
+  async function sendOriginalMessage() {
+    if (!_rcActivePhone || !translationHelper.preview) return;
+
+    const input = document.getElementById('rc-input-box');
+    const btn = document.getElementById('rc-send-btn');
+    btn.disabled = true;
+
+    try {
+      const originalMsg = translationHelper.getMessageToSend(true); // true = use original
+      if (!originalMsg) return;
+
+      const log = _rcConversations.find(c => c.phone === _rcActivePhone);
+      const instanceId = log?.instanceId;
+
+      await api('/conversations/' + encodeURIComponent(_rcActivePhone) + '/send', {
+        method: 'POST',
+        body: { message: originalMsg.text, instanceId }
+      });
+
+      // Clear input and translation preview
+      translationHelper.clearAfterSend();
+
+      // Refresh the chat to show the sent message
+      await refreshActiveChat();
+    } catch (err) {
+      alert('Failed to send message: ' + (err.message || 'Unknown error'));
+    } finally {
+      btn.disabled = false;
+      input.focus();
     }
   }
 
@@ -700,9 +1096,9 @@ const RealChat = (function() {
     } else {
       formEl.innerHTML =
         '<div class="space-y-2">' +
-          '<div><label class="text-xs text-neutral-500 font-medium">English</label><textarea id="rc-edit-en" class="w-full border border-neutral-300 rounded-lg p-2 text-sm resize-y" rows="3">' + escapeHtml(languages.en) + '</textarea></div>' +
-          '<div><label class="text-xs text-neutral-500 font-medium">Malay</label><textarea id="rc-edit-ms" class="w-full border border-neutral-300 rounded-lg p-2 text-sm resize-y" rows="2">' + escapeHtml(languages.ms) + '</textarea></div>' +
-          '<div><label class="text-xs text-neutral-500 font-medium">Chinese</label><textarea id="rc-edit-zh" class="w-full border border-neutral-300 rounded-lg p-2 text-sm resize-y" rows="2">' + escapeHtml(languages.zh) + '</textarea></div>' +
+        '<div><label class="text-xs text-neutral-500 font-medium">English</label><textarea id="rc-edit-en" class="w-full border border-neutral-300 rounded-lg p-2 text-sm resize-y" rows="3">' + escapeHtml(languages.en) + '</textarea></div>' +
+        '<div><label class="text-xs text-neutral-500 font-medium">Malay</label><textarea id="rc-edit-ms" class="w-full border border-neutral-300 rounded-lg p-2 text-sm resize-y" rows="2">' + escapeHtml(languages.ms) + '</textarea></div>' +
+        '<div><label class="text-xs text-neutral-500 font-medium">Chinese</label><textarea id="rc-edit-zh" class="w-full border border-neutral-300 rounded-lg p-2 text-sm resize-y" rows="2">' + escapeHtml(languages.zh) + '</textarea></div>' +
         '</div>';
     }
 
@@ -762,10 +1158,10 @@ const RealChat = (function() {
       selectEl.innerHTML = intents.length === 0
         ? '<option value="">No intents in examples</option>'
         : intents.map(function (i) {
-            const intent = i.intent || '';
-            const selected = intent === suggestedIntent ? ' selected' : '';
-            return '<option value="' + escapeAttr(intent) + '"' + selected + '>' + escapeHtml(intent) + '</option>';
-          }).join('');
+          const intent = i.intent || '';
+          const selected = intent === suggestedIntent ? ' selected' : '';
+          return '<option value="' + escapeAttr(intent) + '"' + selected + '>' + escapeHtml(intent) + '</option>';
+        }).join('');
       if (suggestedIntent && !intents.some(function (i) { return i.intent === suggestedIntent; })) {
         selectEl.selectedIndex = 0;
       }
@@ -812,19 +1208,38 @@ const RealChat = (function() {
         return;
       }
 
-      const examples = Array.isArray(intentData.examples) ? intentData.examples.slice() : [];
-      if (examples.includes(_rcAddExampleText)) {
-        if (toast) toast('Example already exists for this intent', 'warning');
-        else alert('Example already exists for this intent');
-        btnEl.disabled = false;
-        btnEl.textContent = 'Add to Training Examples';
-        return;
+      let payload;
+      if (Array.isArray(intentData.examples)) {
+        const examples = intentData.examples.slice();
+        if (examples.includes(_rcAddExampleText)) {
+          if (toast) toast('Example already exists for this intent', 'warning');
+          else alert('Example already exists for this intent');
+          btnEl.disabled = false;
+          btnEl.textContent = 'Add to Training Examples';
+          return;
+        }
+        examples.push(_rcAddExampleText);
+        payload = { examples };
+      } else if (intentData.examples && typeof intentData.examples === 'object') {
+        const flat = Object.values(intentData.examples).flat();
+        if (flat.includes(_rcAddExampleText)) {
+          if (toast) toast('Example already exists for this intent', 'warning');
+          else alert('Example already exists for this intent');
+          btnEl.disabled = false;
+          btnEl.textContent = 'Add to Training Examples';
+          return;
+        }
+        const updated = { ...intentData.examples };
+        if (!updated.en) updated.en = [];
+        updated.en.push(_rcAddExampleText);
+        payload = { examples: updated };
+      } else {
+        payload = { examples: [_rcAddExampleText] };
       }
-      examples.push(_rcAddExampleText);
 
       await api('/intent-manager/examples/' + encodeURIComponent(intent), {
         method: 'PUT',
-        body: { examples: examples }
+        body: payload
       });
 
       if (toast) toast('Added to training examples. Restart server to reload semantic matcher.', 'success');
@@ -903,8 +1318,10 @@ const RealChat = (function() {
   return {
     loadRealChat,
     toggleDevMode,
+    toggleRcSearch,
     toggleTranslateMode,
     handleLangChange,
+    toggleMetaDetails,
     showTranslateModal,
     closeTranslateModal,
     confirmTranslation,
@@ -923,15 +1340,21 @@ const RealChat = (function() {
     saveRcEdit,
     openAddToTrainingExampleModal,
     closeAddToTrainingExampleModal,
-    confirmAddToTrainingExample
+    confirmAddToTrainingExample,
+    toggleRcAttachMenu,
+    pickRcFile,
+    rcFileSelected,
+    clearRcFile
   };
 })();
 
 // Expose RealChat functions to global scope for template onclick handlers
 window.loadRealChat = RealChat.loadRealChat;
 window.toggleDevMode = RealChat.toggleDevMode;
+window.toggleRcSearch = RealChat.toggleRcSearch;
 window.toggleTranslateMode = RealChat.toggleTranslateMode;
 window.handleLangChange = RealChat.handleLangChange;
+window.toggleMetaDetails = RealChat.toggleMetaDetails;
 window.closeTranslateModal = RealChat.closeTranslateModal;
 window.confirmTranslation = RealChat.confirmTranslation;
 window.filterConversations = RealChat.filterConversations;
@@ -947,3 +1370,7 @@ window.saveRcEdit = RealChat.saveRcEdit;
 window.openAddToTrainingExampleModal = RealChat.openAddToTrainingExampleModal;
 window.closeAddToTrainingExampleModal = RealChat.closeAddToTrainingExampleModal;
 window.confirmAddToTrainingExample = RealChat.confirmAddToTrainingExample;
+window.toggleRcAttachMenu = RealChat.toggleRcAttachMenu;
+window.pickRcFile = RealChat.pickRcFile;
+window.rcFileSelected = RealChat.rcFileSelected;
+window.clearRcFile = RealChat.clearRcFile;

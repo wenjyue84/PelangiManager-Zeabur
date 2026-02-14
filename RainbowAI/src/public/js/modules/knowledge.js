@@ -43,3 +43,10 @@ export async function loadStaticReplies() {
 export function editStaticReply(intent) {
   toast('Edit functionality - to be implemented', 'info');
 }
+
+// Export to global scope for legacy compatibility
+if (typeof window !== 'undefined') {
+  window.loadStaticReplies = loadStaticReplies;
+  window.editStaticReply = editStaticReply;
+}
+

@@ -11,23 +11,23 @@ function toast(msg, type) {
   el.className = 'toast ' + colors + ' text-white text-sm px-4 py-2 rounded-2xl shadow-medium';
   el.textContent = msg;
   document.getElementById('toast-container').appendChild(el);
-  setTimeout(function() { el.remove(); }, 3000);
+  setTimeout(function () { el.remove(); }, 3000);
 }
 
 function api(path, opts) {
   opts = opts || {};
   var timeout = opts.timeout || 30000;
   var controller = new AbortController();
-  var timeoutId = setTimeout(function() { controller.abort(); }, timeout);
+  var timeoutId = setTimeout(function () { controller.abort(); }, timeout);
 
   return fetch(API + path, {
     headers: { 'Content-Type': 'application/json' },
     method: opts.method || 'GET',
     body: opts.body ? JSON.stringify(opts.body) : undefined,
     signal: controller.signal
-  }).then(function(res) {
+  }).then(function (res) {
     clearTimeout(timeoutId);
-    return res.text().then(function(text) {
+    return res.text().then(function (text) {
       var data;
       try {
         data = JSON.parse(text);
@@ -46,7 +46,7 @@ function api(path, opts) {
       if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
       return data;
     });
-  }).catch(function(error) {
+  }).catch(function (error) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
       throw new Error('Request timeout after ' + timeout + 'ms');
@@ -58,7 +58,7 @@ if (typeof window !== 'undefined') { window.api = api; }
 
 function escapeHtml(s) {
   if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function escapeAttr(s) {
@@ -86,4 +86,41 @@ function formatDateTime(ts) {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
+}
+
+function hasSystemContent(content) {
+  if (!content || typeof content !== 'string') return false;
+  return content.indexOf('\n\n{"intent":') > 0 || content.indexOf('Please note: I may not have complete information') > 0;
+}
+
+function getUserMessage(content) {
+  if (!content || typeof content !== 'string') return content;
+  var s = content;
+  var jsonStart = s.indexOf('\n\n{"intent":');
+  if (jsonStart > 0) s = s.slice(0, jsonStart).trim();
+  var disclaimerIdx = s.indexOf('Please note: I may not have complete information');
+  if (disclaimerIdx > 0) s = s.slice(0, disclaimerIdx).replace(/\n+$/, '').trim();
+  return s;
+}
+
+function formatSystemContent(content) {
+  if (!content || typeof content !== 'string') return escapeHtml(content);
+
+  var parts = content.split('\n\n{"intent":');
+  if (parts.length === 1) return escapeHtml(content);
+
+  var userMsg = parts[0].trim();
+  var jsonPart = '{"intent":' + parts[1];
+
+  var prettyJson = jsonPart;
+  try {
+    var parsed = JSON.parse(jsonPart);
+    prettyJson = JSON.stringify(parsed, null, 2);
+  } catch (e) { }
+
+  return '<div class="lc-user-msg">' + escapeHtml(userMsg) + '</div>' +
+    '<div class="lc-system-data">' +
+    '<div class="lc-system-label">System Debug Info:</div>' +
+    '<pre class="lc-system-json">' + escapeHtml(prettyJson) + '</pre>' +
+    '</div>';
 }
