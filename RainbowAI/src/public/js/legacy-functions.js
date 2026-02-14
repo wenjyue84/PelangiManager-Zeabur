@@ -406,61 +406,9 @@ async function loadStaticReplies() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-// ─── Translate Quick Reply (fill missing EN/MS/ZH using LLM reply model) ───
-async function translateQuickReplyFields(enId, msId, zhId) {
-  const enEl = document.getElementById(enId);
-  const msEl = document.getElementById(msId);
-  const zhEl = document.getElementById(zhId);
-  if (!enEl || !msEl || !zhEl) return;
-  const en = (enEl.value || '').trim();
-  const ms = (msEl.value || '').trim();
-  const zh = (zhEl.value || '').trim();
-  if (!en && !ms && !zh) {
-    toast('Fill in at least one language (EN, MS, or ZH) to translate', 'error');
-    return;
-  }
-  const btn = event && event.target ? event.target : null;
-  if (btn) { btn.disabled = true; btn.textContent = 'Translating...'; }
-  try {
-    const result = await api('/knowledge/translate', { method: 'POST', body: { en, ms, zh } });
-    if (result.en !== undefined) enEl.value = result.en;
-    if (result.ms !== undefined) msEl.value = result.ms;
-    if (result.zh !== undefined) zhEl.value = result.zh;
-    toast('Translation done. Uses same model as LLM reply.');
-  } catch (e) {
-    toast(e.message || 'Translation failed', 'error');
-  }
-  if (btn) { btn.disabled = false; btn.textContent = 'Translate'; }
-}
-
-/** Translate in Chat Simulator inline edit panel (panel has textareas with data-lang="en|ms|zh"). */
-async function translateInlineEditPanel(editId) {
-  const panel = document.getElementById(editId);
-  if (!panel) return;
-  const enEl = panel.querySelector('[data-lang="en"]');
-  const msEl = panel.querySelector('[data-lang="ms"]');
-  const zhEl = panel.querySelector('[data-lang="zh"]');
-  if (!enEl || !msEl || !zhEl) return;
-  const en = (enEl.value || '').trim();
-  const ms = (msEl.value || '').trim();
-  const zh = (zhEl.value || '').trim();
-  if (!en && !ms && !zh) {
-    toast('Fill in at least one language (EN, MS, or ZH) to translate', 'error');
-    return;
-  }
-  const btn = event && event.target ? event.target : null;
-  if (btn) { btn.disabled = true; btn.textContent = 'Translating...'; }
-  try {
-    const result = await api('/knowledge/translate', { method: 'POST', body: { en, ms, zh } });
-    if (result.en !== undefined) enEl.value = result.en;
-    if (result.ms !== undefined) msEl.value = result.ms;
-    if (result.zh !== undefined) zhEl.value = result.zh;
-    toast('Translation done. Uses same model as LLM reply.');
-  } catch (e) {
-    toast(e.message || 'Translation failed', 'error');
-  }
-  if (btn) { btn.disabled = false; btn.textContent = 'Translate'; }
-}
+// ═════════════════════════════════════════════════════════════════════
+// Translation Helpers — EXTRACTED to modules/translation-helpers.js (Phase 12)
+// ═════════════════════════════════════════════════════════════════════
 
 // ═════════════════════════════════════════════════════════════════════
 // Responses CRUD — EXTRACTED to modules/responses-crud.js (Phase 7)
