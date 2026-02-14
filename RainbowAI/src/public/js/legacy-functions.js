@@ -8303,63 +8303,6 @@ window.switchTab = function (tab) { if (window.loadTab) window.loadTab(tab); };
  */
 
 /**
- * Load System Message templates
- */
-async function loadStaticTemplates() {
-  try {
-    const templates = await api('/templates');
-    const el = document.getElementById('static-templates');
-    if (!el) return;
-
-    if (Object.keys(templates).length === 0) {
-      el.innerHTML = '<p class="text-neutral-400">No system message templates configured.</p>';
-      return;
-    }
-
-    el.innerHTML = Object.entries(templates).map(([key, content]) => `
-      <div class="border rounded-lg p-3 mb-2">
-        <div class="flex justify-between items-start">
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <span class="font-medium text-sm font-mono text-primary-700">${esc(key)}</span>
-              <span class="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded">System</span>
-            </div>
-            <p class="text-xs text-neutral-600 mt-1 line-clamp-2">${esc(content.en || '')}</p>
-            ${content.ms || content.zh ? `<div class="flex gap-1 mt-1 text-[10px] text-neutral-400">
-              ${content.ms ? '<span title="Malay">MS</span>' : ''}
-              ${content.zh ? '<span title="Chinese">ZH</span>' : ''}
-            </div>` : ''}
-          </div>
-          <button onclick="editTemplate('${esc(key)}')" class="text-xs text-primary-600 hover:text-primary-700 ml-2 px-2 py-1 rounded hover:bg-primary-50 transition">Edit</button>
-        </div>
-      </div>
-    `).join('');
-  } catch (e) {
-    if (document.getElementById('static-templates')) {
-      document.getElementById('static-templates').innerHTML = `<p class="text-danger-500 text-xs">Failed to load templates: ${esc(e.message)}</p>`;
-    }
-  }
-}
-
-/**
- * Edit a system message template (placeholder)
- */
-function editTemplate(key) {
-  toast(`Edit template "${key}" - to be implemented`, 'info');
-}
-
-/**
- * Main loader for Responses tab
- * Handles sub-tab initialization
- */
-async function loadResponses(subTab = 'knowledge-base') {
-  // Ensure sub-tab content is visible
-  if (typeof window.switchResponseTab === 'function') {
-    window.switchResponseTab(subTab, false);
-  }
-}
-
-/**
  * Switch between sub-tabs in the Responses tab
  * @param {string} tabName - 'knowledge-base', 'quick-replies', 'workflows', or 'system-messages'
  * @param {boolean} updateHash - Whether to update the URL hash
@@ -8407,55 +8350,6 @@ function switchResponseTab(tabName, updateHash = true) {
     if (window.loadWorkflow) window.loadWorkflow();
   } else if (tabName === 'system-messages') {
     loadStaticTemplates();
-  }
-}
-
-/**
- * Switch between sub-tabs in the Chat Simulator tab
- * @param {string} tabName - 'quick-test' or 'live-simulation'
- * @param {boolean} updateHash - Whether to update the URL hash (default: true)
- */
-function switchSimulatorTab(tabName, updateHash = true) {
-  // Update hash if requested
-  if (updateHash) {
-    const newHash = `chat-simulator/${tabName}`;
-    if (window.location.hash.slice(1) !== newHash) {
-      window.location.hash = newHash;
-      return; // Let the hashchange event handle the actual UI switch
-    }
-  }
-
-  // Hide all simulator tab contents
-  document.querySelectorAll('.simulator-tab-content').forEach(content => {
-    content.classList.add('hidden');
-  });
-
-  // Remove active state from all simulator tab buttons
-  const tabs = ['tab-quick-test', 'tab-live-simulation'];
-  tabs.forEach(tabId => {
-    const btn = document.getElementById(tabId);
-    if (btn) {
-      btn.classList.remove('text-primary-600', 'border-b-2', 'border-primary-500', 'bg-primary-50');
-      btn.classList.add('text-neutral-600', 'hover:text-neutral-800', 'hover:bg-neutral-50');
-    }
-  });
-
-  // Show selected content
-  const content = document.getElementById(`${tabName}-content`);
-  if (content) {
-    content.classList.remove('hidden');
-  }
-
-  // Reload Real Chat if switching to that tab (restarts auto-refresh)
-  if (tabName === 'live-simulation' && typeof window.loadRealChat === 'function') {
-    window.loadRealChat();
-  }
-
-  // Highlight active button
-  const button = document.getElementById(`tab-${tabName}`);
-  if (button) {
-    button.classList.remove('text-neutral-600', 'hover:text-neutral-800', 'hover:bg-neutral-50');
-    button.classList.add('text-primary-600', 'border-b-2', 'border-primary-500', 'bg-primary-50');
   }
 }
 
@@ -8648,24 +8542,6 @@ async function loadSystemStatus() {
 }
 
 /**
- * Load Chat Simulator tab (merged Preview + Real Chat)
- * @param {string|null} subTab - Optional sub-tab ID
- */
-async function loadChatSimulator(subTab = null) {
-  // Load specified sub-tab or default to Quick Test
-  const effectiveSubTab = subTab || 'quick-test';
-  // switchSimulatorTab already calls loadRealChat() for live-simulation,
-  // so we don't call it again below to avoid duplicate concurrent calls
-  // that can destroy DOM elements before the second call reads them.
-  switchSimulatorTab(effectiveSubTab, false);
-
-  // Load preview chat
-  if (typeof loadPreview === 'function') {
-    loadPreview();
-  }
-}
-
-/**
  * Load Testing tab
  */
 async function loadTesting() {
@@ -8675,10 +8551,7 @@ async function loadTesting() {
 
 // Export to global scope
 window.switchResponseTab = switchResponseTab;
-window.switchSimulatorTab = switchSimulatorTab;
 window.loadSystemStatus = loadSystemStatus;
-window.loadResponses = loadResponses;
-window.loadChatSimulator = loadChatSimulator;
 window.loadTesting = loadTesting;
 window.toggleFeedbackSettings = toggleFeedbackSettings;
 window.onFeedbackSettingChange = onFeedbackSettingChange;

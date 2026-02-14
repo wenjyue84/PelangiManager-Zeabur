@@ -1,5 +1,6 @@
 import type { RateLimitResult } from './types.js';
 import { configStore } from './config-store.js';
+import { StateManager } from './state-manager.js';
 
 interface WindowEntry {
   timestamps: number[];
@@ -9,9 +10,9 @@ const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
 const CLEANUP_INTERVAL_MS = 300_000; // 5 minutes
 
-const windows = new Map<string, WindowEntry>();
+// Use StateManager for automatic TTL-based cleanup of rate limit windows
+const windowManager = new StateManager<WindowEntry>(HOUR_MS, CLEANUP_INTERVAL_MS);
 const staffPhones = new Set<string>();
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 function refreshStaffPhones(): void {
   staffPhones.clear();
@@ -22,9 +23,7 @@ function refreshStaffPhones(): void {
 
 export function initRateLimiter(): void {
   refreshStaffPhones();
-  // Periodic cleanup of expired entries
-  if (cleanupTimer) clearInterval(cleanupTimer);
-  cleanupTimer = setInterval(cleanupExpired, CLEANUP_INTERVAL_MS);
+  // StateManager handles periodic cleanup automatically
   configStore.on('reload', (domain: string) => {
     if (domain === 'settings' || domain === 'all') {
       refreshStaffPhones();
@@ -34,11 +33,7 @@ export function initRateLimiter(): void {
 }
 
 export function destroyRateLimiter(): void {
-  if (cleanupTimer) {
-    clearInterval(cleanupTimer);
-    cleanupTimer = null;
-  }
-  windows.clear();
+  windowManager.destroy();
 }
 
 export function checkRate(phone: string): RateLimitResult {
@@ -51,11 +46,9 @@ export function checkRate(phone: string): RateLimitResult {
 
   const limits = configStore.getSettings().rate_limits;
   const now = Date.now();
-  let entry = windows.get(normalized);
-  if (!entry) {
-    entry = { timestamps: [] };
-    windows.set(normalized, entry);
-  }
+
+  // StateManager.getOrCreate() handles TTL checking automatically
+  const entry = windowManager.getOrCreate(normalized, () => ({ timestamps: [] }));
 
   // Remove timestamps older than 1 hour
   entry.timestamps = entry.timestamps.filter(t => now - t < HOUR_MS);
@@ -88,17 +81,9 @@ export function checkRate(phone: string): RateLimitResult {
   return { allowed: true };
 }
 
-function cleanupExpired(): void {
-  const now = Date.now();
-  for (const [phone, entry] of windows.entries()) {
-    entry.timestamps = entry.timestamps.filter(t => now - t < HOUR_MS);
-    if (entry.timestamps.length === 0) {
-      windows.delete(phone);
-    }
-  }
-}
+// Cleanup is now handled automatically by StateManager
 
 // For testing
 export function _getWindowsSize(): number {
-  return windows.size;
+  return windowManager.size();
 }

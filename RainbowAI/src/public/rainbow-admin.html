@@ -302,7 +302,7 @@
   <!-- Tab System (needs functions above to be defined) -->
   <script src="/public/js/core/tabs.js"></script>
 
-  <!-- Extracted modules (Phase 1-2) -->
+  <!-- Extracted modules (Phase 1-3) -->
   <script type="module">
     // Phase 1: Trivial Loaders
     import { loadWhatsappAccounts } from '/public/js/modules/whatsapp-accounts.js';
@@ -318,6 +318,12 @@
       toggleActivityExpand
     } from '/public/js/modules/dashboard-helpers.js';
 
+    // Phase 3: Medium Complexity Loaders
+    import { loadStaticTemplates, editTemplate } from '/public/js/modules/responses-helpers.js';
+    import { switchSimulatorTab } from '/public/js/modules/chat-simulator-helpers.js';
+    import { loadResponses } from '/public/js/modules/responses.js';
+    import { loadChatSimulator } from '/public/js/modules/chat-simulator.js';
+
     // Expose to global scope (required by tabs.js and onclick handlers)
     window.loadWhatsappAccounts = loadWhatsappAccounts;
     window.loadUnderstanding = loadUnderstanding;
@@ -327,6 +333,11 @@
     window.initActivityStream = initActivityStream;
     window.disconnectActivityStream = disconnectActivityStream;
     window.toggleActivityExpand = toggleActivityExpand;
+    window.loadStaticTemplates = loadStaticTemplates;
+    window.editTemplate = editTemplate;
+    window.switchSimulatorTab = switchSimulatorTab;
+    window.loadResponses = loadResponses;
+    window.loadChatSimulator = loadChatSimulator;
   </script>
 
   <!-- ES6 Module Scripts (deferred - run after all regular scripts) -->

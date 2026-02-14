@@ -2,6 +2,7 @@
 // Analyzes message sentiment and escalates on consecutive negative messages
 
 import { configStore } from './config-store.js';
+import { StateManager } from './state-manager.js';
 
 export type SentimentScore = 'positive' | 'neutral' | 'negative';
 
@@ -16,8 +17,8 @@ interface SentimentState {
   lastEscalationAt: number | null;
 }
 
-// Track sentiment state per phone number
-const sentimentStates = new Map<string, SentimentState>();
+// StateManager with 1-hour TTL (matches conversation TTL) — prevents memory leaks
+const sentimentManager = new StateManager<SentimentState>(3_600_000);
 
 // Configuration (loaded from settings)
 let CONSECUTIVE_THRESHOLD = 2; // Default: Escalate after 2 consecutive negative
@@ -167,17 +168,13 @@ export function trackSentiment(
   message: string,
   sentiment: SentimentScore
 ): void {
-  // Get or create state
-  let state = sentimentStates.get(phone);
-  if (!state) {
-    state = {
-      phone,
-      history: [],
-      consecutiveNegative: 0,
-      lastEscalationAt: null
-    };
-    sentimentStates.set(phone, state);
-  }
+  // StateManager.getOrCreate() handles TTL checking and creates if needed
+  const state = sentimentManager.getOrCreate(phone, () => ({
+    phone,
+    history: [],
+    consecutiveNegative: 0,
+    lastEscalationAt: null
+  }));
 
   // Add to history
   state.history.push({
@@ -205,7 +202,7 @@ export function shouldEscalateOnSentiment(phone: string): {
   reason: string | null;
   consecutiveCount: number;
 } {
-  const state = sentimentStates.get(phone);
+  const state = sentimentManager.get(phone);
 
   if (!state) {
     return { shouldEscalate: false, reason: null, consecutiveCount: 0 };
@@ -237,7 +234,7 @@ export function shouldEscalateOnSentiment(phone: string): {
 
 // ─── Mark Escalation Sent ───────────────────────────────────────────
 export function markSentimentEscalation(phone: string): void {
-  const state = sentimentStates.get(phone);
+  const state = sentimentManager.get(phone);
   if (state) {
     state.lastEscalationAt = Date.now();
     state.consecutiveNegative = 0; // Reset counter after escalation
@@ -246,7 +243,7 @@ export function markSentimentEscalation(phone: string): void {
 
 // ─── Reset State (when staff replies) ──────────────────────────────
 export function resetSentimentTracking(phone: string): void {
-  const state = sentimentStates.get(phone);
+  const state = sentimentManager.get(phone);
   if (state) {
     state.consecutiveNegative = 0;
     console.log(`[Sentiment] Reset tracking for ${phone} (staff replied)`);
@@ -259,7 +256,7 @@ export function getSentimentHistory(phone: string): Array<{
   sentiment: SentimentScore;
   message: string;
 }> {
-  const state = sentimentStates.get(phone);
+  const state = sentimentManager.get(phone);
   return state?.history ?? [];
 }
 
@@ -269,7 +266,7 @@ export function getSentimentStats(phone: string): {
   lastEscalationAt: number | null;
   recentSentiments: SentimentScore[];
 } | null {
-  const state = sentimentStates.get(phone);
+  const state = sentimentManager.get(phone);
   if (!state) return null;
 
   return {

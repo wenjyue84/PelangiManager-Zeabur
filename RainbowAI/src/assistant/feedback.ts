@@ -16,7 +16,10 @@ interface FeedbackState {
   lastTier: string | null;
 }
 
-const feedbackStates = new Map<string, FeedbackState>();
+import { StateManager } from './state-manager.js';
+
+// StateManager with 1-hour TTL — feedback state expires with conversation
+const feedbackManager = new StateManager<FeedbackState>(3_600_000);
 
 // ─── Configuration (Loaded from Database) ───────────────────────────
 let feedbackConfig = {
@@ -67,7 +70,7 @@ export function shouldAskFeedback(
   }
 
   // Check if we asked recently
-  const state = feedbackStates.get(phone);
+  const state = feedbackManager.get(phone);
   if (state) {
     const timeSinceLastAsk = Date.now() - state.lastAskedAt;
     if (timeSinceLastAsk < feedbackConfig.frequencyMs) {
@@ -88,7 +91,8 @@ export function setAwaitingFeedback(
   responseTime: number | null,
   tier: string | null
 ): void {
-  feedbackStates.set(phone, {
+  // Use getOrCreate to set the state (factory creates full state)
+  const state = feedbackManager.getOrCreate(phone, () => ({
     lastAskedAt: Date.now(),
     awaitingFeedback: true,
     lastMessageId: conversationId,
@@ -97,11 +101,20 @@ export function setAwaitingFeedback(
     lastModel: model,
     lastResponseTime: responseTime,
     lastTier: tier,
-  });
+  }));
+  // Update all fields in case entry already existed
+  state.lastAskedAt = Date.now();
+  state.awaitingFeedback = true;
+  state.lastMessageId = conversationId;
+  state.lastIntent = intent;
+  state.lastConfidence = confidence;
+  state.lastModel = model;
+  state.lastResponseTime = responseTime;
+  state.lastTier = tier;
 
   // Auto-clear awaiting state after timeout
   setTimeout(() => {
-    const current = feedbackStates.get(phone);
+    const current = feedbackManager.get(phone);
     if (current?.lastMessageId === conversationId) {
       current.awaitingFeedback = false;
     }
@@ -110,13 +123,13 @@ export function setAwaitingFeedback(
 
 // ─── Is Awaiting Feedback? ──────────────────────────────────────────
 export function isAwaitingFeedback(phone: string): boolean {
-  const state = feedbackStates.get(phone);
+  const state = feedbackManager.get(phone);
   return state?.awaitingFeedback ?? false;
 }
 
 // ─── Clear Awaiting State ───────────────────────────────────────────
 export function clearAwaitingFeedback(phone: string): void {
-  const state = feedbackStates.get(phone);
+  const state = feedbackManager.get(phone);
   if (state) {
     state.awaitingFeedback = false;
   }
@@ -124,7 +137,7 @@ export function clearAwaitingFeedback(phone: string): void {
 
 // ─── Get Feedback State ─────────────────────────────────────────────
 export function getFeedbackState(phone: string): FeedbackState | null {
-  return feedbackStates.get(phone) ?? null;
+  return feedbackManager.get(phone) ?? null;
 }
 
 // ─── Detect Feedback Intent ─────────────────────────────────────────
