@@ -81,13 +81,66 @@ app.use(
   })
 );
 
-// Health check endpoint
+// Health check endpoint (liveness — is the process alive?)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'pelangi-mcp-server',
     version: '1.0.0',
     whatsapp: getWhatsAppStatus().state,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Deep health check (readiness — can this server serve requests?)
+app.get('/health/ready', async (req, res) => {
+  const checks: Record<string, { ok: boolean; detail?: string }> = {};
+
+  // 1. Backend API reachable
+  try {
+    await apiClient.get('/api/health', { timeout: 5000 });
+    checks.backend = { ok: true };
+  } catch (err: any) {
+    checks.backend = { ok: false, detail: err.code || err.message };
+  }
+
+  // 2. WhatsApp connection
+  const waStatus = getWhatsAppStatus();
+  checks.whatsapp = {
+    ok: waStatus.state === 'open',
+    detail: waStatus.state
+  };
+
+  // 3. AI provider circuit breakers
+  const { circuitBreakerRegistry } = await import('./assistant/circuit-breaker.js');
+  const cbStatuses = circuitBreakerRegistry.getAllStatuses();
+  const openCircuits = Object.entries(cbStatuses)
+    .filter(([, s]) => s.state === 'OPEN')
+    .map(([id]) => id);
+  checks.aiProviders = {
+    ok: openCircuits.length === 0,
+    detail: openCircuits.length > 0
+      ? `${openCircuits.length} provider(s) circuit-open: ${openCircuits.join(', ')}`
+      : `${Object.keys(cbStatuses).length} provider(s) healthy`
+  };
+
+  // 4. Config store health
+  const corrupted = configStore.getCorruptedFiles();
+  checks.config = {
+    ok: corrupted.length === 0,
+    detail: corrupted.length > 0
+      ? `Corrupted: ${corrupted.join(', ')}`
+      : 'All configs loaded'
+  };
+
+  const allHealthy = Object.values(checks).every(c => c.ok);
+  // WhatsApp can be disconnected and system still works (manual mode)
+  // Backend is critical — without it, MCP tools fail
+  const critical = checks.backend.ok && checks.config.ok;
+
+  res.status(critical ? 200 : 503).json({
+    status: critical ? (allHealthy ? 'ready' : 'degraded') : 'unhealthy',
+    checks,
     timestamp: new Date().toISOString()
   });
 });
