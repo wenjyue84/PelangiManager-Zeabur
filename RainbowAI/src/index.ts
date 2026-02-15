@@ -21,6 +21,7 @@ import { initFeedbackSettings } from './lib/init-feedback-settings.js';
 import { initAdminNotificationSettings } from './lib/admin-notification-settings.js';
 import { setupHotReload, HOT_RELOAD_SCRIPT } from './lib/hot-reload.js';
 import { configStore } from './assistant/config-store.js';
+import { initKnowledgeBase } from './assistant/knowledge-base.js';
 
 const __filename_main = fileURLToPath(import.meta.url);
 const __dirname_main = dirname(__filename_main);
@@ -28,6 +29,14 @@ const __dirname_main = dirname(__filename_main);
 // Single source for AI keys (OPENROUTER_API_KEY, etc.): RainbowAI/.env. Then cwd so repo root .env can add vars without overriding.
 dotenv.config({ path: join(__dirname_main, '..', '.env') });
 dotenv.config();
+
+// Initialize Knowledge Base (Memory & Files)
+try {
+  initKnowledgeBase();
+  console.log('[Startup] KnowledgeBase initialized');
+} catch (err: any) {
+  console.error('[Startup] Failed to initialize KnowledgeBase:', err.message);
+}
 
 // CRITICAL: Initialize configStore BEFORE mounting admin routes
 // This prevents "Cannot read properties of undefined" errors when API endpoints are called before WhatsApp init completes

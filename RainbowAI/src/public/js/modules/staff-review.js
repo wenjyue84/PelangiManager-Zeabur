@@ -20,14 +20,22 @@ var cachedIntents = null;
 var currentPredictions = []; // full list currently displayed
 var pendingCount = 0;        // tracks the live pending count
 var isFirstLoad = true;      // prevents flashing on re-load
+var currentView = 'pending'; // 'pending' | 'history'
 
 // ─── Main loader ─────────────────────────────────────────────────────
 
 export async function loadStaffReview() {
+  // If we are in history view, load history instead
+  if (currentView === 'history') {
+    return loadHistory();
+  }
+
   var loading = document.getElementById('sr-loading');
   var empty = document.getElementById('sr-empty');
   var tableContainer = document.getElementById('sr-table-container');
   var toolbar = document.getElementById('sr-toolbar');
+
+  updateTabUI();
 
   try {
     // Only show loading spinner on first load (prevents content flash on re-entry)
@@ -47,6 +55,8 @@ export async function loadStaffReview() {
       if (tableContainer) tableContainer.classList.add('hidden');
       if (toolbar) toolbar.classList.add('hidden');
       if (empty) empty.classList.remove('hidden');
+      // Update empty message for pending view
+      empty.querySelector('.text-neutral-500').textContent = 'All predictions reviewed!';
       currentPredictions = [];
       pendingCount = 0;
       updateStats();
@@ -76,6 +86,83 @@ export async function loadStaffReview() {
   }
 }
 
+export async function loadHistory() {
+  currentView = 'history';
+  updateTabUI();
+
+  var loading = document.getElementById('sr-loading');
+  var empty = document.getElementById('sr-empty');
+  var tableContainer = document.getElementById('sr-table-container');
+  var toolbar = document.getElementById('sr-toolbar');
+
+  // Hide toolbar in history view for now
+  if (toolbar) toolbar.classList.add('hidden');
+
+  if (loading) loading.classList.remove('hidden');
+  if (tableContainer) tableContainer.classList.add('hidden');
+  if (empty) empty.classList.add('hidden');
+
+  try {
+    var data = await api('/intent/predictions/validated?limit=100');
+
+    if (loading) loading.classList.add('hidden');
+
+    if (!data || !data.predictions || data.predictions.length === 0) {
+      if (empty) {
+        empty.classList.remove('hidden');
+        empty.querySelector('.text-neutral-500').textContent = 'No history found';
+      }
+      return;
+    }
+
+    currentPredictions = data.predictions;
+
+    if (tableContainer) tableContainer.classList.remove('hidden');
+
+    // Render table with history columns
+    renderTable(currentPredictions, true);
+    ensureIntentsLoaded();
+  } catch (err) {
+    console.error('[Staff Review] Failed to load history:', err);
+    if (loading) loading.classList.add('hidden');
+    toast('Failed to load history', 'error');
+  }
+}
+
+export function switchStaffReviewTab(tab) {
+  currentView = tab;
+  if (tab === 'history') {
+    loadHistory();
+  } else {
+    loadStaffReview();
+  }
+}
+
+function updateTabUI() {
+  var btnPending = document.getElementById('sr-tab-pending');
+  var btnHistory = document.getElementById('sr-tab-history');
+
+  if (currentView === 'pending') {
+    if (btnPending) {
+      btnPending.classList.remove('text-neutral-500', 'hover:text-neutral-700', 'hover:bg-neutral-50');
+      btnPending.classList.add('text-primary-700', 'bg-primary-50');
+    }
+    if (btnHistory) {
+      btnHistory.classList.remove('text-primary-700', 'bg-primary-50');
+      btnHistory.classList.add('text-neutral-500', 'hover:text-neutral-700', 'hover:bg-neutral-50');
+    }
+  } else {
+    if (btnHistory) {
+      btnHistory.classList.remove('text-neutral-500', 'hover:text-neutral-700', 'hover:bg-neutral-50');
+      btnHistory.classList.add('text-primary-700', 'bg-primary-50');
+    }
+    if (btnPending) {
+      btnPending.classList.remove('text-primary-700', 'bg-primary-50');
+      btnPending.classList.add('text-neutral-500', 'hover:text-neutral-700', 'hover:bg-neutral-50');
+    }
+  }
+}
+
 // ─── Stats display ───────────────────────────────────────────────────
 
 function updateStats() {
@@ -92,9 +179,30 @@ function updateStats() {
 
 // ─── Table rendering ─────────────────────────────────────────────────
 
-function renderTable(predictions) {
+function renderTable(predictions, isHistory) {
   var tbody = document.getElementById('sr-tbody');
-  if (!tbody) return;
+  var thead = document.querySelector('#sr-table-container thead tr');
+  if (!tbody || !thead) return;
+
+  // Update headers if needed
+  if (isHistory) {
+    thead.innerHTML =
+      '<th class="px-4 py-3 font-medium">Time</th>' +
+      '<th class="px-4 py-3 font-medium">Message</th>' +
+      '<th class="px-4 py-3 font-medium">Predicted</th>' +
+      '<th class="px-4 py-3 font-medium">Actual</th>' +
+      '<th class="px-4 py-3 font-medium text-center">Confidence</th>' +
+      '<th class="px-4 py-3 font-medium text-center">Status</th>' +
+      '<th class="px-4 py-3 font-medium text-center">Action</th>';
+  } else {
+    thead.innerHTML =
+      '<th class="px-4 py-3 font-medium">Time</th>' +
+      '<th class="px-4 py-3 font-medium">Message</th>' +
+      '<th class="px-4 py-3 font-medium">Predicted Intent</th>' +
+      '<th class="px-4 py-3 font-medium text-center">Confidence</th>' +
+      '<th class="px-4 py-3 font-medium text-center">Tier</th>' +
+      '<th class="px-4 py-3 font-medium text-center">Action</th>';
+  }
 
   var rows = predictions.map(function (p) {
     var date = new Date(p.createdAt);
@@ -113,31 +221,62 @@ function renderTable(predictions) {
 
     var tierLabel = TIER_LABELS[p.tier] || esc(p.tier || '-');
 
-    // Store confidence as data attribute for filtering
-    return '<tr id="sr-row-' + esc(p.id) + '" class="border-b last:border-b-0 hover:bg-neutral-50 transition-all" ' +
-      'data-intent="' + esc(p.predictedIntent) + '" data-conf="' + conf + '" data-id="' + esc(p.id) + '">' +
-      '<td class="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">' + timeStr + '</td>' +
-      '<td class="px-4 py-3 text-neutral-700" title="' + esc(msg) + '">' + esc(truncMsg) + '</td>' +
-      '<td class="px-4 py-3"><span class="inline-block bg-primary-50 text-primary-700 text-xs font-medium px-2 py-1 rounded-lg">' + esc(p.predictedIntent) + '</span></td>' +
-      '<td class="px-4 py-3 text-center"><span class="inline-block ' + confBg + ' ' + confColor + ' text-xs font-bold px-2 py-1 rounded-lg">' + confPct + '%</span></td>' +
-      '<td class="px-4 py-3 text-center text-xs">' + tierLabel + '</td>' +
-      '<td class="px-4 py-3 text-center">' +
+    if (isHistory) {
+      var statusHtml = p.wasCorrect
+        ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-medium">Correct</span>'
+        : '<span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-lg font-medium">Fixed</span>';
+
+      var editAction = '<button onclick="showCorrectionDropdown(\'' + esc(p.id) + '\')" ' +
+        'class="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-600 px-3 py-1.5 rounded-lg transition font-medium">' +
+        'Edit</button>';
+
+      var actualDisplay = p.wasCorrect ? '<span class="text-neutral-400">-</span>' : '<span class="text-teal-600 font-medium">' + esc(p.actualIntent) + '</span>';
+
+      return '<tr id="sr-row-' + esc(p.id) + '" class="border-b last:border-b-0 hover:bg-neutral-50 transition-all">' +
+        '<td class="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">' + timeStr + '</td>' +
+        '<td class="px-4 py-3 text-neutral-700" title="' + esc(msg) + '">' + esc(truncMsg) + '</td>' +
+        '<td class="px-4 py-3 text-xs">' + esc(p.predictedIntent) + '</td>' +
+        '<td class="px-4 py-3 text-xs">' + actualDisplay + '</td>' +
+        '<td class="px-4 py-3 text-center"><span class="inline-block ' + confBg + ' ' + confColor + ' text-xs font-bold px-2 py-1 rounded-lg">' + confPct + '%</span></td>' +
+        '<td class="px-4 py-3 text-center">' + statusHtml + '</td>' +
+        '<td class="px-4 py-3 text-center">' +
+        '<div id="sr-actions-' + esc(p.id) + '">' + editAction + '</div>' +
+        '<div id="sr-dropdown-' + esc(p.id) + '" class="hidden min-w-[150px] relative z-10">' +
+        '<select id="sr-select-' + esc(p.id) + '" onchange="submitCorrection(\'' + esc(p.id) + '\')" ' +
+        'class="text-xs border rounded-lg px-2 py-1.5 w-full focus:ring-2 focus:ring-primary-500">' +
+        '<option value="">-- Change Intent --</option>' +
+        '</select>' +
+        '</div>' +
+        '</td>' +
+        '</tr>';
+    } else {
+      // Pending View
+      // Store confidence as data attribute for filtering
+      return '<tr id="sr-row-' + esc(p.id) + '" class="border-b last:border-b-0 hover:bg-neutral-50 transition-all" ' +
+        'data-intent="' + esc(p.predictedIntent) + '" data-conf="' + conf + '" data-id="' + esc(p.id) + '">' +
+        '<td class="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">' + timeStr + '</td>' +
+        '<td class="px-4 py-3 text-neutral-700" title="' + esc(msg) + '">' + esc(truncMsg) + '</td>' +
+        '<td class="px-4 py-3"><span class="inline-block bg-primary-50 text-primary-700 text-xs font-medium px-2 py-1 rounded-lg">' + esc(p.predictedIntent) + '</span></td>' +
+        '<td class="px-4 py-3 text-center"><span class="inline-block ' + confBg + ' ' + confColor + ' text-xs font-bold px-2 py-1 rounded-lg">' + confPct + '%</span></td>' +
+        '<td class="px-4 py-3 text-center text-xs">' + tierLabel + '</td>' +
+        '<td class="px-4 py-3 text-center">' +
         '<div id="sr-actions-' + esc(p.id) + '" class="flex items-center justify-center gap-1">' +
-          '<button onclick="markPredictionCorrect(\'' + esc(p.id) + '\')" ' +
-            'class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition font-medium" ' +
-            'title="Mark as correct">Correct</button>' +
-          '<button onclick="showCorrectionDropdown(\'' + esc(p.id) + '\')" ' +
-            'class="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition font-medium" ' +
-            'title="Mark as wrong and pick correct intent">Wrong</button>' +
+        '<button onclick="markPredictionCorrect(\'' + esc(p.id) + '\')" ' +
+        'class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition font-medium" ' +
+        'title="Mark as correct">Correct</button>' +
+        '<button onclick="showCorrectionDropdown(\'' + esc(p.id) + '\')" ' +
+        'class="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition font-medium" ' +
+        'title="Mark as wrong and pick correct intent">Wrong</button>' +
         '</div>' +
         '<div id="sr-dropdown-' + esc(p.id) + '" class="hidden">' +
-          '<select id="sr-select-' + esc(p.id) + '" onchange="submitCorrection(\'' + esc(p.id) + '\')" ' +
-            'class="text-xs border rounded-lg px-2 py-1.5 w-full max-w-[200px] focus:ring-2 focus:ring-primary-500">' +
-            '<option value="">-- Pick correct intent --</option>' +
-          '</select>' +
+        '<select id="sr-select-' + esc(p.id) + '" onchange="submitCorrection(\'' + esc(p.id) + '\')" ' +
+        'class="text-xs border rounded-lg px-2 py-1.5 w-full max-w-[200px] focus:ring-2 focus:ring-primary-500">' +
+        '<option value="">-- Pick correct intent --</option>' +
+        '</select>' +
         '</div>' +
-      '</td>' +
-      '</tr>';
+        '</td>' +
+        '</tr>';
+    }
   });
 
   tbody.innerHTML = rows.join('');

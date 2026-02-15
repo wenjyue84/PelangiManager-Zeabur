@@ -225,6 +225,41 @@ router.get('/intent/predictions/pending', async (req: Request, res: Response) =>
   }
 });
 
+// ─── GET /api/rainbow/intent/predictions/validated ──────────────────
+// List validated predictions (history)
+router.get('/intent/predictions/validated', async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const validated = await db
+      .select({
+        id: intentPredictions.id,
+        messageText: intentPredictions.messageText,
+        predictedIntent: intentPredictions.predictedIntent,
+        actualIntent: intentPredictions.actualIntent,
+        wasCorrect: intentPredictions.wasCorrect,
+        confidence: intentPredictions.confidence,
+        tier: intentPredictions.tier,
+        model: intentPredictions.model,
+        phoneNumber: intentPredictions.phoneNumber,
+        createdAt: intentPredictions.createdAt,
+        correctedAt: intentPredictions.correctedAt,
+      })
+      .from(intentPredictions)
+      .where(isNotNull(intentPredictions.wasCorrect))
+      .orderBy(desc(intentPredictions.correctedAt))
+      .limit(limit);
+
+    res.json({
+      success: true,
+      predictions: validated,
+    });
+  } catch (error) {
+    console.error('[Intent Analytics] Error fetching validated predictions:', error);
+    serverError(res, 'Failed to fetch validated predictions');
+  }
+});
+
 // ─── PATCH /api/rainbow/intent/predictions/:id ──────────────────────
 // Validate a single prediction (staff marks correct or provides actual intent)
 router.patch('/intent/predictions/:id', async (req: Request, res: Response) => {
@@ -297,9 +332,9 @@ router.post('/intent/predictions/bulk-validate', async (req: Request, res: Respo
         ids.length === 1
           ? eq(intentPredictions.id, ids[0])
           : sql`${intentPredictions.id} IN (${sql.join(
-              ids.map((id) => sql`${id}`),
-              sql`, `
-            )})`
+            ids.map((id) => sql`${id}`),
+            sql`, `
+          )})`
       );
 
     if (predictions.length === 0) {

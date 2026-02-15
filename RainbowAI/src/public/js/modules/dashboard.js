@@ -70,7 +70,7 @@ export async function loadDashboard() {
     // Update AI Model Status (providers are under statusData.ai.providers)
     const aiProviders = (statusData.ai?.providers || [])
       .filter(p => p.enabled)
-      .sort((a, b) => (a.priority || 999) - (b.priority || 999));
+      .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
 
     const aiStatusEl = document.getElementById('dashboard-ai-status');
 
@@ -340,7 +340,9 @@ function renderInstanceCard(inst, totalCount) {
         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusDot}"></span>
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-medium text-neutral-800 text-sm">${esc(inst.label || inst.id)}</span>
+            <span class="font-medium text-neutral-800 text-sm cursor-pointer hover:underline decoration-dashed decoration-neutral-400" 
+              onclick="startEditingLabel('${esc(inst.id)}', this)" 
+              title="Click to rename">${esc(inst.label || inst.id)}</span>
             <span class="text-xs ${statusColor}">${statusText}</span>
           </div>
           <div class="text-xs text-neutral-500">${esc(formattedPhone)}${inst.user?.name ? ' — ' + esc(inst.user.name) : ''}</div>
@@ -437,3 +439,88 @@ function _onVisibilityChange() {
     refreshStatusCards();
   }
 }
+
+/**
+ * Start inline editing of WhatsApp instance label
+ */
+export function startEditingLabel(id, el) {
+  const currentLabel = el.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentLabel;
+  input.className = 'border rounded px-2 py-0.5 text-sm w-full max-w-[200px] shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none';
+
+  // Handle save on blur and enter
+  let isSaving = false;
+  const save = () => {
+    if (isSaving) return;
+    isSaving = true;
+    finishEditingLabel(id, input, currentLabel);
+  };
+
+  input.onblur = save;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      save();
+    } else if (e.key === 'Escape') {
+      // Revert
+      el.textContent = currentLabel;
+      input.replaceWith(el);
+      isSaving = true; // Prevent blur from firing save
+    }
+  };
+
+  el.replaceWith(input);
+  input.select();
+}
+
+/**
+ * Finish inline editing and save
+ */
+export async function finishEditingLabel(id, input, oldLabel) {
+  const newLabel = input.value.trim();
+
+  // If no change, just revert
+  if (newLabel === oldLabel) {
+    const span = createLabelSpan(id, newLabel);
+    input.replaceWith(span);
+    return;
+  }
+
+  if (!newLabel) {
+    toast('Label cannot be empty', 'error');
+    const span = createLabelSpan(id, oldLabel);
+    input.replaceWith(span);
+    return;
+  }
+
+  try {
+    const res = await api(`/whatsapp/instances/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: { label: newLabel }
+    });
+
+    if (input.parentNode) {
+      const span = createLabelSpan(id, res.instance?.label || newLabel);
+      input.replaceWith(span);
+    }
+    toast('Label updated');
+  } catch (e) {
+    console.error('Failed to update label:', e);
+    toast(e.message || 'Failed to update label', 'error');
+    if (input.parentNode) {
+      const span = createLabelSpan(id, oldLabel);
+      input.replaceWith(span);
+    }
+  }
+}
+
+function createLabelSpan(id, label) {
+  const span = document.createElement('span');
+  span.className = 'font-medium text-neutral-800 text-sm cursor-pointer hover:underline decoration-dashed decoration-neutral-400';
+  span.onclick = function () { startEditingLabel(id, this); };
+  span.title = 'Click to rename';
+  span.textContent = label;
+  return span;
+}
+

@@ -67,10 +67,10 @@ PelangiManager - Capsule Hostel Management System
 
 ## ⚠️ Port Configuration (IMPORTANT)
 
-**Always use `localhost:4000` for PelangiManager.**
+**For RainbowAI (MCP Server), always use `localhost:3002`.**
 
-- ✅ **Use:** `localhost:4000`
-- ❌ **Do NOT use:** `localhost:3000` (reserved for another app)
-- ❌ **Do NOT use:** `localhost:5000` (reserved for another app)
+- ✅ **Use:** `localhost:3002` (MCP Server / Rainbow Admin)
+- ℹ️ **Frontend:** `localhost:3000`
+- ℹ️ **Backend:** `localhost:5000`
 
-When running the development server, ensure it starts on port 4000. If the default port is different, configure it accordingly before starting.
+When running the MCP development server, ensure it starts on port 3002. Same for the Rainbow Admin Dashboard.
