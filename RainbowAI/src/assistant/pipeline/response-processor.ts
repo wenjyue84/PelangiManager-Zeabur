@@ -33,7 +33,7 @@ const ASSISTANT_DATA_DIR = join(__dirname, '..', 'data');
 export async function processAndSend(
   state: PipelineState, ctx: RouterContext
 ): Promise<void> {
-  const { phone, text, foreignLang, convo, lang, msg, diaryEvent, devMetadata } = state;
+  const { requestId, phone, text, foreignLang, convo, lang, msg, diaryEvent, devMetadata } = state;
   let response = state.response;
 
   if (!response) return;
@@ -112,6 +112,7 @@ export async function processAndSend(
   const mode = getConversationMode(phone);
 
   const logMeta = {
+    requestId,
     intent: diaryEvent.intent || undefined,
     confidence: diaryEvent.confidence,
     action: diaryEvent.action || undefined,

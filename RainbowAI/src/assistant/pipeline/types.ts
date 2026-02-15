@@ -24,6 +24,7 @@ export interface DevMetadata {
 }
 
 export interface PipelineState {
+  requestId: string;
   msg: IncomingMessage;
   phone: string;
   text: string;

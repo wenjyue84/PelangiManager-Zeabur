@@ -63,7 +63,7 @@ function resolveResponseLanguage(
 export async function classifyAndRoute(
   state: PipelineState, ctx: RouterContext
 ): Promise<void> {
-  const { phone, processText, convo, lang, text, msg, diaryEvent, devMetadata } = state;
+  const { requestId, phone, processText, convo, lang, text, msg, diaryEvent, devMetadata } = state;
 
   if (!isAIAvailable()) {
     state.response = getTemplate('unavailable', lang);
@@ -274,7 +274,7 @@ export async function classifyAndRoute(
 
   const messageType = detectMessageType(processText);
   const repeatCheck = checkRepeatIntent(phone, result.intent);
-  console.log(`[Router] Intent: ${result.intent} | Action: ${result.action} | Routed: ${routedAction} | msgType: ${messageType} | repeat: ${repeatCheck.count} | Confidence: ${result.confidence.toFixed(2)}${ackSent ? ' | ack sent' : ''}${isSplitModel ? ' | split-model' : ''}`);
+  console.log(`[Router] [${requestId}] Intent: ${result.intent} | Action: ${result.action} | Routed: ${routedAction} | msgType: ${messageType} | repeat: ${repeatCheck.count} | Confidence: ${result.confidence.toFixed(2)}${ackSent ? ' | ack sent' : ''}${isSplitModel ? ' | split-model' : ''}`);
 
   trackIntentClassified(result.intent, result.confidence, devMetadata.source || 'unknown');
 

@@ -52,6 +52,8 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
   const state = validation.state;
   const { phone, text } = state;
 
+  const rid = state.requestId;
+
   try {
     // Phase 2: Active state handling (feedback, workflow, booking, emergency)
     const stateResult = await handleActiveStates(state, ctx);
@@ -70,8 +72,8 @@ export async function handleIncomingMessage(msg: IncomingMessage): Promise<void>
       // Non-fatal — never crash the router over diary writes
     }
   } catch (err: any) {
-    console.error(`[Router] Error processing message from ${phone}:`, err.message);
-    trackError('message-router', err.message);
+    console.error(`[Router] [${rid}] Error processing message from ${phone}:`, err.message);
+    trackError('message-router', `[${rid}] ${err.message}`);
     try {
       const lang = detectLanguage(text);
       await ctx.sendMessage(phone, getTemplate('error', lang), msg.instanceId);

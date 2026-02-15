@@ -27,7 +27,7 @@ import { trackFeedback, trackEmergency, trackWorkflowStarted } from '../../lib/a
 export async function handleActiveStates(
   state: PipelineState, ctx: RouterContext
 ): Promise<StateResult> {
-  const { phone, processText, convo, lang, text, msg } = state;
+  const { requestId, phone, processText, convo, lang, text, msg } = state;
 
   // ─── FEEDBACK DETECTION ─────────────────────────────────────────
   if (isAwaitingFeedback(phone)) {
@@ -115,7 +115,7 @@ export async function handleActiveStates(
   // ─── EMERGENCY CHECK (regex, instant) ───────────────────────────
   const emergencyIntent = getEmergencyIntent(processText);
   if (emergencyIntent !== null) {
-    console.log(`[Router] EMERGENCY detected for ${phone}: ${emergencyIntent}`);
+    console.log(`[Router] [${requestId}] EMERGENCY detected for ${phone}: ${emergencyIntent}`);
     trackEmergency(phone, msg.pushName);
     await escalateToStaff({
       phone, pushName: msg.pushName,

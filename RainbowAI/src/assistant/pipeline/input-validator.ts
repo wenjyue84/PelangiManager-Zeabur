@@ -4,6 +4,7 @@
  * Handles: group filtering, non-text messages, empty text, staff commands,
  * rate limiting, language detection/translation, conversation setup, sentiment.
  */
+import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, MessageType } from '../types.js';
 import type { RouterContext, ValidationResult, PipelineState } from './types.js';
 import type { ConversationEvent } from '../memory-writer.js';
@@ -149,7 +150,8 @@ export async function validateAndPrepare(
   const text = msg.text.trim();
   if (!text) return { continue: false, reason: 'empty' };
 
-  console.log(`[Router] ${phone} (${msg.pushName}): ${text.slice(0, 100)}`);
+  const requestId = randomUUID().slice(0, 8);
+  console.log(`[Router] [${requestId}] ${phone} (${msg.pushName}): ${text.slice(0, 100)}`);
   trackMessageReceived(phone, msg.pushName, text);
 
   // ─── Staff Commands & Escalation Tracking ──────────────────────
@@ -220,7 +222,7 @@ export async function validateAndPrepare(
   return {
     continue: true,
     state: {
-      msg, phone, text, processText, foreignLang,
+      requestId, msg, phone, text, processText, foreignLang,
       convo, lang, diaryEvent, devMetadata, response: null
     }
   };
