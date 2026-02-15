@@ -285,6 +285,48 @@ export const rainbowConversationState = pgTable("rainbow_conversation_state", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ─── Rainbow Conversations (Hybrid Storage: replaces JSON files) ─────
+
+export const rainbowConversations = pgTable("rainbow_conversations", {
+  phone: varchar("phone", { length: 64 }).primaryKey(), // Canonical phone key (digits only)
+  pushName: text("push_name").notNull().default(''),
+  instanceId: text("instance_id"), // Which WhatsApp instance
+  pinned: boolean("pinned").notNull().default(false),
+  favourite: boolean("favourite").notNull().default(false),
+  lastReadAt: timestamp("last_read_at"), // For unread badge
+  responseMode: text("response_mode"), // autopilot/copilot/manual override
+  contactDetailsJson: text("contact_details_json"), // JSON: name, email, country, etc.
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const rainbowMessages = pgTable("rainbow_messages", {
+  id: serial("id").primaryKey(),
+  phone: varchar("phone", { length: 64 }).notNull(), // FK to rainbow_conversations.phone
+  role: varchar("role", { length: 10 }).notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  // Intent metadata
+  intent: text("intent"),
+  confidence: real("confidence"),
+  action: text("action"),
+  manual: boolean("manual"), // True if manually sent by admin
+  // Developer mode metadata
+  source: text("source"), // Detection method: regex | fuzzy | semantic | llm
+  model: text("model"), // AI model used
+  responseTime: integer("response_time_ms"), // Response time in ms
+  kbFilesJson: text("kb_files_json"), // JSON array of KB files used
+  messageType: text("message_type"), // info | problem | complaint
+  routedAction: text("routed_action"), // static_reply | llm_reply | workflow | etc
+  workflowId: text("workflow_id"),
+  stepId: text("step_id"),
+}, (table) => ([
+  index("idx_rainbow_messages_phone").on(table.phone),
+  index("idx_rainbow_messages_phone_timestamp").on(table.phone, table.timestamp),
+  index("idx_rainbow_messages_role").on(table.role),
+  index("idx_rainbow_messages_timestamp").on(table.timestamp),
+]));
+
 // ─── Table-derived Types ─────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -310,3 +352,7 @@ export type IntentPrediction = typeof intentPredictions.$inferSelect;
 export type InsertIntentPrediction = typeof intentPredictions.$inferInsert;
 export type RainbowConversationState = typeof rainbowConversationState.$inferSelect;
 export type InsertRainbowConversationState = typeof rainbowConversationState.$inferInsert;
+export type RainbowConversation = typeof rainbowConversations.$inferSelect;
+export type InsertRainbowConversation = typeof rainbowConversations.$inferInsert;
+export type RainbowMessage = typeof rainbowMessages.$inferSelect;
+export type InsertRainbowMessage = typeof rainbowMessages.$inferInsert;

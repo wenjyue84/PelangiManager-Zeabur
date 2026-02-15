@@ -174,7 +174,8 @@ import {
   bulkApproveAboveThreshold,
   bulkRejectBelowThreshold,
   bulkApproveByIntent,
-  bulkRejectByIntent
+  bulkRejectByIntent,
+  switchStaffReviewTab
 } from '/public/js/modules/staff-review.js';
 
 // Phase 18: Status Tab Module
@@ -453,6 +454,7 @@ window.bulkApproveAboveThreshold = bulkApproveAboveThreshold;
 window.bulkRejectBelowThreshold = bulkRejectBelowThreshold;
 window.bulkApproveByIntent = bulkApproveByIntent;
 window.bulkRejectByIntent = bulkRejectByIntent;
+window.switchStaffReviewTab = switchStaffReviewTab;
 // Phase 18: Status Tab
 window.loadStatus = loadStatus;
 // Phase 19: Static Messages Tab
@@ -594,4 +596,4 @@ function loadTesting() {
 }
 window.reloadConfig = reloadConfig;
 window.loadTesting = loadTesting;
-window.switchTab = function(tab) { if (window.loadTab) window.loadTab(tab); };
+window.switchTab = function (tab) { if (window.loadTab) window.loadTab(tab); };

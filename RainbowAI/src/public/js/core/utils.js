@@ -7,14 +7,41 @@
  * @param {string} msg - Message to display
  * @param {string} type - Type of toast ('success', 'error', 'info')
  */
-function toast(msg, type = 'success', isHtml = false) {
+/**
+ * Display a toast notification
+ * @param {string} msg - Message to display
+ * @param {string} type - Type of toast ('success', 'error', 'warning', 'info')
+ * @param {boolean} isHtml - Whether to render message as HTML
+ * @param {number} duration - Duration in ms (default 3000)
+ */
+function toast(msg, type = 'success', isHtml = false, duration = 3000) {
   const el = document.createElement('div');
-  const colors = type === 'success' ? 'bg-success-500' : type === 'error' ? 'bg-danger-500' : 'bg-blue-500';
-  el.className = `toast ${colors} text-white text-sm px-4 py-2 rounded-2xl shadow-medium`;
+  const colors = type === 'success' ? 'bg-success-500' :
+    type === 'error' ? 'bg-danger-500' :
+      type === 'warning' ? 'bg-warning-500 text-white' : // Ensure text contrast if needed, though 'text-white' is applied below
+        'bg-blue-500';
+
+  el.className = `toast ${colors} text-white text-sm px-4 py-2 rounded-2xl shadow-medium flex items-center gap-3`; // Added flex for better layout if needed
+
   if (isHtml) el.innerHTML = msg;
   else el.textContent = msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+
+  const container = document.getElementById('toast-container');
+  if (container) {
+    container.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+      setTimeout(() => el.remove(), 500);
+    }, duration);
+  } else {
+    // Fallback if container missing
+    document.body.appendChild(el);
+    el.style.position = 'fixed';
+    el.style.bottom = '20px';
+    el.style.right = '20px';
+    el.style.zIndex = '9999';
+    setTimeout(() => el.remove(), duration);
+  }
 }
 
 /**

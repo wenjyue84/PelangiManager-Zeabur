@@ -15,6 +15,9 @@
  * @module kb-editor
  */
 
+// Helper: Escape HTML alias
+const esc = window.escapeHtml || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+
 // ═════════════════════════════════════════════════════════════════════
 // Constants & Configuration
 // ═════════════════════════════════════════════════════════════════════
@@ -147,7 +150,7 @@ function loadKB() {
  */
 async function kbFilterCategory(cat) {
   kbCurrentCategory = cat;
-  document.querySelectorAll('.kb-cat-btn').forEach(function(btn) {
+  document.querySelectorAll('.kb-cat-btn').forEach(function (btn) {
     const active = btn.dataset.kbCat === cat;
     btn.className = 'kb-cat-btn text-xs px-3 py-1.5 rounded-full border transition ' +
       (active ? 'bg-primary-500 text-white border-primary-500' : 'border-neutral-300 hover:bg-neutral-50');
@@ -169,7 +172,7 @@ async function kbFilterCategory(cat) {
           '<span>' + kbMemoryFiles.length + ' daily log' + (kbMemoryFiles.length !== 1 ? 's' : '') + '</span>' +
           '</div>';
 
-        const filesHtml = kbMemoryFiles.map(function(date) {
+        const filesHtml = kbMemoryFiles.map(function (date) {
           const sel = kbCurrentFile === 'memory/' + date;
           return '<button onclick="kbSelectMemoryFile(\'' + date + '\')" class="w-full text-left p-3 rounded-xl border transition hover:bg-neutral-50 ' + (sel ? 'bg-purple-50 border-purple-300 shadow-sm' : 'bg-white border-neutral-200') + '">' +
             '<div class="flex items-start gap-2">' +
@@ -188,8 +191,8 @@ async function kbFilterCategory(cat) {
       list.innerHTML = '<div class="text-xs text-red-400 text-center py-3">Failed to load memory files</div>';
     }
   } else {
-    const files = KB_FILE_DEFS.filter(function(f) { return f.cat === cat; });
-    list.innerHTML = files.map(function(f) {
+    const files = KB_FILE_DEFS.filter(function (f) { return f.cat === cat; });
+    list.innerHTML = files.map(function (f) {
       const sel = kbCurrentFile === f.id;
       const badge = f.priority === 'always' ? '<span class="badge-info">always</span>'
         : f.priority === 'internal' ? '<span class="badge-warn">internal</span>' : '';
@@ -222,7 +225,7 @@ async function kbSelectFile(filename) {
     kbCurrentFile = filename;
     kbOriginalContent = d.content || '';
     document.getElementById('kb-file-editor').value = d.content || '';
-    const def = KB_FILE_DEFS.find(function(f) { return f.id === filename; });
+    const def = KB_FILE_DEFS.find(function (f) { return f.id === filename; });
     document.getElementById('kb-editor-icon').textContent = def ? def.icon : '\uD83D\uDCC4';
     document.getElementById('kb-editor-filename').textContent = filename;
     document.getElementById('kb-editor-desc').textContent = def ? def.desc : '';
@@ -270,7 +273,7 @@ async function kbSelectMemoryFile(date) {
  */
 function openKBFileFromPreview(filename) {
   // Find the file category
-  const def = KB_FILE_DEFS.find(function(f) { return f.id === filename; });
+  const def = KB_FILE_DEFS.find(function (f) { return f.id === filename; });
   if (def) {
     kbCurrentCategory = def.cat;
   }
@@ -278,11 +281,11 @@ function openKBFileFromPreview(filename) {
   if (typeof loadTab === 'function') {
     loadTab('responses');
   }
-  setTimeout(function() {
+  setTimeout(function () {
     if (typeof switchResponseTab === 'function') {
       switchResponseTab('knowledge-base');
     }
-    setTimeout(function() { kbSelectFile(filename); }, 100);
+    setTimeout(function () { kbSelectFile(filename); }, 100);
   }, 200);
 }
 
