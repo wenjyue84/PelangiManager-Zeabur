@@ -191,6 +191,47 @@ export const workflowDataSchema = z.object({
 }).passthrough();
 export type WorkflowData = z.infer<typeof workflowDataSchema>;
 
+// ─── AI Response ───────────────────────────────────────────────────
+
+export const aiResponseActionSchema = z.enum([
+  'reply', 'static_reply', 'llm_reply', 'start_booking',
+  'escalate', 'forward_payment', 'workflow'
+]);
+export type AIAction = z.infer<typeof aiResponseActionSchema>;
+
+export const aiResponseSchema = z.object({
+  intent: z.string().min(1),
+  action: aiResponseActionSchema,
+  response: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+export type AIResponse = z.infer<typeof aiResponseSchema>;
+
+// ─── Routing Request Validation (Admin API) ─────────────────────────
+
+const routingActionEnum = z.enum([
+  'static_reply', 'llm_reply', 'workflow', 'escalate', 'forward_payment', 'start_booking',
+]);
+
+export const updateRoutingRequestSchema = z.record(
+  z.string(),
+  z.object({
+    action: routingActionEnum,
+    workflow_id: z.string().optional(),
+  }).refine(
+    data => data.action !== 'workflow' || data.workflow_id,
+    { message: 'workflow_id required when action is workflow' }
+  )
+);
+
+export const updateSingleRouteRequestSchema = z.object({
+  action: routingActionEnum,
+  workflow_id: z.string().optional(),
+}).refine(
+  data => data.action !== 'workflow' || data.workflow_id,
+  { message: 'workflow_id required when action is workflow' }
+);
+
 // ─── Schema Registry ────────────────────────────────────────────────
 
 export const CONFIG_SCHEMAS = {

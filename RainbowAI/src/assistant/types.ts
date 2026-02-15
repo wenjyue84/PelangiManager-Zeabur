@@ -140,7 +140,7 @@ export interface RateLimitResult {
 }
 
 // ─── Escalation ─────────────────────────────────────────────────────
-export type EscalationReason = 'human_request' | 'complaint' | 'unknown_repeated' | 'group_booking' | 'error';
+export type EscalationReason = 'human_request' | 'complaint' | 'unknown_repeated' | 'group_booking' | 'error' | 'config_error';
 
 export interface EscalationContext {
   phone: string;
@@ -149,6 +149,7 @@ export interface EscalationContext {
   recentMessages: string[];
   originalMessage: string;
   instanceId?: string; // Reply via the same WhatsApp instance
+  metadata?: Record<string, any>; // Additional context (e.g., configError, workflowId)
 }
 
 // ─── Escalation Tracker (Tiered) ────────────────────────────────────

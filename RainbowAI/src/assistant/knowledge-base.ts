@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, existsSync, watch, mkdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { configStore } from './config-store.js';
+import { notifyAdminConfigError } from '../lib/admin-notifier.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -281,6 +282,16 @@ export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []
   const routingLines = intents.map(i => `  - "${i}" → ${routing[i].action}`).join('\n');
 
   // Assemble KB content: core files always, topic files per message
+  const missingCoreFiles = CORE_FILES.filter(f => !kbCache.get(f));
+  if (missingCoreFiles.length > 0) {
+    console.warn(`[KnowledgeBase] Missing core KB files: ${missingCoreFiles.join(', ')}`);
+    notifyAdminConfigError(
+      `Missing core knowledge base files: ${missingCoreFiles.join(', ')}\n\n` +
+      `Location: RainbowAI/.rainbow-kb/\n` +
+      `AI responses will be degraded without these files.`
+    ).catch(() => {});
+  }
+
   const coreContent = CORE_FILES
     .map(f => kbCache.get(f) || '')
     .filter(Boolean)
@@ -314,6 +325,11 @@ If a guest's issue was logged today, reference it naturally (e.g., "I see we had
 ${memoryParts.join('\n\n')}
 </operational_memory>`
     : '';
+
+  const missingTopicFiles = topicFiles.filter(f => !kbCache.get(f));
+  if (missingTopicFiles.length > 0) {
+    console.warn(`[KnowledgeBase] Missing topic files: ${missingTopicFiles.join(', ')} — responses may lack detail`);
+  }
 
   const topicContent = topicFiles
     .map(f => kbCache.get(f) || '')

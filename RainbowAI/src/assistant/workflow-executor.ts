@@ -3,6 +3,7 @@ import { configStore } from './config-store.js';
 import type { WorkflowDefinition, WorkflowStep } from './config-store.js';
 import { enhanceWorkflowStep, WorkflowEnhancerContext } from './workflow-enhancer.js';
 import { callAPI as httpClientCallAPI } from '../lib/http-client.js';
+import { notifyAdminConfigError } from '../lib/admin-notifier.js';
 
 // Wrapper to adapt http-client callAPI to workflow-enhancer's expected signature
 async function callAPIWrapper(url: string, options?: RequestInit): Promise<any> {
@@ -60,6 +61,40 @@ export async function executeWorkflowStep(
       response: 'Workflow not found. Please contact support.',
       newState: null
     };
+  }
+
+  // Validate workflow structure: steps must be a non-empty array
+  if (!Array.isArray(workflow.steps)) {
+    console.error(`[WorkflowExecutor] Workflow "${state.workflowId}" has invalid steps property (not an array)`);
+    notifyAdminConfigError(
+      `Workflow "${state.workflowId}" has invalid structure: steps is not an array.\n\n` +
+      `Please check workflows.json and ensure this workflow has a valid "steps" array.`
+    );
+    return {
+      response: 'This service is temporarily unavailable. Our team has been notified. Please contact staff directly.',
+      newState: null
+    };
+  }
+
+  if (workflow.steps.length === 0) {
+    console.error(`[WorkflowExecutor] Workflow "${state.workflowId}" has empty steps array`);
+    notifyAdminConfigError(
+      `Workflow "${state.workflowId}" has no steps defined (empty array).\n\n` +
+      `Please add steps to this workflow in workflows.json.`
+    );
+    return {
+      response: 'This service is temporarily unavailable. Our team has been notified. Please contact staff directly.',
+      newState: null
+    };
+  }
+
+  // Auto-correct out-of-bounds step index
+  if (state.currentStepIndex < 0) {
+    console.warn(`[WorkflowExecutor] Workflow "${state.workflowId}" had negative step index (${state.currentStepIndex}), resetting to 0`);
+    state.currentStepIndex = 0;
+  } else if (state.currentStepIndex > workflow.steps.length) {
+    console.warn(`[WorkflowExecutor] Workflow "${state.workflowId}" had step index ${state.currentStepIndex} beyond bounds (max ${workflow.steps.length}), clamping`);
+    state.currentStepIndex = workflow.steps.length;
   }
 
   // If user provided a message, store it for the previous step

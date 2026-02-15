@@ -32,7 +32,8 @@ export async function escalateToStaff(context: EscalationContext): Promise<strin
     complaint: 'Guest complaint',
     unknown_repeated: 'Bot unable to understand (3+ attempts)',
     group_booking: 'Group booking request (5+ guests)',
-    error: 'System error during conversation'
+    error: 'System error during conversation',
+    config_error: 'Configuration error (missing route/workflow)'
   };
 
   const label = reasonLabels[context.reason] || 'Unknown reason';

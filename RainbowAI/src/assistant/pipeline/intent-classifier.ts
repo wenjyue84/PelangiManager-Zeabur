@@ -406,17 +406,53 @@ export async function classifyAndRoute(
     case 'workflow': {
       resetUnknown(phone);
       const workflowId = route?.workflow_id;
+
       if (!workflowId) {
-        console.error(`[Router] No workflow_id configured for intent "${result.intent}"`);
-        state.response = result.response;
+        // FAIL-FAST: Workflow action without workflow_id
+        console.error(`[Router] ❌ CRITICAL: Intent "${result.intent}" has action=workflow but no workflow_id`);
+
+        notifyAdminConfigError(
+          `Intent "${result.intent}" configured with action=workflow but workflow_id is missing.\n\n` +
+          `Fix in routing.json by adding "workflow_id": "workflow_name"`
+        ).catch(() => {});
+
+        // Graceful degradation: Escalate to staff
+        diaryEvent.configError = `missing_workflow_id:${result.intent}`;
+        await escalateToStaff({
+          phone, pushName: msg.pushName,
+          reason: 'config_error',
+          recentMessages: convo.messages.slice(-5).map(m => `${m.role}: ${m.content}`),
+          originalMessage: text,
+          instanceId: msg.instanceId,
+          metadata: { configError: 'missing_workflow_id', intent: result.intent }
+        });
+        state.response = getTemplate('escalated', lang);
         break;
       }
 
       const workflows = configStore.getWorkflows();
       const workflow = workflows.workflows.find(w => w.id === workflowId);
+
       if (!workflow) {
-        console.error(`[Router] Workflow "${workflowId}" not found`);
-        state.response = result.response;
+        // FAIL-FAST: Referenced workflow doesn't exist
+        console.error(`[Router] ❌ CRITICAL: Workflow "${workflowId}" referenced but not found in workflows.json`);
+
+        notifyAdminConfigError(
+          `Intent "${result.intent}" references workflow_id "${workflowId}" which doesn't exist.\n\n` +
+          `Available workflows: ${workflows.workflows.map(w => w.id).join(', ')}`
+        ).catch(() => {});
+
+        // Graceful degradation: Escalate to staff
+        diaryEvent.configError = `workflow_not_found:${workflowId}`;
+        await escalateToStaff({
+          phone, pushName: msg.pushName,
+          reason: 'config_error',
+          recentMessages: convo.messages.slice(-5).map(m => `${m.role}: ${m.content}`),
+          originalMessage: text,
+          instanceId: msg.instanceId,
+          metadata: { configError: 'workflow_not_found', workflowId }
+        });
+        state.response = getTemplate('escalated', lang);
         break;
       }
 
