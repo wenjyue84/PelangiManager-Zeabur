@@ -10,21 +10,20 @@ import {
   isAIAvailable, getAISettings, getProviders, resolveApiKey,
   getGroqInstance, providerChat, chatWithFallback
 } from './ai-provider-manager.js';
+import { aiResponseSchema, aiResponseActionSchema } from './schemas.js';
+import type { AIAction, AIResponse as ZodAIResponse } from './schemas.js';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-export type AIAction = 'reply' | 'static_reply' | 'start_booking' | 'escalate' | 'forward_payment' | 'llm_reply';
+// Re-export from schemas for backward compatibility
+export type { AIAction } from './schemas.js';
 
-export interface AIResponse {
-  intent: string;
-  action: AIAction;
-  response: string;
-  confidence: number;
+export interface AIResponse extends ZodAIResponse {
   model?: string;
   responseTime?: number;
 }
 
-const VALID_ACTIONS: AIAction[] = ['reply', 'static_reply', 'llm_reply', 'start_booking', 'escalate', 'forward_payment'];
+const VALID_ACTIONS = aiResponseActionSchema.options;
 
 // ─── Chat (simple prompt → response) ────────────────────────────────
 
@@ -304,62 +303,84 @@ Respond with ONLY valid JSON: {"response":"<your reply>", "confidence": 0.0-1.0}
 
 // ─── Response Parsing ───────────────────────────────────────────────
 
+const FALLBACK_RESPONSE: AIResponse = { intent: 'general', action: 'reply', response: '', confidence: 0.5 };
+
+/**
+ * Attempt partial recovery from a raw parsed object.
+ * Extracts whatever valid fields exist and fills the rest with safe defaults.
+ */
+function recoverPartial(obj: Record<string, unknown>): AIResponse {
+  const routing = configStore.getRouting();
+  const definedIntents = Object.keys(routing);
+
+  const rawIntent = typeof obj.intent === 'string' ? obj.intent : '';
+  const intent = rawIntent && definedIntents.includes(rawIntent) ? rawIntent : 'general';
+
+  const rawAction = typeof obj.action === 'string' ? obj.action : '';
+  const action: AIAction = (VALID_ACTIONS as readonly string[]).includes(rawAction)
+    ? (rawAction as AIAction)
+    : 'reply';
+
+  const rawResponse = typeof obj.response === 'string' ? obj.response : '';
+  const response = rawResponse && !looksLikeJson(rawResponse) ? rawResponse : '';
+
+  const rawConfidence = typeof obj.confidence === 'number' ? obj.confidence : NaN;
+  const confidence = Number.isFinite(rawConfidence) ? Math.min(1, Math.max(0, rawConfidence)) : 0.5;
+
+  return { intent, action, response, confidence };
+}
+
 export function parseAIResponse(raw: string): AIResponse {
+  // Step 1: Try JSON.parse
+  let parsed: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(raw);
-
-    const routing = configStore.getRouting();
-    const definedIntents = Object.keys(routing);
-    const intent = typeof parsed.intent === 'string' && definedIntents.includes(parsed.intent)
-      ? parsed.intent
-      : 'general';
-
-    return {
-      intent,
-      action: VALID_ACTIONS.includes(parsed.action) ? parsed.action : 'reply',
-      response: (typeof parsed.response === 'string' && !looksLikeJson(parsed.response)) ? parsed.response : '',
-      confidence: typeof parsed.confidence === 'number' ? Math.min(1, Math.max(0, parsed.confidence)) : 0.5
-    };
+    parsed = JSON.parse(raw);
   } catch {
+    // JSON.parse failed — try to extract JSON from mixed text
     const lastBrace = raw.lastIndexOf('}');
     if (lastBrace >= 0) {
       for (let start = raw.lastIndexOf('{'); start >= 0; start = raw.lastIndexOf('{', start - 1)) {
         if (start > lastBrace) continue;
         try {
           const candidate = raw.slice(start, lastBrace + 1);
-          const parsed = JSON.parse(candidate);
-          if (
-            typeof parsed.intent === 'string' &&
-            typeof parsed.response === 'string' &&
-            typeof parsed.confidence === 'number'
-          ) {
-            const routing = configStore.getRouting();
-            const definedIntents = Object.keys(routing);
-            const intent = definedIntents.includes(parsed.intent) ? parsed.intent : 'general';
-            const responseText = parsed.response.trim();
-            if (responseText) {
-              return {
-                intent,
-                action: VALID_ACTIONS.includes(parsed.action) ? parsed.action : 'reply',
-                response: responseText,
-                confidence: Math.min(1, Math.max(0, parsed.confidence))
-              };
-            }
-          }
+          parsed = JSON.parse(candidate);
+          // Found valid JSON — validate it below
+          break;
         } catch {
           continue;
         }
-        break;
-      }
-      const jsonStart = raw.lastIndexOf('\n\n{');
-      if (jsonStart > 0) {
-        const stripped = raw.slice(0, jsonStart).trim();
-        if (stripped && !looksLikeJson(stripped)) return { intent: 'general', action: 'reply', response: stripped, confidence: 0.5 };
       }
     }
-    console.warn('[AI] parseAIResponse: could not extract plain-text response, using empty');
-    return { intent: 'general', action: 'reply', response: '', confidence: 0.5 };
+    // If we still don't have parsed JSON, try plain text extraction
+    if (!parsed!) {
+      if (lastBrace >= 0) {
+        const jsonStart = raw.lastIndexOf('\n\n{');
+        if (jsonStart > 0) {
+          const stripped = raw.slice(0, jsonStart).trim();
+          if (stripped && !looksLikeJson(stripped)) {
+            return { intent: 'general', action: 'reply', response: stripped, confidence: 0.5 };
+          }
+        }
+      }
+      console.warn('[AI] parseAIResponse: could not parse JSON, using fallback');
+      return { ...FALLBACK_RESPONSE };
+    }
   }
+
+  // Step 2: Validate with Zod schema
+  const result = aiResponseSchema.safeParse(parsed!);
+  if (result.success) {
+    // Full validation passed — still validate intent against routing
+    const routing = configStore.getRouting();
+    const definedIntents = Object.keys(routing);
+    const intent = definedIntents.includes(result.data.intent) ? result.data.intent : 'general';
+    const response = looksLikeJson(result.data.response) ? '' : result.data.response;
+    return { ...result.data, intent, response };
+  }
+
+  // Step 3: Validation failed — attempt partial recovery
+  console.warn('[AI] parseAIResponse: Zod validation failed, attempting partial recovery:', result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', '));
+  return recoverPartial(parsed!);
 }
 
 /** True if the string looks like raw JSON to avoid leaking to guests. */

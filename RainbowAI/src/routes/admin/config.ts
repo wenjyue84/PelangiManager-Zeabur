@@ -4,6 +4,7 @@ import { configStore } from '../../assistant/config-store.js';
 import { circuitBreakerRegistry } from '../../assistant/circuit-breaker.js';
 import { rateLimitManager } from '../../assistant/rate-limit-manager.js';
 import type { IntentEntry, RoutingAction, RoutingData, WorkflowDefinition, AIProvider } from '../../assistant/config-store.js';
+import { updateRoutingRequestSchema, updateSingleRouteRequestSchema } from '../../assistant/schemas.js';
 import { deepMerge } from './utils.js';
 import { ok, badRequest, notFound, conflict, serverError } from './http-utils.js';
 
@@ -16,38 +17,26 @@ router.get('/routing', (_req: Request, res: Response) => {
 });
 
 router.put('/routing', (req: Request, res: Response) => {
-  const data = req.body;
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    badRequest(res, 'routing object required');
+  const result = updateRoutingRequestSchema.safeParse(req.body);
+  if (!result.success) {
+    badRequest(res, result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; '));
     return;
   }
-  const validActions: RoutingAction[] = ['static_reply', 'llm_reply', 'workflow'];
-  for (const [intent, cfg] of Object.entries(data)) {
-    if (!cfg || typeof (cfg as any).action !== 'string' || !validActions.includes((cfg as any).action)) {
-      badRequest(res, `Invalid action for intent "${intent}". Must be one of: ${validActions.join(', ')}`);
-      return;
-    }
-  }
-  configStore.setRouting(data as RoutingData);
-  ok(res, { routing: data });
+  configStore.setRouting(result.data as RoutingData);
+  ok(res, { routing: result.data });
 });
 
 router.patch('/routing/:intent', (req: Request, res: Response) => {
   const { intent } = req.params;
-  const { action, workflow_id } = req.body;
-  const validActions: RoutingAction[] = ['static_reply', 'llm_reply', 'workflow'];
-  if (!action || !validActions.includes(action)) {
-    badRequest(res, `action must be one of: ${validActions.join(', ')}`);
+  const result = updateSingleRouteRequestSchema.safeParse(req.body);
+  if (!result.success) {
+    badRequest(res, result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; '));
     return;
   }
   const data = { ...configStore.getRouting() };
-  const entry: { action: RoutingAction; workflow_id?: string } = { action };
-  if (action === 'workflow' && workflow_id) {
-    entry.workflow_id = workflow_id;
-  }
-  data[intent] = entry;
+  data[intent] = result.data;
   configStore.setRouting(data);
-  ok(res, { intent, action, workflow_id: entry.workflow_id });
+  ok(res, { intent, ...result.data });
 });
 
 // ─── Intents (Skills) ───────────────────────────────────────────────

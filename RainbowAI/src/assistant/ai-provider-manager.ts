@@ -78,6 +78,60 @@ export function isAIAvailable(): boolean {
   return getProviders().some(p => resolveApiKey(p) !== null);
 }
 
+// ─── Response Validation ─────────────────────────────────────────────
+
+/** Validate OpenAI-compatible response structure; throws descriptive errors to trigger fallback */
+function validateProviderResponse(data: any, providerName: string, startTime: number): string {
+  if (!data) {
+    throw new Error(`${providerName}: empty response body`);
+  }
+  if (!Array.isArray(data.choices)) {
+    throw new Error(`${providerName}: response missing choices array`);
+  }
+  if (data.choices.length === 0) {
+    throw new Error(`${providerName}: choices array is empty`);
+  }
+  const message = data.choices[0]?.message;
+  if (!message || typeof message !== 'object') {
+    throw new Error(`${providerName}: choices[0] missing message object`);
+  }
+  if (typeof message.content !== 'string') {
+    throw new Error(`${providerName}: message.content is not a string (got ${typeof message.content})`);
+  }
+  const trimmed = message.content.trim();
+  if (!trimmed) {
+    throw new Error(`${providerName}: message.content is empty after trim`);
+  }
+  const elapsed = Date.now() - startTime;
+  console.log(`[AI] ✓ ${providerName} responded (${elapsed}ms, ${trimmed.length} chars)`);
+  return trimmed;
+}
+
+/** Validate Google Gemini response structure; throws descriptive errors to trigger fallback */
+function validateGeminiResponse(data: any, providerName: string, startTime: number): string {
+  if (!data) {
+    throw new Error(`${providerName}: empty response body`);
+  }
+  if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
+    throw new Error(`${providerName}: response missing candidates array`);
+  }
+  const parts = data.candidates[0]?.content?.parts;
+  if (!Array.isArray(parts) || parts.length === 0) {
+    throw new Error(`${providerName}: candidates[0] missing content.parts`);
+  }
+  const text = parts[0]?.text;
+  if (typeof text !== 'string') {
+    throw new Error(`${providerName}: parts[0].text is not a string (got ${typeof text})`);
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error(`${providerName}: parts[0].text is empty after trim`);
+  }
+  const elapsed = Date.now() - startTime;
+  console.log(`[AI] ✓ ${providerName} responded (${elapsed}ms, ${trimmed.length} chars)`);
+  return trimmed;
+}
+
 // ─── Timeout Wrapper ─────────────────────────────────────────────────
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> {
@@ -98,6 +152,7 @@ export async function providerChat(
   temperature: number,
   jsonMode: boolean = false
 ): Promise<string | null> {
+  const startTime = Date.now();
   const apiKey = resolveApiKey(provider);
   if (!apiKey && provider.type !== 'ollama') return null;
 
@@ -117,7 +172,7 @@ export async function providerChat(
       60000,
       `${provider.name} request timeout after 60s`
     );
-    return response.choices[0]?.message?.content?.trim() || null;
+    return validateProviderResponse(response, provider.name, startTime);
   }
 
   // google-gemini uses native Gemini API format
@@ -156,7 +211,7 @@ export async function providerChat(
       throw new Error(`${provider.name} ${res.status}: ${errText.slice(0, 200)}`);
     }
 
-    return res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    return validateGeminiResponse(res.data, provider.name, startTime);
   }
 
   // openai-compatible & ollama both use axios
@@ -202,7 +257,7 @@ export async function providerChat(
     throw new Error(`${provider.name} ${res.status}: ${errText.slice(0, 200)}`);
   }
 
-  return res.data.choices?.[0]?.message?.content?.trim() || null;
+  return validateProviderResponse(res.data, provider.name, startTime);
 }
 
 // ─── Fallback Chain ──────────────────────────────────────────────────

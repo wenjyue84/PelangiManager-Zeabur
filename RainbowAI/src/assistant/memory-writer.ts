@@ -27,6 +27,7 @@ export interface ConversationEvent {
   escalated: boolean;
   bookingStarted: boolean;
   workflowStarted: boolean;
+  configError?: string;     // runtime config error (e.g., 'missing_route:pricing')
 }
 
 // ─── Deduplication ──────────────────────────────────────────────────
