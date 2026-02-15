@@ -123,9 +123,9 @@
     {
       "intent": "extra_amenity_request",
       "response": {
-        "en": "Of course! Contact our on-site staff Maya via WhatsApp at +60127088789 and she can deliver extra towels, pillows, or blankets to your capsule. Just let her know what you need!",
-        "ms": "Tentu! Hubungi staf kami Maya melalui WhatsApp di +60127088789 dan dia boleh hantar tuala, bantal, atau selimut tambahan ke kapsul anda. Beritahu dia apa yang anda perlukan!",
-        "zh": "当然可以！通过WhatsApp联系我们的现场工作人员Maya（+60127088789），她可以将额外的毛巾、枕头或毯子送到您的胶囊房。只需告诉她您需要什么！"
+        "en": "Of course! Our housekeeping team will deliver extra towels, pillows, or blankets to your capsule. Contact our on-site staff Maya via WhatsApp at +60127088789 and let her know what you need!",
+        "ms": "Tentu! Pasukan housekeeping kami akan hantar tuala, bantal, atau selimut tambahan ke kapsul anda. Hubungi staf kami Maya melalui WhatsApp di +60127088789 dan beritahu dia apa yang anda perlukan!",
+        "zh": "当然可以！我们的客房服务团队会将额外的毛巾、枕头或毯子送到您的胶囊房。通过WhatsApp联系工作人员Maya（+60127088789），告诉她您需要什么！"
       }
     },
     {
@@ -147,17 +147,57 @@
     {
       "intent": "late_checkout_request",
       "response": {
-        "en": "Late checkout is **free** (subject to availability)! Standard checkout is 12:00 PM. If you'd like to stay later, please let us know your preferred time and we'll check availability. No extra charge if space is available. — Rainbow 🌈",
-        "ms": "Late checkout adalah **percuma** (bergantung kepada ketersediaan)! Checkout biasa 12:00 PM. Jika anda ingin keluar lewat, beritahu kami masa yang anda mahukan dan kami akan semak ketersediaan. Tiada caj tambahan jika ada ruang. — Rainbow 🌈",
-        "zh": "延迟退房**免费**（视房态而定）！标准退房时间为中午12:00。如果您想晚点退房，请告知您希望的时间，我们会检查可用性。有空房的话不收额外费用。— Rainbow 🌈"
+        "en": "⏰ *Late Check-out Info*\n\nOur standard check-out is *12:00 PM (noon)*.\n\nLate check-out is subject to availability and may incur a charge of *RM20/hour*.\n\nMaximum late check-out is *3:00 PM*.\n\nPlease check with our staff Maya at +60127088789 to confirm availability for your requested time. — Rainbow 🌈",
+        "ms": "⏰ *Info Daftar Keluar Lewat*\n\nDaftar keluar standard ialah *12:00 PM (tengah hari)*.\n\nDaftar keluar lewat tertakluk kepada ketersediaan dan mungkin dikenakan caj *RM20/jam*.\n\nMaksimum daftar keluar lewat ialah *3:00 PM*.\n\nSila hubungi staf kami Maya di +60127088789 untuk pengesahan. — Rainbow 🌈",
+        "zh": "⏰ *延迟退房信息*\n\n标准退房时间为*中午12:00*。\n\n延迟退房视空房情况而定，可能收取*RM20/小时*的费用。\n\n最迟退房时间为*下午3:00*。\n\n请联系我们的工作人员 Maya (+60127088789) 确认。— Rainbow 🌈"
       }
     },
     {
       "intent": "forgot_item_post_checkout",
       "response": {
-        "en": "Oh no! I'm sorry you **left** your items behind. 😢\n\n**Contact us immediately:** WhatsApp/call +60127088789\n\nWe have a **Lost and Found** system. Please provide:\n1. Item description (what, color, brand)\n2. Where you think you left it (capsule number, common area)\n3. Check-out date\n\nWe'll search and confirm within 24 hours.\n\n**Pickup Options:**\n• Pickup in person (9 AM - 6 PM)\n• Shipping to your address (shipping fee applies)\n• Hold for your next visit (up to 30 days)\n\n**Urgent items (passport, ID):** We prioritize immediate notification and secure storage.\n\n— Rainbow 🌈",
-        "ms": "Oh tidak! Maaf anda **tertinggal** barang. 😢\n\n**Hubungi kami segera:** WhatsApp/panggil +60127088789\n\nKami ada sistem **Barang Tertinggal** (Lost and Found). Sila berikan:\n1. Penerangan item (apa, warna, jenama)\n2. Di mana anda fikir anda tertinggal (nombor kapsul, kawasan umum)\n3. Tarikh check-out\n\nKami akan cari dan confirm dalam 24 jam.\n\n**Pilihan Ambil:**\n• Ambil sendiri (9 AM - 6 PM)\n• Penghantaran ke alamat anda (caj penghantaran dikenakan)\n• Simpan untuk lawatan seterusnya (sehingga 30 hari)\n\n**Item penting (pasport, ID):** Kami utamakan pemberitahuan segera dan penyimpanan selamat.\n\n— Rainbow 🌈",
-        "zh": "哦不！很抱歉您**遗落**了物品。😢\n\n**立即联系我们：** WhatsApp/致电 +60127088789\n\n我们有**失物招领**系统。请提供：\n1. 物品描述（什么、颜色、品牌）\n2. 您认为遗落的地方（胶囊号码、公共区域）\n3. 退房日期\n\n我们将在24小时内搜索并确认。\n\n**领取选项：**\n• 亲自领取（上午9点 - 下午6点）\n• 邮寄到您的地址（需支付邮费）\n• 保留到您下次光临（最多30天）\n\n**紧急物品（护照、身份证）：** 我们优先处理并安全保管。\n\n— Rainbow 🌈"
+        "en": "📦 *Lost & Found*\n\nWe'll check our Lost and Found for your item immediately!\n\nFor urgent items like a passport or valuables, our security team will prioritize the search right away.\n\nOptions for retrieval:\n• *Pickup*: Visit us at 26A Jalan Perang, Taman Pelangi\n• *Shipping*: We can arrange delivery (shipping cost borne by guest)\n\nItems are kept for *30 days*.\n\nPlease contact staff Maya at +60127088789 with details of your lost item. — Rainbow 🌈",
+        "ms": "📦 *Barang Hilang & Jumpa*\n\nKami akan semak Lost and Found untuk barang anda dengan segera!\n\nUntuk barang penting seperti pasport atau barang berharga, pasukan keselamatan kami akan mengutamakan pencarian.\n\nPilihan pengambilan:\n• *Ambil sendiri*: Datang ke 26A Jalan Perang, Taman Pelangi\n• *Penghantaran*: Kami boleh hantar (kos ditanggung tetamu)\n\nBarang disimpan selama *30 hari*.\n\nSila hubungi staf Maya di +60127088789. — Rainbow 🌈",
+        "zh": "📦 *失物招领*\n\n我们会立即查看失物招领处！\n\n对于护照或贵重物品等紧急物品，我们的安保团队会优先搜寻。\n\n领取方式：\n• *自取*：到 26A Jalan Perang, Taman Pelangi\n• *邮寄*：我们可以安排寄送（邮费由客人承担）\n\n物品保留 *30天*。\n\n请联系工作人员 Maya (+60127088789)。— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "positive_review",
+      "response": {
+        "en": "Thank you so much for your kind words! 😊 We truly appreciate your feedback and are glad you enjoyed your stay at Pelangi Capsule. Your recommendation means a lot to us! We'd love to welcome you back anytime. — Rainbow 🌈",
+        "ms": "Terima kasih banyak atas kata-kata baik anda! 😊 Kami sangat menghargai maklum balas anda dan gembira anda menikmati penginapan di Pelangi Capsule. Anda dialu-alukan untuk kembali bila-bila masa! — Rainbow 🌈",
+        "zh": "非常感谢您的好评！😊 我们真心感谢您的反馈，很高兴您在 Pelangi Capsule 住得愉快。随时欢迎再来！— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "review_feedback",
+      "response": {
+        "en": "Thank you for sharing your feedback! We truly appreciate it. If anything wasn't up to standard, we're sorry and want to make it right — your experience matters to us. Please don't hesitate to contact staff Maya at +60127088789 if there's anything we can do. — Rainbow 🌈",
+        "ms": "Terima kasih kerana berkongsi maklum balas anda! Kami sangat menghargai. Jika ada apa-apa yang tidak memuaskan, kami minta maaf dan ingin memperbaikinya. Hubungi staf Maya di +60127088789 jika ada apa-apa kami boleh bantu. — Rainbow 🌈",
+        "zh": "感谢您分享反馈！我们真心感谢。如果有任何不满意的地方，我们深感抱歉并希望改进。请联系工作人员Maya +60127088789。— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "billing_inquiry",
+      "response": {
+        "en": "💳 *Billing Inquiry*\n\nWe'll review your bill and charges right away. If there are any discrepancies, we'll clarify or make adjustments.\n\nPlease contact our staff Maya at +60127088789 with your booking details so we can review the specific charge in question. — Rainbow 🌈",
+        "ms": "💳 *Pertanyaan Bil*\n\nKami akan semak bil dan caj anda. Jika ada sebarang perbezaan, kami akan jelaskan atau buat pelarasan.\n\nSila hubungi staf Maya di +60127088789 dengan butiran tempahan anda. — Rainbow 🌈",
+        "zh": "💳 *账单查询*\n\n我们会立即审查您的账单和收费。如有任何差异，我们会澄清或进行调整。\n\n请联系工作人员 Maya (+60127088789) 并提供您的预订详情。— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "climate_control_complaint",
+      "response": {
+        "en": "We're sorry about the temperature issue! Each capsule has an individual fan you can adjust. If the AC is too cold or too hot, please let our staff know and we can cool or warm up the area. Contact Maya at +60127088789 for immediate help. — Rainbow 🌈",
+        "ms": "Maaf tentang masalah suhu! Setiap kapsul ada kipas individu yang boleh dilaraskan. Jika AC terlalu sejuk atau panas, maklumkan staf kami dan kami boleh laraskan. Hubungi Maya di +60127088789 untuk bantuan segera. — Rainbow 🌈",
+        "zh": "对不起温度问题！每个胶囊房都有可调节的独立风扇。如果空调太冷或太热，请告知工作人员，我们可以调整。联系Maya +60127088789获得即时帮助。— Rainbow 🌈"
+      }
+    },
+    {
+      "intent": "unknown",
+      "response": {
+        "en": "I'm not sure I understand. Could you rephrase your question? You can also contact our staff directly at +60127088789 for assistance. — Rainbow 🌈",
+        "ms": "Maaf, saya tidak faham. Boleh tulis semula soalan anda? Anda juga boleh hubungi staf kami di +60127088789 untuk bantuan. — Rainbow 🌈",
+        "zh": "抱歉，我不太明白。您可以换个方式问吗？您也可以直接联系我们的工作人员 +60127088789 寻求帮助。— Rainbow 🌈"
       }
     }
   ],

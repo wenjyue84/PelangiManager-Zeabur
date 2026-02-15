@@ -523,14 +523,19 @@
           "poor service",
           "bad service",
           "left and want to complain",
-          "checkout complaint"
+          "checkout complaint",
+          "food was awful",
+          "terrible experience",
+          "awful during my stay"
         ],
         "ms": [
           "lepas check out",
           "lepas checkout",
           "aduan lepas checkout",
           "complain lepas keluar",
-          "servis tak baik"
+          "servis tak baik",
+          "pengalaman teruk",
+          "makanan teruk"
         ],
         "zh": [
           "退房后",
@@ -1141,7 +1146,10 @@
           "people too loud",
           "construction noise",
           "baby crying",
-          "quiet hours"
+          "quiet hours",
+          "crying all night",
+          "baby noise",
+          "baby won't stop"
         ],
         "ms": [
           "terlalu bising",
@@ -1153,7 +1161,9 @@
           "susah tidur",
           "orang bising",
           "bunyi pembinaan",
-          "baby menangis"
+          "baby menangis",
+          "bayi menangis",
+          "tangisan bayi"
         ],
         "zh": [
           "太吵",
@@ -1228,7 +1238,10 @@
           "lock broken",
           "shower broken",
           "toilet broken",
-          "out of order"
+          "out of order",
+          "ac is not working",
+          "aircon broken",
+          "fan not working"
         ],
         "ms": [
           "rosak",
@@ -1241,7 +1254,10 @@
           "kunci rosak",
           "shower rosak",
           "tandas rosak",
-          "tak boleh guna"
+          "tak boleh guna",
+          "aircond rosak",
+          "aircond tak jalan",
+          "kipas rosak"
         ],
         "zh": [
           "坏了",
@@ -1446,7 +1462,11 @@
           "receipt",
           "my bill",
           "the bill",
-          "charges"
+          "charges",
+          "unexpected charge",
+          "why was i charged",
+          "extra charge on my bill",
+          "charge on my bill"
         ],
         "ms": [
           "bil",
@@ -1455,7 +1475,8 @@
           "billing",
           "resit",
           "bil saya",
-          "caj"
+          "caj",
+          "bil saya ada caj"
         ],
         "zh": [
           "账单",

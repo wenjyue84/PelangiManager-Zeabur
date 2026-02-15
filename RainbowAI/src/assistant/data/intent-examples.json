@@ -1051,7 +1051,10 @@
           "bill has extra fees",
           "invoice question",
           "billing issue",
-          "wrong amount charged"
+          "wrong amount charged",
+          "There is an extra charge on my bill",
+          "Why was I charged extra?",
+          "I see unexpected charges"
         ],
         "ms": [
           "bill ada extra charge",
@@ -1173,7 +1176,10 @@
           "left already but had bad service",
           "want to give feedback about service after checkout",
           "post checkout complaint",
-          "I've left but the service was poor"
+          "I've left but the service was poor",
+          "The food was awful during my stay",
+          "Terrible experience at your hostel",
+          "I want to complain about my recent stay"
         ],
         "ms": [
           "lepas check out saya nak complain pasal servis",
@@ -1186,6 +1192,53 @@
           "已经退房了但要投诉",
           "退房后投诉",
           "离开后服务很差想反馈"
+        ]
+      }
+    },
+    {
+      "intent": "facility_malfunction",
+      "examples": {
+        "en": [
+          "The AC is not working",
+          "My aircon is broken",
+          "The fan stopped working",
+          "AC is broken",
+          "The air conditioning doesn't work",
+          "Fan is not working"
+        ],
+        "ms": [
+          "AC rosak",
+          "Aircond tak jalan",
+          "Kipas rosak",
+          "AC tak berfungsi"
+        ],
+        "zh": [
+          "空调坏了",
+          "冷气不能用",
+          "风扇不工作了"
+        ]
+      }
+    },
+    {
+      "intent": "noise_complaint",
+      "examples": {
+        "en": [
+          "A baby has been crying all night",
+          "There is too much noise from babies",
+          "Baby noise keeping me awake",
+          "Baby crying all night",
+          "Can't sleep because of baby crying",
+          "The baby won't stop crying"
+        ],
+        "ms": [
+          "Bayi menangis semalaman",
+          "Baby bising sangat",
+          "Tangisan bayi tak henti"
+        ],
+        "zh": [
+          "婴儿哭了整晚",
+          "婴儿太吵了",
+          "婴儿一直哭"
         ]
       }
     }

@@ -60,11 +60,10 @@
     "action": "static_reply"
   },
   "facility_orientation": {
-    "action": "llm_reply"
+    "action": "static_reply"
   },
   "climate_control_complaint": {
-    "action": "workflow",
-    "workflow_id": "complaint_handling"
+    "action": "static_reply"
   },
   "noise_complaint": {
     "action": "workflow",
@@ -91,7 +90,7 @@
     "workflow_id": "complaint_handling"
   },
   "extra_amenity_request": {
-    "action": "llm_reply"
+    "action": "static_reply"
   },
   "tourist_guide": {
     "action": "workflow",
@@ -101,27 +100,29 @@
     "action": "static_reply"
   },
   "late_checkout_request": {
-    "action": "llm_reply"
+    "action": "static_reply"
   },
   "luggage_storage": {
     "action": "static_reply"
   },
   "billing_inquiry": {
-    "action": "llm_reply"
+    "action": "static_reply"
   },
   "forgot_item_post_checkout": {
-    "action": "llm_reply"
+    "action": "static_reply"
   },
   "post_checkout_complaint": {
     "action": "workflow",
     "workflow_id": "complaint_handling"
   },
   "billing_dispute": {
-    "action": "workflow",
-    "workflow_id": "escalate"
+    "action": "static_reply"
+  },
+  "positive_review": {
+    "action": "static_reply"
   },
   "review_feedback": {
-    "action": "llm_reply"
+    "action": "static_reply"
   },
   "complaint": {
     "action": "workflow",

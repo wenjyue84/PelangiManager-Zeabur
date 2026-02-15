@@ -20,10 +20,11 @@ export interface FuzzyMatchResult {
  */
 export class FuzzyIntentMatcher {
   private fuse: Fuse<{ intent: string; keyword: string; language: string }>;
+  private searchData: { intent: string; keyword: string; language: string }[];
 
   constructor(intents: KeywordIntent[]) {
     // Flatten keywords with their intents for searching
-    const searchData = intents.flatMap(intent =>
+    this.searchData = intents.flatMap(intent =>
       intent.keywords.map(keyword => ({
         intent: intent.intent,
         keyword: keyword.toLowerCase().trim(),
@@ -31,7 +32,7 @@ export class FuzzyIntentMatcher {
       }))
     );
 
-    this.fuse = new Fuse(searchData, {
+    this.fuse = new Fuse(this.searchData, {
       keys: ['keyword'],
       threshold: 0.3,        // 0 = exact match, 1 = match anything (0.3 = moderate)
       distance: 100,         // Max character distance for matching
@@ -39,6 +40,39 @@ export class FuzzyIntentMatcher {
       minMatchCharLength: 2, // Minimum 2 characters to match
       includeScore: true,    // Include match score in results
     });
+  }
+
+  /**
+   * Substring fallback: find keywords that appear as substrings in user text.
+   * Used when Fuse.js fails (query much longer than keyword items).
+   * Only matches keywords with 4+ words AND 18+ chars to avoid false positives.
+   */
+  private substringMatch(text: string, languageFilter?: 'en' | 'ms' | 'zh'): FuzzyMatchResult | null {
+    const normalized = text.toLowerCase().trim();
+    let bestMatch: { intent: string; keyword: string; length: number } | null = null;
+
+    for (const entry of this.searchData) {
+      // Require 4+ words AND 18+ chars to avoid generic phrase matches
+      if (entry.keyword.split(/\s+/).length < 4 || entry.keyword.length < 18) continue;
+      // Apply language filter
+      if (languageFilter && entry.language !== languageFilter && entry.language !== 'en') continue;
+
+      if (normalized.includes(entry.keyword)) {
+        // Prefer longest matching keyword (more specific = better)
+        if (!bestMatch || entry.keyword.length > bestMatch.length) {
+          bestMatch = { intent: entry.intent, keyword: entry.keyword, length: entry.keyword.length };
+        }
+      }
+    }
+
+    if (bestMatch) {
+      return {
+        intent: bestMatch.intent,
+        score: 0.95, // High confidence for substring matches
+        matchedKeyword: bestMatch.keyword
+      };
+    }
+    return null;
   }
 
   /**
@@ -50,8 +84,6 @@ export class FuzzyIntentMatcher {
   match(text: string, languageFilter?: 'en' | 'ms' | 'zh'): FuzzyMatchResult | null {
     const normalized = text.toLowerCase().trim();
     const results = this.fuse.search(normalized);
-
-    if (results.length === 0) return null;
 
     // Filter by language if specified
     let filteredResults = results;
@@ -67,12 +99,24 @@ export class FuzzyIntentMatcher {
       }
     }
 
+    // No Fuse.js results at all — try substring fallback
+    if (filteredResults.length === 0) {
+      return this.substringMatch(normalized, languageFilter);
+    }
+
     // Get best match (lowest score = best match in Fuse.js)
     const bestMatch = filteredResults[0];
+    const confidence = 1 - (bestMatch.score || 0);
+
+    // If Fuse.js confidence is low, try substring fallback (handles long messages)
+    if (confidence < 0.70) {
+      const subMatch = this.substringMatch(normalized, languageFilter);
+      if (subMatch) return subMatch;
+    }
 
     return {
       intent: bestMatch.item.intent,
-      score: 1 - (bestMatch.score || 0),  // Convert to confidence (0-1, higher = better)
+      score: confidence,
       matchedKeyword: bestMatch.item.keyword
     };
   }

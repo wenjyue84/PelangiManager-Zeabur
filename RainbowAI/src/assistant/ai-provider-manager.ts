@@ -177,8 +177,8 @@ export async function providerChat(
 
     const response = await withTimeout(
       groq.chat.completions.create(body),
-      60000,
-      `${provider.name} request timeout after 60s`
+      15000,
+      `${provider.name} request timeout after 15s`
     );
     return validateProviderResponse(response, provider.name, startTime);
   }
@@ -207,7 +207,7 @@ export async function providerChat(
     const url = `${provider.base_url}/models/${provider.model}:generateContent?key=${apiKey}`;
     const res = await axios.post(url, body, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 60000,
+      timeout: 15000,
       validateStatus: () => true
     });
 
@@ -242,7 +242,7 @@ export async function providerChat(
 
   const res = await axios.post(`${provider.base_url}/chat/completions`, body, {
     headers,
-    timeout: 60000,
+    timeout: 15000,
     validateStatus: () => true
   });
 

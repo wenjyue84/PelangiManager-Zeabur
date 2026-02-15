@@ -182,7 +182,7 @@ export async function classifyAndRespondWithSmartFallback(
 
         const res = await axios.post(`${provider.base_url}/chat/completions`, body, {
           headers,
-          timeout: 90000,
+          timeout: 15000,
           validateStatus: () => true
         });
 

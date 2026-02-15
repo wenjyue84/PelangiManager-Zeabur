@@ -372,9 +372,9 @@
         {
           "id": "s1",
           "message": {
-            "en": "I **understand** and sincerely apologize for the inconvenience. 😔 Your comfort is our top priority. We can arrange **maintenance** (**technician**), **relocation** to another **room**/capsule, or direct staff support. Could you please describe the issue in detail? (e.g., noise, cleanliness, facility problem)",
-            "ms": "Saya **faham** dan mohon maaf atas kesulitan. 😔 Keselesaan anda keutamaan kami. Kami boleh urus **penyelenggaraan** (**teknisi**), **pindah** ke **bilik**/kapsul lain, atau bantuan staf terus. Boleh terangkan masalah dengan lebih terperinci? (contoh: bunyi bising, kebersihan, kemudahan)",
-            "zh": "我们**理解**并深表歉意。😔 您的舒适是我们的首要任务。我们可以安排**维修**（**技术人员**）、换到另一间**房间**/胶囊或工作人员直接协助。能否详细描述一下问题？（例如：噪音、清洁、设施问题）"
+            "en": "We're truly sorry to hear about this. 😔 Your comfort is our top priority and we sincerely apologize for the inconvenience. We can arrange **maintenance**, **relocate** you to another capsule if needed, or provide immediate staff support. We will review the situation and if applicable, offer appropriate compensation such as a voucher. Could you please describe the issue in detail? (e.g., noise, cleanliness, facility problem)",
+            "ms": "Kami amat minta maaf mendengar ini. 😔 Keselesaan anda keutamaan kami dan kami mohon maaf atas kesulitan. Kami boleh urus **penyelenggaraan**, **pindahkan** anda ke kapsul lain jika perlu, atau beri sokongan staf segera. Kami akan mengkaji semula situasi dan jika berkenaan, tawarkan pampasan seperti baucar. Boleh terangkan masalah dengan lebih terperinci? (contoh: bunyi bising, kebersihan, kemudahan)",
+            "zh": "我们真诚地为此感到抱歉。😔 您的舒适是我们的首要任务，我们对给您带来的不便深表歉意。我们可以安排**维修**、如有需要可以**换房**至另一个胶囊、或提供即时工作人员支持。我们将审查情况，如适用将提供适当的补偿，例如优惠券。能否详细描述一下问题？（例如：噪音、清洁、设施问题）"
           },
           "waitForReply": false
         },
@@ -537,9 +537,9 @@
         {
           "id": "s1",
           "message": {
-            "en": "Let me connect you to our staff...",
-            "ms": "Saya hubungkan anda ke staf...",
-            "zh": "正在为您转接工作人员..."
+            "en": "We will conduct a thorough review and investigation of your concern. For billing disputes, if an error is found during our investigation, we will process a refund. Let me connect you to our staff for immediate assistance...",
+            "ms": "Kami akan menjalankan semakan dan penyiasatan menyeluruh terhadap kebimbangan anda. Untuk pertikaian bil, jika ralat ditemui semasa penyiasatan kami, kami akan proses bayaran balik. Biar saya hubungkan anda ke staf untuk bantuan segera...",
+            "zh": "我们将对您的问题进行彻底的审查和调查。对于账单争议，如果在调查中发现错误，我们将处理退款。让我为您转接工作人员以获得即时协助..."
           },
           "waitForReply": false,
           "action": {
@@ -549,9 +549,9 @@
         {
           "id": "s2",
           "message": {
-            "en": "✅ Message sent to staff. They will contact you shortly.",
-            "ms": "✅ Mesej dihantar ke staf. Mereka akan hubungi anda tidak lama lagi.",
-            "zh": "✅ 消息已发送给工作人员。他们会尽快联系您。"
+            "en": "✅ Message sent to staff. They will review your case and contact you shortly to discuss the investigation findings.",
+            "ms": "✅ Mesej dihantar ke staf. Mereka akan kaji semula kes anda dan hubungi anda tidak lama lagi untuk membincangkan hasil penyiasatan.",
+            "zh": "✅ 消息已发送给工作人员。他们会审查您的案件并尽快联系您讨论调查结果。"
           },
           "waitForReply": false
         }
@@ -564,9 +564,9 @@
         {
           "id": "s1",
           "message": {
-            "en": "Forwarding your payment details to admin...",
-            "ms": "Menghantar butiran pembayaran anda ke admin...",
-            "zh": "正在将您的付款信息转发给管理员..."
+            "en": "Thank you! I'll forward your payment receipt to our admin staff for verification. If you haven't sent a screenshot of the receipt yet, please do so and we'll confirm your booking shortly.",
+            "ms": "Terima kasih! Saya akan forward resit pembayaran anda ke staf admin untuk pengesahan. Jika belum hantar screenshot resit, sila hantar dan kami akan sahkan tempahan anda tidak lama lagi.",
+            "zh": "谢谢！我会将您的付款收据转发给管理员工作人员进行验证。如果您还没有发送收据截图，请发送，我们会尽快确认您的预订。"
           },
           "waitForReply": false
         }

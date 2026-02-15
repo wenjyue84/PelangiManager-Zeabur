@@ -34,6 +34,24 @@ router.post('/intents/test', async (req: Request, res: Response) => {
     if (routedAction === 'static_reply') {
       const { getStaticReply } = await import('../../assistant/knowledge.js');
       response = getStaticReply(intentResult.category, 'en') || '(no static reply configured)';
+    } else if (routedAction === 'workflow' && route?.workflow_id) {
+      // Show workflow first step(s) instead of LLM fallback
+      const workflowsData = configStore.getWorkflows() || { workflows: [] };
+      const workflow = (workflowsData.workflows || []).find(w => w.id === route.workflow_id);
+      if (workflow && workflow.steps.length > 0) {
+        const introMessages: string[] = [];
+        for (const step of workflow.steps) {
+          introMessages.push(step.message?.en || '');
+          if (step.waitForReply) break;
+        }
+        response = introMessages.join('\n\n');
+      }
+      // Fallback to LLM if workflow not found or empty
+      if (!response && isAIAvailable()) {
+        const systemPrompt = buildSystemPrompt(configStore.getSettings().system_prompt);
+        const aiResult = await classifyAndRespond(systemPrompt, [], message);
+        response = aiResult.response;
+      }
     } else if (isAIAvailable()) {
       const systemPrompt = buildSystemPrompt(configStore.getSettings().system_prompt);
       const aiResult = await classifyAndRespond(systemPrompt, [], message);

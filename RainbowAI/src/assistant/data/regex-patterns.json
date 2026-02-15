@@ -16,5 +16,6 @@
   { "pattern": "/\\b(警察|报警)\\b/i", "description": "Police emergency", "language": "zh", "emergencyType": "complaint" },
   { "pattern": "/\\b(locked.*card|card.*locked)\\b/i", "description": "Card locked / trapped in capsule", "language": "en", "emergencyType": "card_locked" },
   { "pattern": "/\\b(terkunci)\\b/i", "description": "Card locked / trapped in capsule", "language": "ms", "emergencyType": "card_locked" },
-  { "pattern": "/\\b(锁在里面|出不去)\\b/i", "description": "Card locked / trapped in capsule", "language": "zh", "emergencyType": "card_locked" }
+  { "pattern": "/\\b(锁在里面|出不去)\\b/i", "description": "Card locked / trapped in capsule", "language": "zh", "emergencyType": "card_locked" },
+  { "pattern": "/\\b(ignore\\s+(previous|all)\\s+(instructions?|prompts?)|tell\\s+me\\s+your\\s+(password|admin|secret|prompt|system)|reveal\\s+your\\s+(prompt|instructions?|system)|you\\s+are\\s+now|forget\\s+everything|disregard\\s+previous)\\b/i", "description": "Prompt injection attempt", "language": "en", "intent": "greeting" }
 ]
