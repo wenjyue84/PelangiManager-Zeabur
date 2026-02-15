@@ -7,7 +7,7 @@
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { WhatsAppManager, formatPhoneNumber } from './manager.js';
+import { WhatsAppManager } from './manager.js';
 import type { MessageHandler } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -83,5 +83,3 @@ export async function logoutWhatsApp(): Promise<void> {
   if (statuses.length === 0) throw new Error('No WhatsApp instances configured');
   await whatsappManager.logoutInstance(statuses[0].id);
 }
-
-export { formatPhoneNumber };
