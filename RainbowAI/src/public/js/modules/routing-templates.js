@@ -275,7 +275,7 @@ export function detectActiveTemplate() {
   const activeCustom = customTemplates.find(t => JSON.stringify(t.routing) === currentJson);
 
   // Update template status display (if exists)
-  const statusEl = document.getElementById('active-template-status');
+  const statusEl = document.getElementById('intents-current-label');
   if (statusEl) {
     if (isT1) statusEl.textContent = '🚀 T1 Smartest';
     else if (isT2) statusEl.textContent = '⚡ T2 Performance';
@@ -339,7 +339,7 @@ export function showSaveTemplateModal() {
   if (window.openModal) window.openModal('save-template-modal');
   // Focus template name input
   setTimeout(() => {
-    const input = document.getElementById('new-template-name');
+    const input = document.getElementById('save-template-name');
     if (input) input.focus();
   }, 100);
 }
@@ -398,7 +398,6 @@ export async function submitSaveTemplate(event) {
 
   // Clear form
   nameInput.value = '';
-  descInput.value = '';
 
   // Close modal
   if (window.closeModal) window.closeModal();
