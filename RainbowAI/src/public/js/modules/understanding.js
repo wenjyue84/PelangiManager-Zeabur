@@ -9,8 +9,8 @@
  * Load Understanding tab (renamed from Intent Manager)
  */
 export async function loadUnderstanding() {
-  // Reuse the existing intent manager loader
-  if (typeof loadIntentManagerData === 'function') {
-    await loadIntentManagerData();
+  // Reuse the existing intent manager loader (must use window. in ES module scope)
+  if (typeof window.loadIntentManagerData === 'function') {
+    await window.loadIntentManagerData();
   }
 }

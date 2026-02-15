@@ -1,16 +1,16 @@
 {
   "tiers": {
     "tier1_emergency": {
-      "enabled": false,
+      "enabled": true,
       "contextMessages": 0
     },
     "tier2_fuzzy": {
-      "enabled": false,
+      "enabled": true,
       "contextMessages": 3,
       "threshold": 0.8
     },
     "tier3_semantic": {
-      "enabled": false,
+      "enabled": true,
       "contextMessages": 5,
       "threshold": 0.67
     },

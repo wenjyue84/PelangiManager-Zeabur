@@ -15,7 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ─── Emergency patterns (regex, critical patterns for immediate escalation) ─────────
 
-type EmergencyType = 'theft' | 'card_locked' | 'complaint';
+type EmergencyType = 'theft_report' | 'card_locked' | 'complaint';
 
 interface LoadedEmergencyRule {
   re: RegExp;
@@ -30,7 +30,7 @@ let emergencyRules: LoadedEmergencyRule[] = [];
 const BUILTIN_EMERGENCY_PATTERNS: RegExp[] = [
   /\b(fire|kebakaran|着火|火灾)\b/i,
   /\b(ambulan[cs]e|hospital|emergency|kecemasan|darurat|急救|紧急)\b/i,
-  /\b(stol[ea]n|theft|rob(?:bed|bery)|dicuri|dirompak|kecurian|被偷|被抢|失窃|missing\s+from\s+(the\s+)?safe|(the\s+)?safe\s+.*(missing|stolen))\b/i,
+  /\b(stole|stol[ea]n|theft|rob(?:bed|bery)|dicuri|dirompak|kecurian|被偷|被抢|失窃|missing\s+from\s+(the\s+)?safe|(the\s+)?safe\s+.*(missing|stolen))\b/i,
   /\b(assault|attack|violen[ct]|fight|serang|pukul|袭击|打架)\b/i,
   /\b(police|polis|cops?|警察|报警)\b/i,
   /\b(locked.*card|card.*locked|terkunci|锁在里面|出不去)\b/i,
@@ -78,9 +78,9 @@ async function loadEmergencyPatternsFromFile(): Promise<void> {
       const re = parseRegexPattern(patternStr);
       if (!re) continue;
 
-      const emergencyType: EmergencyType = (item.emergencyType === 'theft' || item.emergencyType === 'card_locked')
+      const emergencyType: EmergencyType = (item.emergencyType === 'theft_report' || item.emergencyType === 'card_locked')
         ? item.emergencyType
-        : 'complaint';
+        : (item.emergencyType === 'theft' ? 'theft_report' : 'complaint');
       const desc = (item.description || '').toLowerCase();
       const isFire = desc.includes('fire emergency');
 
@@ -103,7 +103,7 @@ export function isEmergency(text: string): boolean {
  * Which intent to use when an emergency pattern matches.
  * Theft and card_locked have dedicated workflows; others escalate via complaint.
  */
-export function getEmergencyIntent(text: string): 'theft' | 'card_locked' | 'complaint' | null {
+export function getEmergencyIntent(text: string): 'theft_report' | 'card_locked' | 'complaint' | null {
   if (emergencyRules.length > 0) {
     for (const { re, emergencyType, isFire } of emergencyRules) {
       if (!re.test(text)) continue;
@@ -116,7 +116,7 @@ export function getEmergencyIntent(text: string): 'theft' | 'card_locked' | 'com
   for (let i = 0; i < BUILTIN_EMERGENCY_PATTERNS.length; i++) {
     if (!BUILTIN_EMERGENCY_PATTERNS[i].test(text)) continue;
     if (i === 0 && FIRE_BENIGN_OVERRIDES.some(b => b.test(text))) continue;
-    if (i === BUILTIN_THEFT_INDEX) return 'theft';
+    if (i === BUILTIN_THEFT_INDEX) return 'theft_report';
     if (i === BUILTIN_CARD_LOCKED_INDEX) return 'card_locked';
     return 'complaint';
   }
@@ -171,6 +171,156 @@ export async function initIntents(): Promise<void> {
   });
 
   console.log('[Intents] Hybrid mode: Emergency → Fuzzy → Semantic → LLM');
+}
+
+// ─── LLM Intent Mapper (Fix generic LLM responses) ─────────────────────
+
+/**
+ * Maps generic LLM intent names to specific defined intents.
+ * The LLM often returns simplified names like "complaint", "facilities", "payment"
+ * This function maps them to the correct specific intent categories.
+ */
+function mapLLMIntentToSpecific(llmIntent: string, messageText: string): string {
+  const lowerText = messageText.toLowerCase();
+
+  // Map generic "complaint" to specific complaint types
+  if (llmIntent === 'complaint' || llmIntent === 'general_complaint' || llmIntent === 'issue' || llmIntent === 'problem') {
+    // Check for specific complaint types based on keywords in the message
+    if (/\b(cold|hot|warm|temperature|ac|air\s?cond|heater|sejuk|panas)\b/i.test(messageText)) {
+      return 'climate_control_complaint';
+    }
+    if (/\b(nois[ye]|loud|bising|can'?t\s?sleep|quiet)\b/i.test(messageText)) {
+      return 'noise_complaint';
+    }
+    if (/\b(dirty|unclean|smell|stain|not\s?clean|kotor|bau|comot|脏|不干净)\b/i.test(messageText)) {
+      return 'cleanliness_complaint';
+    }
+    if (/\b(broken|not\s?working|malfunction|damaged|rosak|tak\s?boleh\s?guna|坏了|不能用)\b/i.test(messageText)) {
+      return 'facility_malfunction';
+    }
+    // Check for post-checkout context (including "checking out", "checked out")
+    if (/\b(after\s+(checking\s+out|check\s*out|checkout|checked\s+out)|post[- ]?checkout|already\s?(left|checked\s+out)|was\s?there|during\s?my\s?stay|lepas\s?(check\s*out|checkout|keluar)|退房后)\b/i.test(messageText)) {
+      return 'post_checkout_complaint';
+    }
+    // Check for review/feedback language (not a complaint-in-stay)
+    if (/\b(worst\s+(hotel|hostel|place|stay)|highly\s+recommend|great\s+experience|give\s+.*(star|rating)|review|recommend|5\s?star|1\s?star|never\s+(come|stay|return)\s+back)\b/i.test(messageText)) {
+      return 'review_feedback';
+    }
+    // Otherwise generic in-stay complaint
+    return 'general_complaint_in_stay';
+  }
+
+  // Map "facilities" to "facilities_info"
+  if (llmIntent === 'facilities' || llmIntent === 'amenities' || llmIntent === 'facilities_info') {
+    // Check if asking about facility location (orientation)
+    if (/\b(where\s?is|di\s?mana|在哪|location|lokasi)\b/i.test(messageText)) {
+      return 'facility_orientation';
+    }
+    return 'facilities_info';
+  }
+
+  // Map "rules" to "rules_policy"
+  if (llmIntent === 'rules' || llmIntent === 'policy') {
+    return 'rules_policy';
+  }
+
+  // Map "payment" to specific payment intents
+  if (llmIntent === 'payment' || llmIntent === 'pay') {
+    // Check if confirming payment already made
+    if (/\b(already\s?paid|i\s?paid|just\s?paid|transfer(?:red)?|sent|payment\s?done|sudah\s?bayar|dah\s?bayar|已付|付了)\b/i.test(messageText)) {
+      return 'payment_made';
+    }
+    // Otherwise asking about payment info
+    return 'payment_info';
+  }
+
+  // Map "checkin" variations
+  if (llmIntent === 'checkin' || llmIntent === 'check_in') {
+    // Check if guest has arrived vs asking about info
+    if (/\b(i\s?want\s?to\s?check\s?in|want\s?to\s?check\s?in|checking\s?in|i\s?have\s?arrived|i'?m\s?here|dah\s?sampai|nak\s?check\s?in|要入住|已经到)\b/i.test(messageText)) {
+      return 'check_in_arrival';
+    }
+    return 'checkin_info';
+  }
+
+  // Map "checkout" variations
+  if (llmIntent === 'checkout' || llmIntent === 'check_out') {
+    // Check for late checkout request
+    if (/\b(late|later|extend|checkout\s?at|stay\s?longer|lewat|延迟|晚点)\b/i.test(messageText)) {
+      return 'late_checkout_request';
+    }
+    // Check for luggage storage
+    if (/\b(luggage|bag|suitcase|keep|store|simpan|寄存|行李)\b/i.test(messageText)) {
+      return 'luggage_storage';
+    }
+    // Check for checkout procedure
+    if (/\b(how\s?to|how\s?do|process|procedure|macam\s?mana|怎么)\b/i.test(messageText)) {
+      return 'checkout_procedure';
+    }
+    return 'checkout_info';
+  }
+
+  // Map "general" to more specific intents
+  if (llmIntent === 'general' || llmIntent === 'general_inquiry') {
+    // Check for amenity requests
+    if (/\b(need|can\s?i\s?get|can\s?i\s?have|more|extra|blanket|pillow|towel|charger|boleh|要|需要)\b/i.test(messageText)) {
+      return 'extra_amenity_request';
+    }
+  }
+
+  // Map "unknown" to more specific intents if possible
+  if (llmIntent === 'unknown') {
+    // Check for tourist guide requests
+    if (/\b(tourist|attraction|visit|sightseeing|what\s?to\s?(do|see)|where\s?to\s?go|tempat\s?menarik|景点|旅游)\b/i.test(messageText)) {
+      return 'tourist_guide';
+    }
+    // Check for forgot items
+    if (/\b(forgot|left|left\s?behind|terlupa|tertinggal|忘了|落下)\b/i.test(messageText)) {
+      return 'forgot_item_post_checkout';
+    }
+    // Check for billing
+    if (/\b(bill|invoice|charge|receipt|bil|resit|overcharge|账单|收费)\b/i.test(messageText)) {
+      if (/\b(overcharge|wrong|incorrect|dispute|多收|错误)\b/i.test(messageText)) {
+        return 'billing_dispute';
+      }
+      return 'billing_inquiry';
+    }
+    // Check for review/feedback
+    if (/\b(review|rating|feedback|recommend|great\s?experience|worst|terrible\s?service|评价|反馈)\b/i.test(messageText)) {
+      return 'review_feedback';
+    }
+  }
+
+  // ─── Post-classification corrections (specific → specific) ───
+  // LLM sometimes returns a close-but-wrong specific category
+
+  // noise_complaint + baby/infant → escalate (babies not allowed, unauthorized guest)
+  if (llmIntent === 'noise_complaint') {
+    if (/\b(baby|infant|toddler|bayi|budak\s?kecil|婴儿|宝宝|小孩哭)\b/i.test(messageText)) {
+      return 'contact_staff';  // Escalate: babies not allowed in hostel
+    }
+  }
+
+  // checkout_procedure/checkout_info → late_checkout_request when mentioning specific time
+  if (llmIntent === 'checkout_procedure' || llmIntent === 'checkout_info') {
+    if (/\b(at\s+\d{1,2}\s*(pm|am|:\d{2})|checkout\s+at|check\s?out\s+at|late|later|extend|stay\s+longer)\b/i.test(messageText)) {
+      return 'late_checkout_request';
+    }
+  }
+
+  // general_complaint_in_stay → post_checkout_complaint when explicitly post-checkout
+  if (llmIntent === 'general_complaint_in_stay') {
+    if (/\b(after\s+(checking\s+out|check\s*out|checkout)|post[- ]?checkout|already\s+(left|checked\s+out)|lepas\s+(check\s*out|checkout|keluar)|退房后)\b/i.test(messageText)) {
+      return 'post_checkout_complaint';
+    }
+    // → review_feedback when using review/rating language
+    if (/\b(worst\s+(hotel|hostel|place)|highly\s+recommend|great\s+experience|give\s+.*(star|rating)|review|recommend|5\s?star|1\s?star)\b/i.test(messageText)) {
+      return 'review_feedback';
+    }
+  }
+
+  // Return original intent if no mapping found
+  return llmIntent;
 }
 
 // ─── Main Classification Function (Enhanced with 4-tier system + Config) ─────
@@ -305,13 +455,25 @@ export async function classifyMessageWithContext(
       const context = history.slice(-contextSize);
 
       const llmResult = await llmClassify(text, context);
-      console.log(
-        `[Intent] 🤖 LLM classified: ${llmResult.category} ` +
-        `(${(llmResult.confidence * 100).toFixed(0)}% with ${context.length} context messages)`
-      );
+
+      // Map generic LLM intent names to specific defined intents
+      const mappedCategory = mapLLMIntentToSpecific(llmResult.category, text);
+
+      if (mappedCategory !== llmResult.category) {
+        console.log(
+          `[Intent] 🤖 LLM classified: ${llmResult.category} → mapped to: ${mappedCategory} ` +
+          `(${(llmResult.confidence * 100).toFixed(0)}% with ${context.length} context messages)`
+        );
+      } else {
+        console.log(
+          `[Intent] 🤖 LLM classified: ${llmResult.category} ` +
+          `(${(llmResult.confidence * 100).toFixed(0)}% with ${context.length} context messages)`
+        );
+      }
 
       return {
         ...llmResult,
+        category: mappedCategory as any,
         source: 'llm',
         detectedLanguage: detectedLang
       };
