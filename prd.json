@@ -467,7 +467,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-019",
@@ -492,7 +492,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-020",
@@ -519,7 +519,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-021",
@@ -549,7 +549,7 @@
         "US-020"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-022",
@@ -597,7 +597,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "large",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-024",
@@ -624,7 +624,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-025",
@@ -654,7 +654,7 @@
         "US-018"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-026",

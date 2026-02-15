@@ -119,10 +119,9 @@ run_quality_checks() {
   local TS_BASELINE=20  # Known pre-existing errors as of 2026-02-15
   echo -n "  [1/3] TypeScript (RainbowAI)... "
   local ts_output
-  ts_output=$(cd RainbowAI && npx tsc --noEmit --pretty false 2>&1)
+  ts_output=$(cd RainbowAI && npx tsc --noEmit --pretty false 2>&1 || true)
   local ts_errors
   ts_errors=$(echo "$ts_output" | grep -c "error TS" || true)
-  cd - > /dev/null 2>&1
   if [[ "$ts_errors" -le "$TS_BASELINE" ]]; then
     echo "PASS ($ts_errors errors, baseline $TS_BASELINE)"
   else

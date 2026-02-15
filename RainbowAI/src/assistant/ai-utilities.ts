@@ -42,9 +42,9 @@ export async function testProvider(providerId: string): Promise<{
   const startTime = Date.now();
   try {
     const messages = [{ role: 'user', content: 'Say OK' }];
-    const content = await providerChat(provider, messages, 100, 1.0);
+    const result = await providerChat(provider, messages, 100, 1.0);
     const elapsed = Date.now() - startTime;
-    return { ok: true, model: provider.model, reply: content || '', responseTime: elapsed };
+    return { ok: true, model: provider.model, reply: result?.content || '', responseTime: elapsed };
   } catch (e: any) {
     const elapsed = Date.now() - startTime;
     return { ok: false, error: e.message, responseTime: elapsed };

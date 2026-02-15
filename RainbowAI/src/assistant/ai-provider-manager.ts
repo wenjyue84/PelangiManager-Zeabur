@@ -81,7 +81,7 @@ export function isAIAvailable(): boolean {
 // ─── Response Validation ─────────────────────────────────────────────
 
 /** Validate OpenAI-compatible response structure; throws descriptive errors to trigger fallback */
-function validateProviderResponse(data: any, providerName: string, startTime: number): string {
+function validateProviderResponse(data: any, providerName: string, startTime: number): { content: string; usage?: any } {
   if (!data) {
     throw new Error(`${providerName}: empty response body`);
   }
@@ -104,11 +104,11 @@ function validateProviderResponse(data: any, providerName: string, startTime: nu
   }
   const elapsed = Date.now() - startTime;
   console.log(`[AI] ✓ ${providerName} responded (${elapsed}ms, ${trimmed.length} chars)`);
-  return trimmed;
+  return { content: trimmed, usage: data.usage };
 }
 
 /** Validate Google Gemini response structure; throws descriptive errors to trigger fallback */
-function validateGeminiResponse(data: any, providerName: string, startTime: number): string {
+function validateGeminiResponse(data: any, providerName: string, startTime: number): { content: string; usage?: any } {
   if (!data) {
     throw new Error(`${providerName}: empty response body`);
   }
@@ -129,7 +129,15 @@ function validateGeminiResponse(data: any, providerName: string, startTime: numb
   }
   const elapsed = Date.now() - startTime;
   console.log(`[AI] ✓ ${providerName} responded (${elapsed}ms, ${trimmed.length} chars)`);
-  return trimmed;
+
+  // Extract Gemini usage metadata (different format from OpenAI)
+  const usage = data.usageMetadata ? {
+    prompt_tokens: data.usageMetadata.promptTokenCount,
+    completion_tokens: data.usageMetadata.candidatesTokenCount,
+    total_tokens: data.usageMetadata.totalTokenCount
+  } : undefined;
+
+  return { content: trimmed, usage };
 }
 
 // ─── Timeout Wrapper ─────────────────────────────────────────────────
@@ -151,7 +159,7 @@ export async function providerChat(
   maxTokens: number,
   temperature: number,
   jsonMode: boolean = false
-): Promise<string | null> {
+): Promise<{ content: string; usage?: any } | null> {
   const startTime = Date.now();
   const apiKey = resolveApiKey(provider);
   if (!apiKey && provider.type !== 'ollama') return null;
@@ -269,7 +277,7 @@ export async function chatWithFallback(
   temperature: number,
   jsonMode: boolean = false,
   providerIds?: string[]
-): Promise<{ content: string | null; provider: AIProvider | null }> {
+): Promise<{ content: string | null; provider: AIProvider | null; usage?: any }> {
   let providers = getProviders();
 
   if (providerIds && providerIds.length > 0) {
@@ -297,12 +305,12 @@ export async function chatWithFallback(
     }
 
     try {
-      const content = await providerChat(provider, messages, maxTokens, temperature, jsonMode);
-      if (content) {
+      const result = await providerChat(provider, messages, maxTokens, temperature, jsonMode);
+      if (result && result.content) {
         breaker.recordSuccess();
         rateLimitManager.recordSuccess(provider.id);
         console.log(`[AI] ✅ Success using: ${provider.name} (${provider.id})`);
-        return { content, provider };
+        return { content: result.content, provider, usage: result.usage };
       }
     } catch (err: any) {
       breaker.recordFailure();

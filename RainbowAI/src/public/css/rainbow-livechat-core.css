@@ -93,6 +93,60 @@
   color: #54656f;
 }
 
+.lc-date-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 12px;
+}
+
+.lc-date-filter-label {
+  color: #54656f;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.lc-date-filter {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 12px;
+  background-color: #fff;
+  color: #111b21;
+  flex: 1;
+  min-width: 0;
+}
+
+.lc-date-filter:focus {
+  outline: none;
+  border-color: #00a884;
+}
+
+.lc-date-filter-separator {
+  color: #54656f;
+  font-size: 11px;
+}
+
+.lc-date-filter-reset {
+  padding: 6px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #54656f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lc-date-filter-reset:hover {
+  background: #f0f2f5;
+}
+
 .lc-filter-chips {
   display: flex;
   padding: 8px 16px;

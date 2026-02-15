@@ -68,6 +68,11 @@ export interface IntentResult {
   matchedKeyword?: string;  // For fuzzy matches
   matchedExample?: string;  // For semantic matches (Phase 3)
   detectedLanguage?: 'en' | 'ms' | 'zh' | 'unknown';  // Phase 2: Language detection
+  usage?: {  // Token usage for LLM tier (US-019)
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 // ─── Conversation ───────────────────────────────────────────────────
@@ -202,6 +207,11 @@ export interface AIClassifyResult {
   category: IntentCategory;
   confidence: number;
   entities: Record<string, string>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 export interface AIClientConfig {

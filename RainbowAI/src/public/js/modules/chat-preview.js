@@ -236,11 +236,12 @@ export function renderChatMessages() {
           </div>
         </div>`;
         }
+        const usageBadge = msg.meta.usage ? '<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-mono text-xs" title="Token usage: prompt + completion = total">' + (msg.meta.usage.prompt_tokens || 'N/A') + 'p+' + (msg.meta.usage.completion_tokens || 'N/A') + 'c=' + (msg.meta.usage.total_tokens || 'N/A') + '</span>' : '';
         const contentClickable = `cursor-pointer hover:bg-neutral-50 rounded -mx-1 px-1 py-0.5 transition`;
         const contentOnclick = `onclick="toggleInlineEdit('${editId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleInlineEdit('${editId}')}" title="Click to edit this ${editLabel || 'reply'}" role="button" tabindex="0"`;
         return `<div class="flex justify-start"><div class="bg-white border rounded-2xl px-4 py-2 max-w-md group">
         <div id="${editId}-text" class="text-sm whitespace-pre-wrap ${contentClickable}" ${contentOnclick}>${esc(msg.content)}</div>
-        <div class="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs text-neutral-500 flex-wrap">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}<span class="px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded font-mono">${esc(msg.meta.intent)}</span><span class="px-1.5 py-0.5 bg-success-50 text-success-700 rounded">${esc(msg.meta.routedAction)}</span>${langBadge}${msg.meta.model ? `<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono text-xs">${esc(msg.meta.model)}</span>` : ''}${msg.meta.responseTime ? `<span class="px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">${msg.meta.responseTime >= 1000 ? (msg.meta.responseTime / 1000).toFixed(1) + 's' : msg.meta.responseTime + 'ms'}</span>` : ''}${msg.meta.confidence ? `<span>${(msg.meta.confidence * 100).toFixed(0)}%</span>` : ''}${editBtnHtml}${alsoTemplateHtml}</div>${kbBadges}${editPanelHtml}${alsoTemplatePanelHtml}</div></div>`;
+        <div class="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs text-neutral-500 flex-wrap">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}<span class="px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded font-mono">${esc(msg.meta.intent)}</span><span class="px-1.5 py-0.5 bg-success-50 text-success-700 rounded">${esc(msg.meta.routedAction)}</span>${langBadge}${msg.meta.model ? `<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono text-xs">${esc(msg.meta.model)}</span>` : ''}${msg.meta.responseTime ? `<span class="px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">${msg.meta.responseTime >= 1000 ? (msg.meta.responseTime / 1000).toFixed(1) + 's' : msg.meta.responseTime + 'ms'}</span>` : ''}${msg.meta.confidence ? `<span>${(msg.meta.confidence * 100).toFixed(0)}%</span>` : ''}${usageBadge}${editBtnHtml}${alsoTemplateHtml}</div>${kbBadges}${editPanelHtml}${alsoTemplatePanelHtml}</div></div>`;
       }
 
       const isSystem = window.hasSystemContent(msg.content);
@@ -253,10 +254,11 @@ export function renderChatMessages() {
       const modelBadge = window.MetadataBadges.getModelBadge(msg.meta?.model);
       const timeBadge = window.MetadataBadges.getResponseTimeBadge(msg.meta?.responseTime);
       const confBadge = window.MetadataBadges.getConfidenceBadge(msg.meta?.confidence);
+      const usageBadge = msg.meta?.usage ? '<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-mono text-xs" title="Token usage: prompt + completion = total">' + (msg.meta.usage.prompt_tokens || 'N/A') + 'p+' + (msg.meta.usage.completion_tokens || 'N/A') + 'c=' + (msg.meta.usage.total_tokens || 'N/A') + '</span>' : '';
 
       const contentHtml = `<div class="text-sm whitespace-pre-wrap">${isSystem ? displayContent : esc(displayContent)}</div>`;
 
-      return `<div class="flex justify-start"><div class="bg-white border rounded-2xl px-4 py-2 max-w-md${systemClass}">${contentHtml}${msg.meta ? `<div class="mt-2 pt-2 border-t flex items-center gap-2 text-xs text-neutral-500">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}${intentBadge}${actionBadge}${langBadge}${modelBadge}${timeBadge}${confBadge}</div>${kbBadges}` : ''}</div></div>`;
+      return `<div class="flex justify-start"><div class="bg-white border rounded-2xl px-4 py-2 max-w-md${systemClass}">${contentHtml}${msg.meta ? `<div class="mt-2 pt-2 border-t flex items-center gap-2 text-xs text-neutral-500">${sourceBadge}${hMsgTypeBadge}${hOverrideBadge}${intentBadge}${actionBadge}${langBadge}${modelBadge}${timeBadge}${confBadge}${usageBadge}</div>${kbBadges}` : ''}</div></div>`;
     }
   }).join('');
   messagesEl.scrollTop = 0;
@@ -272,7 +274,11 @@ export function renderChatMessages() {
     const hMsgTypeStr = lastMsg.meta.messageType ? ` | Type: <b>${lastMsg.meta.messageType}</b>` : '';
     const hOverrideStr = lastMsg.meta.problemOverride ? ' | <b style="color:#d97706">🔀 Problem Override</b>' : '';
 
-    metaEl.innerHTML = `${detectionPrefix}Intent: <b>${esc(lastMsg.meta.intent)}</b> | Routed to: <b>${esc(lastMsg.meta.routedAction)}</b>${hMsgTypeStr}${hOverrideStr}${lastMsg.meta.model ? ` | Model: <b>${esc(lastMsg.meta.model)}</b>` : ''} | Time: <b>${timeStr}</b> | Confidence: ${lastMsg.meta.confidence ? (lastMsg.meta.confidence * 100).toFixed(0) + '%' : 'N/A'}${kbFilesStr}`;
+    const usageStr = lastMsg.meta.usage
+      ? ' | Tokens: <b>' + (lastMsg.meta.usage.prompt_tokens || 'N/A') + 'p + ' + (lastMsg.meta.usage.completion_tokens || 'N/A') + 'c = ' + (lastMsg.meta.usage.total_tokens || 'N/A') + '</b>'
+      : '';
+
+    metaEl.innerHTML = `${detectionPrefix}Intent: <b>${esc(lastMsg.meta.intent)}</b> | Routed to: <b>${esc(lastMsg.meta.routedAction)}</b>${hMsgTypeStr}${hOverrideStr}${lastMsg.meta.model ? ` | Model: <b>${esc(lastMsg.meta.model)}</b>` : ''} | Time: <b>${timeStr}</b> | Confidence: ${lastMsg.meta.confidence ? (lastMsg.meta.confidence * 100).toFixed(0) + '%' : 'N/A'}${kbFilesStr}${usageStr}`;
   }
 }
 

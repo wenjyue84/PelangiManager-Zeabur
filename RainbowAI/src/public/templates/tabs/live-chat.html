@@ -46,6 +46,17 @@
         <option value="">All Instances</option>
       </select>
     </div>
+    <div class="lc-date-filter-wrap">
+      <div class="lc-date-filter-label">Date Range:</div>
+      <input type="date" class="lc-date-filter" id="lc-date-from" onchange="lcFilterConversations()" title="From date">
+      <span class="lc-date-filter-separator">to</span>
+      <input type="date" class="lc-date-filter" id="lc-date-to" onchange="lcFilterConversations()" title="To date">
+      <button type="button" class="lc-date-filter-reset" onclick="lcResetDateFilter()" title="Clear date filter">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
     <div class="lc-filter-chips" id="lc-filter-chips">
       <button class="lc-chip active" data-filter="all" onclick="lcSetFilter('all')">All</button>
       <button class="lc-chip" data-filter="unread" onclick="lcSetFilter('unread')">Unread</button>

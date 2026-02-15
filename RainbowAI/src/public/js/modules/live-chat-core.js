@@ -39,6 +39,61 @@ export async function pollConnectionStatus() {
   } catch (e) { }
 }
 
+// ─── Date Filter Functions ──────────────────────────────────────
+
+export function initializeDateFilters() {
+  var fromInput = document.getElementById('lc-date-from');
+  var toInput = document.getElementById('lc-date-to');
+  if (!fromInput || !toInput) return;
+
+  // Default: last 7 days to today
+  var today = new Date();
+  var sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+
+  var formatDate = function(d) {
+    var year = d.getFullYear();
+    var month = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  };
+
+  fromInput.value = formatDate(sevenDaysAgo);
+  toInput.value = formatDate(today);
+
+  $.dateFilterFrom = sevenDaysAgo;
+  $.dateFilterTo = today;
+}
+
+export function resetDateFilter() {
+  var fromInput = document.getElementById('lc-date-from');
+  var toInput = document.getElementById('lc-date-to');
+  if (fromInput) fromInput.value = '';
+  if (toInput) toInput.value = '';
+  $.dateFilterFrom = null;
+  $.dateFilterTo = null;
+  filterConversations();
+}
+
+export function updateDateFilterFromInputs() {
+  var fromInput = document.getElementById('lc-date-from');
+  var toInput = document.getElementById('lc-date-to');
+
+  if (fromInput && fromInput.value) {
+    $.dateFilterFrom = new Date(fromInput.value);
+  } else {
+    $.dateFilterFrom = null;
+  }
+
+  if (toInput && toInput.value) {
+    var toDate = new Date(toInput.value);
+    toDate.setHours(23, 59, 59, 999);
+    $.dateFilterTo = toDate;
+  } else {
+    $.dateFilterTo = null;
+  }
+}
+
 // ─── Main Load ───────────────────────────────────────────────────
 
 export async function loadLiveChat() {
@@ -50,6 +105,9 @@ export async function loadLiveChat() {
     langSelector.style.display = '';
     langSelector.value = $.translateLang;
   }
+
+  // Initialize date filters (default: last 7 days)
+  initializeDateFilters();
 
   try {
     var results = await Promise.all([
@@ -168,6 +226,9 @@ export function renderList(conversations) {
   var instanceEl = document.getElementById('lc-instance-filter');
   var instanceVal = instanceEl ? instanceEl.value : '';
 
+  // Update date filters from inputs
+  updateDateFilterFromInputs();
+
   var filtered = conversations;
   if (instanceVal === '__unknown__') {
     filtered = filtered.filter(function (c) { return !c.instanceId; });
@@ -179,6 +240,17 @@ export function renderList(conversations) {
       return (c.pushName || '').toLowerCase().includes(searchVal) ||
         c.phone.toLowerCase().includes(searchVal) ||
         (c.lastMessage || '').toLowerCase().includes(searchVal);
+    });
+  }
+
+  // Apply date range filter
+  if ($.dateFilterFrom || $.dateFilterTo) {
+    filtered = filtered.filter(function (c) {
+      if (!c.lastMessageAt) return false;
+      var msgDate = new Date(c.lastMessageAt);
+      if ($.dateFilterFrom && msgDate < $.dateFilterFrom) return false;
+      if ($.dateFilterTo && msgDate > $.dateFilterTo) return false;
+      return true;
     });
   }
 

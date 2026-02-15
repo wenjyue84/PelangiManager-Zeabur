@@ -40,5 +40,7 @@ export var $ = {
   aiHelpLoading: false,
   waStatusPoll: null,
   waWasConnected: null,
-  chatDropdownPhone: null
+  chatDropdownPhone: null,
+  dateFilterFrom: null,
+  dateFilterTo: null
 };

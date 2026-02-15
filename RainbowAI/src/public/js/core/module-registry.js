@@ -353,7 +353,10 @@ import {
   exportIntentData,
   updateTierUI,
   resetToDefaults,
-  toggleHelp
+  toggleHelp,
+  renderQuickAddIntentSelect,
+  quickAddKeyword,
+  quickAddExample
 } from '/public/js/modules/intent-manager.js';
 
 // Phase 35: Dashboard Templates Module (Intent + Settings Templates)
@@ -611,6 +614,9 @@ window.exportIntentData = exportIntentData;
 window.updateTierUI = updateTierUI;
 window.resetToDefaults = resetToDefaults;
 window.toggleHelp = toggleHelp;
+window.renderQuickAddIntentSelect = renderQuickAddIntentSelect;
+window.quickAddKeyword = quickAddKeyword;
+window.quickAddExample = quickAddExample;
 // Phase 35: Dashboard Templates
 window.toggleTemplateHelp = toggleTemplateHelp;
 window.applyIntentTemplate = applyIntentTemplate;

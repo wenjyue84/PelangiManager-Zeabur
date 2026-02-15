@@ -181,12 +181,13 @@ export async function classifyIntent(
 
   const aiCfg = getAISettings();
   const t4Ids = getT4ProviderIds();
-  const { content } = await chatWithFallback(messages, aiCfg.max_classify_tokens, aiCfg.classify_temperature, true, t4Ids);
+  const { content, usage } = await chatWithFallback(messages, aiCfg.max_classify_tokens, aiCfg.classify_temperature, true, t4Ids);
 
   if (content) {
     try {
       const parsed = JSON.parse(content);
-      return parseClassifyResult(parsed);
+      const result = parseClassifyResult(parsed);
+      return { ...result, usage };
     } catch {
       console.error('[AI] Failed to parse classify result:', content);
     }
@@ -202,6 +203,11 @@ export interface ClassifyOnlyResult {
   confidence: number;
   model?: string;
   responseTime?: number;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 /**
@@ -233,7 +239,7 @@ export async function classifyOnly(
   const startTime = Date.now();
 
   const providerIds = classifyProviderId ? [classifyProviderId] : getT4ProviderIds();
-  const { content, provider } = await chatWithFallback(
+  const { content, provider, usage } = await chatWithFallback(
     messages,
     aiCfg.max_classify_tokens,
     aiCfg.classify_temperature,
@@ -260,7 +266,8 @@ export async function classifyOnly(
         intent,
         confidence,
         model: provider?.name || provider?.model || 'unknown',
-        responseTime
+        responseTime,
+        usage
       };
     } catch {
       console.error('[AI] Failed to parse classifyOnly result:', content);

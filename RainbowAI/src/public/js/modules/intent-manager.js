@@ -52,6 +52,9 @@ export async function loadIntentManagerData() {
     renderIntentList();
     renderExampleIntentList();
 
+    // Populate quick-add intent select dropdown
+    renderQuickAddIntentSelect();
+
     // Load T1 regex patterns
     if (window.loadRegexPatterns) await window.loadRegexPatterns();
 
@@ -628,6 +631,144 @@ export async function exportIntentData(format) {
   } catch (err) {
     console.error('Failed to export:', err);
     toast('Failed to export', 'error');
+  }
+}
+
+// ─── Quick Add Keywords/Examples (from message text) ────────────────────
+
+export function renderQuickAddIntentSelect() {
+  const select = document.getElementById('im-quick-intent-select');
+  if (!select || !imKeywordsData) return;
+
+  const options = '<option value="">Select Intent</option>' + imKeywordsData.intents.map(function(intent) {
+    return '<option value="' + esc(intent.intent) + '">' + esc(intent.intent) + '</option>';
+  }).join('');
+
+  select.innerHTML = options;
+}
+
+export async function quickAddKeyword() {
+  const intentSelect = document.getElementById('im-quick-intent-select');
+  const textInput = document.getElementById('im-quick-text-input');
+  const langSelect = document.getElementById('im-quick-lang-select');
+
+  const intent = intentSelect.value;
+  const text = textInput.value.trim();
+  const lang = langSelect.value;
+
+  if (!intent || !text) {
+    toast('Please select an intent and enter text', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/rainbow/intent-manager/keywords');
+    const data = await res.json();
+
+    const intentData = data.intents.find(function(i) { return i.intent === intent; });
+    if (!intentData) {
+      toast('Intent not found', 'error');
+      return;
+    }
+
+    if (!intentData.keywords[lang]) intentData.keywords[lang] = [];
+
+    const normalized = text.toLowerCase().trim();
+    const existing = intentData.keywords[lang].map(function(k) { return k.toLowerCase().trim(); });
+
+    if (existing.indexOf(normalized) !== -1) {
+      toast('Keyword "' + text + '" already exists for ' + intent + ' (' + lang + ')', 'error');
+      return;
+    }
+
+    intentData.keywords[lang].push(text);
+
+    const saveRes = await fetch('/api/rainbow/intent-manager/keywords/' + encodeURIComponent(intent), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords: intentData.keywords })
+    });
+
+    if (!saveRes.ok) throw new Error('Failed to save');
+
+    toast('Keyword "' + text + '" added to ' + intent + ' (' + lang + ')', 'success');
+    textInput.value = '';
+
+    if (imCurrentIntent === intent) {
+      imKeywordsData = data;
+      renderKeywords();
+      renderIntentList();
+    }
+  } catch (err) {
+    console.error('Failed to add keyword:', err);
+    toast('Failed to add keyword', 'error');
+  }
+}
+
+export async function quickAddExample() {
+  const intentSelect = document.getElementById('im-quick-intent-select');
+  const textInput = document.getElementById('im-quick-text-input');
+
+  const intent = intentSelect.value;
+  const text = textInput.value.trim();
+
+  if (!intent || !text) {
+    toast('Please select an intent and enter text', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/rainbow/intent-manager/examples');
+    const data = await res.json();
+
+    const intentData = data.intents.find(function(i) { return i.intent === intent; });
+    if (!intentData) {
+      toast('Intent not found', 'error');
+      return;
+    }
+
+    const ex = intentData.examples;
+    const normalized = text.toLowerCase().trim();
+
+    if (Array.isArray(ex)) {
+      const existingNorm = ex.map(function(e) { return e.toLowerCase().trim(); });
+      if (existingNorm.indexOf(normalized) !== -1) {
+        toast('Example "' + text + '" already exists for ' + intent, 'error');
+        return;
+      }
+      ex.push(text);
+    } else if (ex && typeof ex === 'object') {
+      const flat = getExamplesList(ex);
+      const existingNorm = flat.map(function(e) { return e.toLowerCase().trim(); });
+      if (existingNorm.indexOf(normalized) !== -1) {
+        toast('Example "' + text + '" already exists for ' + intent, 'error');
+        return;
+      }
+      if (!ex.en) ex.en = [];
+      ex.en.push(text);
+    } else {
+      intentData.examples = [text];
+    }
+
+    const saveRes = await fetch('/api/rainbow/intent-manager/examples/' + encodeURIComponent(intent), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ examples: intentData.examples })
+    });
+
+    if (!saveRes.ok) throw new Error('Failed to save');
+
+    toast('Example "' + text + '" added to ' + intent, 'success');
+    textInput.value = '';
+
+    if (imCurrentExampleIntent === intent) {
+      imExamplesData = data;
+      renderExamples();
+      renderExampleIntentList();
+    }
+  } catch (err) {
+    console.error('Failed to add example:', err);
+    toast('Failed to add example', 'error');
   }
 }
 

@@ -362,7 +362,8 @@ router.post('/preview/chat', async (req: Request, res: Response) => {
       messageType: messageType,
       problemOverride: problemOverride,
       sentiment: sentimentScore,
-      editMeta: editMeta
+      editMeta: editMeta,
+      usage: intentResult.usage
     });
   } catch (err: any) {
     // Log the error for debugging

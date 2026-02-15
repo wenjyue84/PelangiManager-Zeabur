@@ -15,7 +15,7 @@
 
 import { $ } from './live-chat-state.js';
 import {
-  loadLiveChat, filterConversations, openConversation, refreshChat
+  loadLiveChat, filterConversations, openConversation, refreshChat, resetDateFilter
 } from './live-chat-core.js';
 import {
   deleteChat, sendReply, toggleAttachMenu, pickFile, fileSelected, clearFile,
@@ -41,6 +41,7 @@ window.lcFilterConversations = filterConversations;
 window.lcOpenConversation = openConversation;
 window.lcRefreshChat = refreshChat;
 window.lcDeleteChat = deleteChat;
+window.lcResetDateFilter = resetDateFilter;
 window.lcSendReply = sendReply;
 window.lcToggleTranslate = toggleTranslate;
 window.lcHandleLangChange = handleLangChange;

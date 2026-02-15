@@ -16,19 +16,19 @@
         <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
           data-scroll-to="help-whatsapp">→ WhatsApp Setup</a>
         <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
+          data-scroll-to="help-chat-simulator">→ Chat Simulator</a>
+        <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
           data-scroll-to="help-intents">→ 4-Tier Intent System</a>
         <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
           data-scroll-to="help-intent-manager">→ Intent Manager Guide</a>
         <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
+          data-scroll-to="help-workflow">→ Workflow Editor</a>
+        <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
+          data-scroll-to="help-live-chat">→ Live Chat</a>
+        <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
           data-scroll-to="help-kb">→ Knowledge Base</a>
         <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
-          data-scroll-to="help-static-replies">→ Static Messages</a>
-        <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
           data-scroll-to="help-ai-providers">→ AI Models</a>
-        <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
-          data-scroll-to="help-workflow">→ Workflows</a>
-        <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
-          data-scroll-to="help-operations">→ Operations</a>
         <a href="#" class="help-nav-link text-primary-600 hover:text-primary-700 hover:underline"
           data-scroll-to="help-troubleshooting">→ Troubleshooting</a>
       </div>
@@ -54,10 +54,40 @@
             <li>• Answer guest questions automatically via WhatsApp</li>
             <li>• Detect user intent and route to appropriate responses</li>
             <li>• Search knowledge base for accurate information</li>
-            <li>• Provide booking information and availability</li>
+            <li>• Handle bookings and checkout workflows</li>
             <li>• Support multiple languages (English, Malay, Chinese)</li>
-            <li>• Learn from new Q&A pairs you add</li>
+            <li>• Escalate complex issues to staff when needed</li>
+            <li>• Learn from new keywords and examples you add</li>
           </ul>
+        </div>
+
+        <div class="bg-neutral-50 rounded-xl p-4 border">
+          <p class="font-semibold text-neutral-800 mb-2">🗂️ Dashboard Overview:</p>
+          <div class="space-y-2 text-xs">
+            <p class="text-neutral-600 mb-2">The Rainbow dashboard has four main sections in the navigation:</p>
+            <div class="space-y-1.5">
+              <div><strong>📱 Connect:</strong> WhatsApp setup and connection status</div>
+              <div><strong>🧠 Train:</strong> Configure how Rainbow understands messages and responds</div>
+              <div class="ml-4 text-neutral-600">
+                • Understanding - Intent classification system<br>
+                • Responses - Knowledge base and workflows
+              </div>
+              <div><strong>🧪 Test:</strong> Test Rainbow before deploying changes</div>
+              <div class="ml-4 text-neutral-600">
+                • Chat Simulator - Test responses in a safe environment<br>
+                • Staff Review - Review and validate AI classifications
+              </div>
+              <div><strong>💬 Conversations:</strong> View and manage guest conversations</div>
+              <div class="ml-4 text-neutral-600">
+                • Live Chat - See all WhatsApp conversations and reply to guests
+              </div>
+              <div><strong>📊 Monitor:</strong> View analytics and configure settings</div>
+              <div class="ml-4 text-neutral-600">
+                • Dashboard - System status and metrics<br>
+                • Settings - AI models, notifications, and system config
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -120,6 +150,70 @@
             <li>• QR codes expire after 60 seconds - refresh if needed</li>
             <li>• You can connect multiple WhatsApp numbers for different locations</li>
             <li>• Each instance can handle multiple simultaneous conversations</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Simulator -->
+    <div id="help-chat-simulator" class="bg-white rounded-2xl border p-6 mb-6">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-2xl">💬</span>
+        <h3 class="text-xl font-semibold text-neutral-800">Chat Simulator</h3>
+      </div>
+      <div class="space-y-4 text-sm text-neutral-700">
+        <p class="leading-relaxed">
+          The Chat Simulator lets you test how Rainbow responds to messages before deploying changes. Use it to verify intent classification, test workflows, and check AI responses without sending actual WhatsApp messages.
+        </p>
+
+        <div class="bg-neutral-50 rounded-xl p-4 border">
+          <p class="font-semibold text-neutral-800 mb-2">🎯 How to Use:</p>
+          <ol class="space-y-2 ml-4 text-neutral-700">
+            <li><strong>1. Access:</strong> Click <strong>🧪 Test</strong> → <strong>💬 Chat Simulator</strong> in the navigation menu</li>
+            <li><strong>2. Type a message:</strong> Enter a test message like "What's the WiFi password?"</li>
+            <li><strong>3. Send:</strong> Click <strong>Send</strong> or press Enter</li>
+            <li><strong>4. Review results:</strong> See Rainbow's response and classification details</li>
+          </ol>
+        </div>
+
+        <div class="bg-gradient-primary rounded-xl p-4 border border-primary-200">
+          <p class="font-semibold text-primary-800 mb-2">📊 Understanding Test Results:</p>
+          <div class="space-y-2 text-primary-700 text-xs">
+            <p><strong>Intent:</strong> Shows which intent Rainbow detected (e.g., "wifi_inquiry", "greeting")</p>
+            <p><strong>Confidence:</strong> How certain Rainbow is about the classification (0-100%)</p>
+            <p><strong>Tier:</strong> Which tier matched the message:</p>
+            <ul class="ml-4 mt-1 space-y-1">
+              <li>• <strong>T1 (Regex):</strong> Emergency pattern matched (~0.1ms)</li>
+              <li>• <strong>T2 (Fuzzy):</strong> Keyword matched (~1ms)</li>
+              <li>• <strong>T3 (Semantic):</strong> Training example matched (~50ms)</li>
+              <li>• <strong>T4 (LLM):</strong> AI classification fallback (~100-500ms)</li>
+            </ul>
+            <p class="mt-2"><strong>Token Usage:</strong> Shows how many tokens the AI used (displayed in metadata section)</p>
+            <p><strong>Response Time:</strong> How long Rainbow took to generate the response</p>
+          </div>
+        </div>
+
+        <div class="bg-gradient-success rounded-xl p-4 border border-success-200">
+          <p class="font-semibold text-success-800 mb-2">🧪 Testing Workflows:</p>
+          <div class="space-y-2 text-success-700 text-xs">
+            <p>You can simulate multi-step workflows (like booking or checkout) in the Chat Simulator:</p>
+            <ol class="ml-4 space-y-1">
+              <li>1. Trigger a workflow by sending a message that matches the intent</li>
+              <li>2. Rainbow will send the first step message and wait for your reply</li>
+              <li>3. Continue responding to simulate a real conversation</li>
+              <li>4. See how the workflow progresses through each step</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="bg-gradient-warning rounded-xl p-4 border border-warning-200">
+          <p class="font-semibold text-warning-800 mb-2">💡 Pro Tips:</p>
+          <ul class="space-y-1 ml-4 text-warning-700 text-xs">
+            <li>• Test after every change to intents, keywords, or examples</li>
+            <li>• Try different phrasings to see if Rainbow understands variations</li>
+            <li>• Check token usage to monitor AI costs</li>
+            <li>• Use the simulator to find misclassified messages and improve training data</li>
+            <li>• Test in different languages (English, Malay, Chinese) to verify multilingual support</li>
           </ul>
         </div>
       </div>
@@ -392,6 +486,26 @@
         </div>
 
         <!-- Best Practices -->
+        <div class="bg-gradient-success rounded-xl p-4 border border-success-200 mt-4">
+          <p class="font-semibold text-success-800 mb-2">⚡ Quick Add: Adding Keywords and Examples Fast</p>
+          <div class="space-y-2 text-success-700 text-xs">
+            <p>The <strong>Quick Add</strong> panel lets you quickly add misclassified messages as keywords or examples without navigating through each tier:</p>
+            <ol class="ml-4 space-y-1">
+              <li>1. Select the <strong>intent</strong> from the dropdown (e.g., "wifi_inquiry")</li>
+              <li>2. Select the <strong>language</strong> (English, Malay, or Chinese)</li>
+              <li>3. Type or paste the message text</li>
+              <li>4. Click <strong>Add as Keyword</strong> (T2 Fuzzy) or <strong>Add as Example</strong> (T3 Semantic)</li>
+              <li>5. The system automatically checks for duplicates and adds to the right tier</li>
+            </ol>
+            <p class="mt-2"><strong>When to use Quick Add:</strong></p>
+            <ul class="ml-4 space-y-1">
+              <li>• Found a misclassified message in Chat Simulator or Live Chat</li>
+              <li>• Want to quickly improve classification for a specific phrase</li>
+              <li>• Adding multiple similar phrases in a row</li>
+            </ul>
+          </div>
+        </div>
+
         <div class="bg-primary-50 rounded-xl p-4 border border-primary-200 mt-4">
           <p class="font-semibold text-primary-800 mb-2">✨ Best Practices:</p>
           <ul class="space-y-1 ml-4 text-primary-700 text-xs">
@@ -402,6 +516,7 @@
             <li>• <strong>Collapse when done:</strong> Keep sections collapsed to reduce clutter</li>
             <li>• <strong>Test frequently:</strong> Use Test Console after every change</li>
             <li>• <strong>Multilingual support:</strong> Add keywords in all languages your guests use</li>
+            <li>• <strong>Use Quick Add:</strong> Fastest way to improve classification for misclassified messages</li>
           </ul>
         </div>
       </div>
@@ -468,44 +583,6 @@
       </div>
     </div>
 
-    <!-- Static Messages -->
-    <div id="help-static-replies" class="bg-white rounded-2xl border p-6 mb-6">
-      <div class="flex items-center gap-2 mb-4">
-        <span class="text-2xl">💬</span>
-        <h3 class="text-xl font-semibold text-neutral-800">Static Messages</h3>
-      </div>
-      <div class="space-y-4 text-sm text-neutral-700">
-        <p class="leading-relaxed">
-          Static Messages are pre-written responses for common questions. When Rainbow detects a specific intent,
-          it can send a static reply instantly without using AI, making responses faster and more consistent.
-        </p>
-
-        <div class="bg-neutral-50 rounded-xl p-4 border">
-          <p class="font-semibold text-neutral-800 mb-2">⚡ When to Use Static Messages:</p>
-          <ul class="space-y-1 ml-4 text-neutral-700 text-xs">
-            <li>• <strong>Greetings:</strong> "Hello! Welcome to [Hostel Name]. How can I help you?"</li>
-            <li>• <strong>WiFi Info:</strong> "Our WiFi is [Name], password: [Password]"</li>
-            <li>• <strong>Check-in/out Times:</strong> "Check-in: 2 PM, Check-out: 11 AM"</li>
-            <li>• <strong>Location:</strong> Link to Google Maps with directions</li>
-            <li>• <strong>Emergency Contact:</strong> Reception phone number</li>
-          </ul>
-        </div>
-
-        <div class="space-y-2 mt-4">
-          <p class="font-semibold text-neutral-800">🎨 Formatting Tips:</p>
-          <div class="bg-gradient-primary rounded-xl p-4 border border-primary-200">
-            <ul class="space-y-1 text-primary-700 text-xs">
-              <li>• Use <strong>*bold*</strong> for emphasis (shown as <strong>bold</strong> in WhatsApp)</li>
-              <li>• Use <em>_italic_</em> for subtle emphasis (shown as <em>italic</em>)</li>
-              <li>• Add emojis to make messages friendly: 😊 👋 ✨</li>
-              <li>• Use line breaks for readability</li>
-              <li>• Include links for maps, websites, etc.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- AI Models -->
     <div id="help-ai-providers" class="bg-white rounded-2xl border p-6 mb-6 shadow-soft">
       <div class="flex items-center gap-2 mb-4">
@@ -559,111 +636,235 @@
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Operations & Notifications -->
-  <div id="help-operations" class="bg-white rounded-2xl border p-6 mb-6 shadow-soft">
-    <div class="flex items-center gap-2 mb-4">
-      <span class="text-2xl">👥</span>
-      <h3 class="text-xl font-semibold text-neutral-800">Operations & Notifications</h3>
+<!-- Workflow Editor -->
+<div id="help-workflow" class="bg-white rounded-2xl border p-6 mb-6">
+  <div class="flex items-center gap-2 mb-4">
+    <span class="text-2xl">🔄</span>
+    <h3 class="text-xl font-semibold text-neutral-800">Workflow Editor</h3>
+  </div>
+  <div class="space-y-4 text-sm text-neutral-700">
+    <p class="leading-relaxed">
+      Workflows let you create multi-step conversations with guests. For example, a booking workflow can ask for dates, room type, and number of guests before sending a confirmation. Rainbow supports two formats: <strong>Steps</strong> (simple linear flow) and <strong>Nodes</strong> (advanced branching logic).
+    </p>
+
+    <div class="bg-gradient-primary rounded-xl p-4 border border-primary-200">
+      <p class="font-semibold text-primary-800 mb-2">📋 How to Create a Workflow:</p>
+      <ol class="space-y-2 ml-4 text-primary-700 text-xs">
+        <li>1. Click <strong>🧠 Train</strong> → <strong>📚 Responses</strong> → <strong>Workflows</strong> tab</li>
+        <li>2. Click <strong>+ New</strong> to create a workflow</li>
+        <li>3. Give it a name (e.g., "Checkout Process")</li>
+        <li>4. Choose format: <strong>Steps</strong> (simple) or <strong>Nodes</strong> (advanced)</li>
+        <li>5. Add steps or nodes to build your conversation flow</li>
+        <li>6. Click <strong>Save</strong> when done</li>
+        <li>7. Go to <strong>🧠 Train</strong> → <strong>🧠 Understanding</strong> → <strong>Intents</strong> to assign the workflow to an intent</li>
+      </ol>
     </div>
-    <div class="space-y-4 text-sm text-neutral-700">
-      <p>Rainbow can notify human staff when guests need assistance or when the system needs attention.</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-          <h4 class="font-bold text-blue-800 mb-1 flex items-center gap-2">
-            <span>📱 System Admin</span>
-            <span class="text-[10px] bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded uppercase">Technical</span>
-          </h4>
-          <p class="text-xs text-blue-700 mb-3">Receives technical alerts: WhatsApp disconnections, server restarts, and
-            system errors.</p>
-          <p class="text-[10px] text-neutral-500">Configure in: <strong>Settings → Notifications</strong></p>
-        </div>
-        <div class="p-4 bg-green-50 border border-green-100 rounded-2xl">
-          <h4 class="font-bold text-green-800 mb-1 flex items-center gap-2">
-            <span>👥 Capsule Operators</span>
-            <span class="text-[10px] bg-green-200 text-green-800 px-1.5 py-0.5 rounded uppercase">Response</span>
-          </h4>
-          <p class="text-xs text-green-700 mb-3">Staff members who receive guest escalations, booking requests, and
-            emergency alerts.</p>
-          <p class="text-[10px] text-neutral-500">Configure in: <strong>Settings → Operators</strong></p>
-        </div>
+    <div class="bg-neutral-50 rounded-xl p-4 border mt-4">
+      <p class="font-semibold text-neutral-800 mb-3">📝 Steps Mode (Simple Linear Flow):</p>
+      <div class="space-y-2 text-xs">
+        <p class="text-neutral-600">Best for simple conversations that always follow the same order.</p>
+        <p class="text-neutral-700"><strong>How to use:</strong></p>
+        <ol class="ml-4 space-y-1 text-neutral-600">
+          <li>1. Click <strong>+ Add Step</strong></li>
+          <li>2. Enter the message Rainbow should send</li>
+          <li>3. Add more steps in order</li>
+          <li>4. Rainbow will send each step and wait for the guest's reply before continuing</li>
+        </ol>
+        <p class="text-neutral-700 mt-2"><strong>Example:</strong> WiFi password workflow</p>
+        <ul class="ml-4 space-y-1 text-neutral-600">
+          <li>• Step 1: "Our WiFi is PelangiGuest, password: welcome123"</li>
+          <li>• Step 2: "Is there anything else I can help you with?"</li>
+        </ul>
       </div>
+    </div>
+
+    <div class="bg-gradient-success rounded-xl p-4 border border-success-200 mt-4">
+      <p class="font-semibold text-success-800 mb-3">🎨 Nodes Mode (Advanced Branching Logic):</p>
+      <div class="space-y-2 text-success-700 text-xs">
+        <p>Inspired by n8n workflow automation. Allows branching, conditions, API calls, and complex flows.</p>
+        <p class="font-semibold mt-2">Available Node Types:</p>
+        <div class="space-y-2 ml-4">
+          <div class="bg-white rounded-lg p-2 border border-success-200">
+            <p class="font-semibold text-blue-700">💬 Message Node</p>
+            <p class="text-neutral-600">Sends a text message to the guest. Use for prompts, questions, or information.</p>
+          </div>
+          <div class="bg-white rounded-lg p-2 border border-success-200">
+            <p class="font-semibold text-purple-700">⏸️ Wait Reply Node</p>
+            <p class="text-neutral-600">Pauses workflow and waits for guest to respond. Saves their reply for later nodes.</p>
+          </div>
+          <div class="bg-white rounded-lg p-2 border border-success-200">
+            <p class="font-semibold text-amber-700">🔀 Condition Node</p>
+            <p class="text-neutral-600">Branches the flow based on conditions (e.g., if guest says "yes" → Node A, else → Node B).</p>
+          </div>
+          <div class="bg-white rounded-lg p-2 border border-success-200">
+            <p class="font-semibold text-green-700">📱 WhatsApp Send Node</p>
+            <p class="text-neutral-600">Sends a WhatsApp message to a specific phone number (e.g., notify staff when booking confirmed).</p>
+          </div>
+          <div class="bg-white rounded-lg p-2 border border-success-200">
+            <p class="font-semibold text-orange-700">🔌 API Call Node</p>
+            <p class="text-neutral-600">Makes an API call to Pelangi Manager system (e.g., check availability, create booking, process checkout).</p>
+          </div>
+        </div>
+        <p class="mt-2"><strong>How to build a node workflow:</strong></p>
+        <ol class="ml-4 space-y-1">
+          <li>1. Switch to <strong>Nodes</strong> format using the toggle</li>
+          <li>2. Click node type buttons to add nodes (Message, Wait Reply, Condition, etc.)</li>
+          <li>3. Configure each node by filling in the fields</li>
+          <li>4. Connect nodes by setting the <strong>Next Node</strong> field</li>
+          <li>5. Set the <strong>Start Node</strong> (which node runs first)</li>
+          <li>6. Test using the Workflow Tester at the bottom</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="bg-gradient-warning rounded-xl p-4 border border-warning-200 mt-4">
+      <p class="font-semibold text-warning-800 mb-2">🧪 Testing Workflows:</p>
+      <div class="space-y-2 text-warning-700 text-xs">
+        <p>Always test workflows before deploying to production:</p>
+        <ol class="ml-4 space-y-1">
+          <li>1. Scroll to <strong>Workflow Tester</strong> section at the bottom of the Workflows tab</li>
+          <li>2. Select your workflow from the dropdown</li>
+          <li>3. Click <strong>Begin Test</strong></li>
+          <li>4. Interact with the workflow as if you're a guest</li>
+          <li>5. Verify all steps/nodes work correctly and messages are clear</li>
+        </ol>
+        <p class="mt-2">You can also test workflows in <strong>🧪 Test → 💬 Chat Simulator</strong> for a more realistic WhatsApp-style experience.</p>
+      </div>
+    </div>
+
+    <div class="bg-gradient-info rounded-xl p-4 border border-info-200 mt-4">
+      <p class="font-semibold text-info-800 mb-2">🏨 Checkout Workflow (Built-in):</p>
+      <div class="space-y-2 text-info-700 text-xs">
+        <p>Rainbow includes a pre-built checkout workflow that guides guests through the departure process:</p>
+        <ol class="ml-4 space-y-1">
+          <li>1. <strong>Confirmation:</strong> Asks guest to confirm they're checking out and their capsule number</li>
+          <li>2. <strong>Reminders:</strong> Reminds guest about personal belongings and returning key card</li>
+          <li>3. <strong>Admin Notification:</strong> Sends WhatsApp notification to staff with guest name, capsule, and checkout time</li>
+          <li>4. <strong>Farewell:</strong> Thanks the guest and requests a review</li>
+        </ol>
+        <p class="mt-2"><strong>To trigger checkout workflow:</strong></p>
+        <ul class="ml-4 space-y-1">
+          <li>• Guest says "I want to checkout", "checking out now", "saya nak checkout", "我要退房"</li>
+          <li>• Rainbow detects <code class="bg-info-100 px-1 rounded">checkout_now</code> intent and starts the workflow</li>
+          <li>• Staff receives notification automatically when guest confirms</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-primary-50 rounded-xl p-4 border border-primary-200 mt-4">
+      <p class="font-semibold text-primary-800 mb-2">💡 Example Use Cases:</p>
+      <ul class="space-y-2 ml-4 text-primary-700 text-xs">
+        <li>• <strong>Booking:</strong> Ask for dates → room type → number of guests → send confirmation</li>
+        <li>• <strong>Checkout:</strong> Confirm checkout → remind about belongings → notify admin → thank guest (built-in)</li>
+        <li>• <strong>Complaint:</strong> Ask for details → collect photo → escalate to staff → acknowledge receipt</li>
+        <li>• <strong>Survey:</strong> Ask multiple questions → collect responses → send thank you message</li>
+        <li>• <strong>Payment:</strong> Ask for payment method → process → send receipt → update booking status</li>
+      </ul>
     </div>
   </div>
 </div>
 
-<!-- Workflow -->
-<div id="help-workflow" class="bg-white rounded-2xl border p-6 mb-6">
+<!-- Live Chat -->
+<div id="help-live-chat" class="bg-white rounded-2xl border p-6 mb-6">
   <div class="flex items-center gap-2 mb-4">
-    <span class="text-2xl">⚙️</span>
-    <h3 class="text-xl font-semibold text-neutral-800">Workflow Management</h3>
+    <span class="text-2xl">💬</span>
+    <h3 class="text-xl font-semibold text-neutral-800">Live Chat - Guest Conversations</h3>
   </div>
   <div class="space-y-4 text-sm text-neutral-700">
     <p class="leading-relaxed">
-      Workflows define how Rainbow processes messages: intent detection → knowledge base search → static replies → AI
-      fallback.
-      You can customize workflows for different scenarios or create multi-step conversations.
+      The Live Chat interface lets you view all WhatsApp conversations between Rainbow and your guests. You can search conversations, filter by date, and reply directly to guests when needed.
     </p>
 
+    <div class="bg-gradient-primary rounded-xl p-4 border border-primary-200">
+      <p class="font-semibold text-primary-800 mb-2">📱 Accessing Live Chat:</p>
+      <div class="space-y-2 text-primary-700 text-xs">
+        <p>Click <strong>💬 Conversations</strong> → <strong>💬 Live Chat</strong> in the navigation menu</p>
+        <p class="mt-2">The interface has two parts:</p>
+        <ul class="ml-4 space-y-1">
+          <li>• <strong>Left sidebar:</strong> List of all conversations</li>
+          <li>• <strong>Right panel:</strong> Selected conversation messages</li>
+        </ul>
+      </div>
+    </div>
+
     <div class="bg-neutral-50 rounded-xl p-4 border">
-      <p class="font-semibold text-neutral-800 mb-3">🔄 Default Message Flow:</p>
-      <div class="space-y-2">
-        <div class="flex items-center gap-3">
-          <div
-            class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
-            1</div>
-          <div class="flex-1 text-xs">
-            <p class="font-semibold text-neutral-800">Message Received</p>
-            <p class="text-neutral-600">Guest sends message via WhatsApp</p>
-          </div>
+      <p class="font-semibold text-neutral-800 mb-3">🔍 Search and Filter Features:</p>
+      <div class="space-y-3 text-xs">
+        <div>
+          <p class="font-semibold text-neutral-700">Search Box</p>
+          <p class="text-neutral-600">Type in the search box at the top to filter conversations by:</p>
+          <ul class="ml-4 space-y-1 text-neutral-600 mt-1">
+            <li>• Guest name (e.g., "John", "Ahmad")</li>
+            <li>• Phone number (e.g., "012345", "+60123")</li>
+            <li>• Message content (e.g., "booking", "checkout")</li>
+          </ul>
         </div>
-        <div class="flex items-center gap-3">
-          <div
-            class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
-            2</div>
-          <div class="flex-1 text-xs">
-            <p class="font-semibold text-neutral-800">Intent Detection</p>
-            <p class="text-neutral-600">Identifies what user wants (greeting, wifi, booking, etc.)</p>
-          </div>
+        <div>
+          <p class="font-semibold text-neutral-700">Date Range Filter</p>
+          <p class="text-neutral-600">Use the date filters to show conversations from a specific time period:</p>
+          <ul class="ml-4 space-y-1 text-neutral-600 mt-1">
+            <li>• <strong>From date:</strong> Start of date range</li>
+            <li>• <strong>To date:</strong> End of date range</li>
+            <li>• Default shows last 7 days</li>
+            <li>• Click <strong>✕</strong> button to clear date filter and show all conversations</li>
+          </ul>
         </div>
-        <div class="flex items-center gap-3">
-          <div
-            class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
-            3</div>
-          <div class="flex-1 text-xs">
-            <p class="font-semibold text-neutral-800">Check Static Reply</p>
-            <p class="text-neutral-600">If intent has static reply, send it immediately</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div
-            class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
-            4</div>
-          <div class="flex-1 text-xs">
-            <p class="font-semibold text-neutral-800">Search Knowledge Base</p>
-            <p class="text-neutral-600">Search documents for relevant information</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div
-            class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
-            5</div>
-          <div class="flex-1 text-xs">
-            <p class="font-semibold text-neutral-800">AI Response</p>
-            <p class="text-neutral-600">Generate contextual response using AI if no match found</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div
-            class="flex-shrink-0 w-6 h-6 rounded-full bg-success-500 text-white flex items-center justify-center text-xs font-bold">
-            ✓</div>
-          <div class="flex-1 text-xs">
-            <p class="font-semibold text-neutral-800">Send Reply</p>
-            <p class="text-neutral-600">Deliver response to guest via WhatsApp</p>
-          </div>
+        <div>
+          <p class="font-semibold text-neutral-700">Quick Filters</p>
+          <p class="text-neutral-600">Click filter chips to quickly filter:</p>
+          <ul class="ml-4 space-y-1 text-neutral-600 mt-1">
+            <li>• <strong>All:</strong> Show all conversations</li>
+            <li>• <strong>Unread:</strong> Show only unread messages</li>
+            <li>• <strong>Favourites:</strong> Show starred/favourite conversations</li>
+            <li>• <strong>Groups:</strong> Show group chats only</li>
+          </ul>
         </div>
       </div>
+    </div>
+
+    <div class="bg-gradient-success rounded-xl p-4 border border-success-200">
+      <p class="font-semibold text-success-800 mb-2">💬 Replying to Guests:</p>
+      <div class="space-y-2 text-success-700 text-xs">
+        <p>You can manually reply to guests when Rainbow needs human assistance:</p>
+        <ol class="ml-4 space-y-1">
+          <li>1. Click a conversation in the left sidebar to open it</li>
+          <li>2. Read the conversation history in the right panel</li>
+          <li>3. Type your message in the input box at the bottom</li>
+          <li>4. Press <strong>Enter</strong> or click the send button</li>
+          <li>5. Your message will be sent to the guest via WhatsApp</li>
+        </ol>
+        <p class="mt-2"><strong>When to reply manually:</strong></p>
+        <ul class="ml-4 space-y-1">
+          <li>• Guest asks a question Rainbow can't answer</li>
+          <li>• Complex booking or special request</li>
+          <li>• Guest escalated to human support</li>
+          <li>• Follow-up after checkout or complaint</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-gradient-warning rounded-xl p-4 border border-warning-200">
+      <p class="font-semibold text-warning-800 mb-2">⚙️ Additional Features:</p>
+      <ul class="space-y-1 ml-4 text-warning-700 text-xs">
+        <li>• <strong>Mark as read:</strong> Click menu (⋮) → "Mark all as read" to clear unread badges</li>
+        <li>• <strong>Star conversations:</strong> Click star icon to mark important conversations as favourites</li>
+        <li>• <strong>Instance filter:</strong> If you have multiple WhatsApp numbers, filter by instance</li>
+        <li>• <strong>Connection status:</strong> Green badge at top shows WhatsApp connection status</li>
+      </ul>
+    </div>
+
+    <div class="bg-primary-50 rounded-xl p-4 border border-primary-200 mt-4">
+      <p class="font-semibold text-primary-800 mb-2">💡 Pro Tips:</p>
+      <ul class="space-y-1 ml-4 text-primary-700 text-xs">
+        <li>• Use date filter to review conversations from specific periods (e.g., last weekend)</li>
+        <li>• Search for "checkout" or "booking" to quickly find relevant conversations</li>
+        <li>• Star important conversations for easy access later</li>
+        <li>• Check Live Chat regularly to catch any escalations or unresolved issues</li>
+        <li>• Use manual replies sparingly - add common issues to Knowledge Base instead</li>
+      </ul>
     </div>
   </div>
 </div>
@@ -684,6 +885,7 @@
           <li>• <strong>Phone offline:</strong> Ensure your phone has internet connection</li>
           <li>• <strong>Wrong number:</strong> Verify the phone number matches your WhatsApp account</li>
           <li>• <strong>Already linked:</strong> Unlink from other devices first (max 4 linked devices)</li>
+          <li>• <strong>Check connection status:</strong> Green badge in Live Chat or Dashboard shows connection status</li>
         </ul>
       </div>
 
@@ -691,38 +893,43 @@
       <div class="bg-gradient-danger rounded-xl p-4 border border-danger-200">
         <p class="font-semibold text-danger-800 mb-2">❌ Bot Not Responding</p>
         <ul class="space-y-1 ml-4 text-danger-700 text-xs">
-          <li>• <strong>Check Status:</strong> Click <strong>📱 Connect</strong> → <strong>🏠 Dashboard</strong> -
-            WhatsApp should show <span class="inline-flex items-center gap-1"><span
-                class="status-dot status-online"></span>Connected</span></li>
-          <li>• <strong>AI Unavailable:</strong> Click <strong>📊 Monitor</strong> → <strong>⚙️ Settings</strong> →
-            <strong>🤖 AI Models</strong> -
-            ensure at least one AI model is enabled and configured correctly.</li>
-          <li>• <strong>Server down:</strong> Check <strong>📱 Connect</strong> → <strong>🏠 Dashboard</strong> - if
-            offline, contact support</li>
-          <li>• <strong>Message filtering:</strong> Check if message meets intent detection criteria</li>
+          <li>• <strong>Check WhatsApp Status:</strong> Click <strong>📊 Monitor</strong> → <strong>🏠 Dashboard</strong> - WhatsApp should show Connected status</li>
+          <li>• <strong>AI Unavailable:</strong> Click <strong>📊 Monitor</strong> → <strong>⚙️ Settings</strong> → <strong>🤖 AI Models</strong> - ensure at least one AI model is enabled</li>
+          <li>• <strong>Test in simulator:</strong> Use <strong>🧪 Test → 💬 Chat Simulator</strong> to test if bot responds there</li>
+          <li>• <strong>Check intent classification:</strong> Message may not match any intents - add keywords/examples</li>
         </ul>
       </div>
 
       <!-- Issue 3 -->
       <div class="bg-gradient-danger rounded-xl p-4 border border-danger-200">
-        <p class="font-semibold text-danger-800 mb-2">❌ Incorrect Responses</p>
+        <p class="font-semibold text-danger-800 mb-2">❌ Wrong Intent Detected</p>
         <ul class="space-y-1 ml-4 text-danger-700 text-xs">
-          <li>• <strong>Update Knowledge Base:</strong> Add more details to relevant documents</li>
-          <li>• <strong>Add Keywords:</strong> Use Intent Manager to add keywords for better intent detection</li>
-          <li>• <strong>Refine Static Messages:</strong> Update pre-written responses to be more accurate</li>
-          <li>• <strong>Test Responses:</strong> Click <strong>🧪 Test → 💬 Chat Simulator</strong> to test and refine
-            responses before deploying</li>
+          <li>• <strong>Test message:</strong> Use <strong>🧪 Test → 💬 Chat Simulator</strong> to see which intent is detected</li>
+          <li>• <strong>Add keywords:</strong> Go to <strong>🧠 Train → 🧠 Understanding</strong>, use Quick Add to add the message as a keyword or example for the correct intent</li>
+          <li>• <strong>Check tier matching:</strong> If T4 (LLM) is always matching, add more T2 keywords or T3 examples for better performance</li>
+          <li>• <strong>Review in Staff Review:</strong> Use <strong>🧪 Test → 👥 Staff Review</strong> to validate and improve classifications</li>
         </ul>
       </div>
 
       <!-- Issue 4 -->
       <div class="bg-gradient-danger rounded-xl p-4 border border-danger-200">
-        <p class="font-semibold text-danger-800 mb-2">❌ Slow Responses</p>
+        <p class="font-semibold text-danger-800 mb-2">❌ Workflow Not Starting</p>
         <ul class="space-y-1 ml-4 text-danger-700 text-xs">
-          <li>• <strong>Use Static Messages:</strong> Pre-written responses are instant (no AI delay)</li>
-          <li>• <strong>Optimize AI Model:</strong> Try faster models for quick responses</li>
-          <li>• <strong>Reduce KB Size:</strong> Smaller knowledge base = faster search</li>
-          <li>• <strong>Check Server Load:</strong> Heavy traffic can cause delays</li>
+          <li>• <strong>Check intent routing:</strong> Go to <strong>🧠 Train → 🧠 Understanding → Intents</strong> and verify the intent is set to trigger the workflow</li>
+          <li>• <strong>Test workflow:</strong> Use Workflow Tester in <strong>🧠 Train → 📚 Responses → Workflows</strong> to test workflow logic</li>
+          <li>• <strong>Check start node:</strong> For node-based workflows, ensure the Start Node is set correctly</li>
+          <li>• <strong>Verify node connections:</strong> Make sure all nodes have valid Next Node values</li>
+        </ul>
+      </div>
+
+      <!-- Issue 5 -->
+      <div class="bg-gradient-danger rounded-xl p-4 border border-danger-200">
+        <p class="font-semibold text-danger-800 mb-2">❌ Can't Find Conversation in Live Chat</p>
+        <ul class="space-y-1 ml-4 text-danger-700 text-xs">
+          <li>• <strong>Check date filter:</strong> Live Chat defaults to last 7 days - clear date filter to see all conversations</li>
+          <li>• <strong>Use search:</strong> Type guest name, phone number, or message keywords in search box</li>
+          <li>• <strong>Check instance filter:</strong> If you have multiple WhatsApp numbers, make sure "All Instances" is selected</li>
+          <li>• <strong>Check quick filters:</strong> Make sure "All" is selected, not "Unread" or "Favourites"</li>
         </ul>
       </div>
     </div>
@@ -730,9 +937,11 @@
     <div class="bg-primary-50 rounded-xl p-4 border border-primary-200 mt-4">
       <p class="font-semibold text-primary-800 mb-2">💡 Need More Help?</p>
       <p class="text-primary-700 text-xs">
-        Click <strong>📱 Connect</strong> → <strong>🏠 Dashboard</strong> for real-time diagnostics, or use
-        <strong>🧪 Test</strong> → <strong>💬 Chat Simulator</strong> to test responses and identify issues.
-        For technical support, contact your system administrator.
+        <strong>Testing tools:</strong> Use <strong>🧪 Test → 💬 Chat Simulator</strong> to test responses and identify issues before they affect real guests.
+        <br><br>
+        <strong>Monitoring:</strong> Check <strong>📊 Monitor → 🏠 Dashboard</strong> for real-time system status and connection diagnostics.
+        <br><br>
+        <strong>Support:</strong> For technical issues beyond these solutions, contact your system administrator.
       </p>
     </div>
   </div>
@@ -748,31 +957,37 @@
     <div class="space-y-2">
       <div class="flex items-start gap-2">
         <span class="flex-shrink-0 text-success-600">✓</span>
-        <p class="text-success-700"><strong>Start Simple:</strong> Begin with static replies for common questions</p>
+        <p class="text-success-700"><strong>Test Before Deploy:</strong> Always use <strong>🧪 Test → 💬 Chat Simulator</strong> to test changes before they go live</p>
       </div>
       <div class="flex items-start gap-2">
         <span class="flex-shrink-0 text-success-600">✓</span>
-        <p class="text-success-700"><strong>Test Regularly:</strong> Use <strong>🧪 Test → 💬 Chat Simulator</strong> to
-          test new changes</p>
+        <p class="text-success-700"><strong>Use Quick Add:</strong> Found a wrong classification? Use Quick Add to fix it in seconds</p>
       </div>
       <div class="flex items-start gap-2">
         <span class="flex-shrink-0 text-success-600">✓</span>
-        <p class="text-success-700"><strong>Monitor Status:</strong> Check <strong>📱 Connect → 🏠 Dashboard</strong>
-          daily for connection issues</p>
+        <p class="text-success-700"><strong>Monitor Live Chat:</strong> Check <strong>💬 Conversations → 💬 Live Chat</strong> regularly to catch issues</p>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="flex-shrink-0 text-success-600">✓</span>
+        <p class="text-success-700"><strong>Add Keywords First:</strong> T2 keywords are fastest - add these before T3 examples</p>
       </div>
     </div>
     <div class="space-y-2">
       <div class="flex items-start gap-2">
         <span class="flex-shrink-0 text-success-600">✓</span>
-        <p class="text-success-700"><strong>Update KB Often:</strong> Keep information current and accurate</p>
+        <p class="text-success-700"><strong>Update Knowledge Base:</strong> Keep information current and accurate for best AI responses</p>
       </div>
       <div class="flex items-start gap-2">
         <span class="flex-shrink-0 text-success-600">✓</span>
-        <p class="text-success-700"><strong>Add Keywords:</strong> More keywords = better intent detection</p>
+        <p class="text-success-700"><strong>Test Workflows:</strong> Use Workflow Tester before deploying multi-step conversations</p>
       </div>
       <div class="flex items-start gap-2">
         <span class="flex-shrink-0 text-success-600">✓</span>
-        <p class="text-success-700"><strong>Use Emojis:</strong> Make responses friendly and engaging 😊</p>
+        <p class="text-success-700"><strong>Review Classifications:</strong> Use <strong>🧪 Test → 👥 Staff Review</strong> to validate AI predictions</p>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="flex-shrink-0 text-success-600">✓</span>
+        <p class="text-success-700"><strong>Check Token Usage:</strong> Monitor AI costs in Chat Simulator metadata section</p>
       </div>
     </div>
   </div>
