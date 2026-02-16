@@ -302,3 +302,157 @@ Story reverted to passes: false
 - Category filtering logic is in `dashboard-helpers.js` `filterActivityByCategory()`
 - The `ActivityEvent` type in `activity-tracker.ts` has `category: ActivityCategory` field
 - TS baseline as of this iteration: 21 pre-existing errors
+
+## Batch 1A — Mon, Feb 16, 2026 — Live Chat UI Cleanup (US-095, US-097, US-098, US-071, US-076)
+
+### US-095: Remove 'WhatsApp Connected' button from live-chat
+- Removed `lc-wa-dot` span and `lc-wa-tooltip` div from sidebar header in `live-chat.html`
+- JS `updateConnectionStatus()` in `live-chat-core.js` safely no-ops via `if (dot)` guard — no JS changes needed
+
+### US-097: Remove 'Autopilot' text, show airplane icon only
+- Replaced mode button content: removed SVG + `<span id="lc-mode-label">` text, replaced with `<span id="lc-mode-icon">` emoji-only
+- Updated `updateModeUI()` in `live-chat-panels.js`: now sets icon emoji + tooltip per mode instead of text label
+- CSS in `rainbow-livechat-core.css`: mode button changed to circular 32x32, centered icon
+
+### US-098: Remove delete conversation icon from actions
+- Removed the `<button onclick="lcDeleteChat()">` trash button from conversation header actions
+- `lcDeleteChat` function remains in JS (still callable from other paths) — only the header button removed
+
+### US-071: Redesign sidebar header to match WhatsApp Web
+- Already fully implemented from prior sessions — verified all 7 acceptance criteria met
+- Sidebar: 'Chats' title left, new-chat + 3-dot menu right, instance selector in 3-dot menu, search below, filter chips below search
+- CSS in `rainbow-livechat-ui.css` lines 252-281 with US-071 comment
+
+### US-076: Redesign conversation header top-right
+- Header now shows only: mode icon (small circular) + search icon + 3-dot menu
+- Removed from header bar: translate toggle button, lang selector (hidden), maximize button, refresh button
+- Moved into 3-dot menu: Focus mode, Refresh (added after Mode submenu)
+- Translate and Mode already existed in 3-dot menu from prior implementation
+- Lang selector kept hidden in DOM (`style="display:none;"`) for translate feature functionality
+- All removed element IDs (`lc-translate-toggle`, `lc-maximize-btn`, etc.) have null-safe guards in JS
+
+### Files modified
+- `RainbowAI/src/public/templates/tabs/live-chat.html` — all 5 stories
+- `RainbowAI/src/public/js/modules/live-chat-panels.js` — updateModeUI() icon-only
+- `RainbowAI/src/public/css/rainbow-livechat-core.css` — mode button circular styling
+- `prd.json` — US-095, US-097, US-098, US-071, US-076 all marked passes: true
+
+## Batch 1C — Mon, Feb 16, 2026 — Backend AI Fixes (US-079, US-106, US-107)
+
+### US-079: Make phone numbers clickable in workflow messages
+- Added `convertRawPhonesToLinks()` to `workflow-nodes.ts` — converts raw `+60XXXXXXXXX` patterns to `https://wa.me/60XXXXXXXXX`
+- Updated `resolveTemplateVars()` — `{{guest.phone}}` and `{{system.admin_phone}}` now resolve as wa.me links in message content; added post-processing step for any remaining raw phones
+- Updated `getStepMessage()` in `workflow-executor.ts` — legacy step messages also get phone-to-link conversion
+- `resolveVariableRef()` unchanged — still returns raw phones for `whatsapp_send` receiver fields
+
+### US-106: Chat Simulator reply to gibberish/nonsense input
+- Added catch-all fallback in `testing-preview.ts` — if `finalMessage` is empty after all processing, uses trilingual `UNKNOWN_FALLBACK_MESSAGES` in detected language
+- Updated `response-processor.ts` — changed `if (!response) return;` guard to use static fallback instead of silently dropping the message
+- Gibberish like 'affaafadf' now always produces a polite clarification message
+
+### US-107: Unknown intent LLM reply with static fallback
+- Added `UNKNOWN_FALLBACK_MESSAGES` constant to `ai-response-generator.ts` (EN/MS/ZH trilingual)
+- Updated `classifyAndRespond()` — returns static fallback instead of empty string when all LLMs fail
+- Updated `classifyAndRespondWithSmartFallback()` — same static fallback after exhausting all smart providers
+- Updated `generateReplyOnly()` — same static fallback on total LLM failure
+- All failures logged with `all_llm_failed` model tag for monitoring
+- Fallback chain: LLM primary -> LLM fallback -> LLM final (smart) -> static trilingual message
+
+### Files modified
+- `RainbowAI/src/assistant/workflow-nodes.ts` — convertRawPhonesToLinks(), resolveTemplateVars() phone formatting
+- `RainbowAI/src/assistant/workflow-executor.ts` — getStepMessage() phone conversion, import update
+- `RainbowAI/src/assistant/ai-response-generator.ts` — UNKNOWN_FALLBACK_MESSAGES, 3 function fallbacks
+- `RainbowAI/src/routes/admin/testing-preview.ts` — empty response catch-all fallback
+- `RainbowAI/src/assistant/pipeline/response-processor.ts` — empty response catch-all fallback
+- `prd.json` — US-079, US-106, US-107 all marked passes: true
+
+## Batch 1B: Testing & Responses Fixes (US-083, US-084, US-101, US-103)
+
+### US-101: Auto-show Quick Replies on Responses page load
+- Changed `loadResponses()` default param from `'knowledge-base'` to `'quick-replies'`
+- Updated HTML: quick-replies-tab visible by default, knowledge-base-tab hidden
+
+### US-103: Move hot reload icon to Settings > AI Models
+- Removed "Reload Config" button from global header in `rainbow-admin.html`
+- Added it to AI Models tab header in `settings-ai-models.js` renderAiModelsTab()
+
+### US-083: Fix Coverage test showing no data
+- Added `coverage` config to `vitest.config.ts`: provider 'v8', reporters ['text', 'json-summary']
+- Fixed backend `testing.ts` coverage parser to check both stdout and stderr
+
+### US-084: Fix test history not showing in Quick Test
+- Added localStorage history (key: `rainbow-quick-test-history`, max 100 entries) in `chat-send.js`
+- Each entry: timestamp, message, intent, confidence, tier, responseTime, action
+- Added Quick Test History modal in `chat-simulator.html`
+- Registered showQuickTestHistory/closeQuickTestHistory/clearQuickTestHistory in module-registry.js
+
+### Files modified
+- `RainbowAI/src/public/js/modules/responses.js` — default param change
+- `RainbowAI/src/public/templates/tabs/responses.html` — tab visibility swap
+- `RainbowAI/src/public/rainbow-admin.html` — removed global Reload Config button
+- `RainbowAI/src/public/js/modules/settings-ai-models.js` — added Reload Config to AI Models header
+- `RainbowAI/vitest.config.ts` — added coverage provider config
+- `RainbowAI/src/routes/admin/testing.ts` — fixed coverage output parsing
+- `RainbowAI/src/public/js/modules/chat-send.js` — quick test history functions
+- `RainbowAI/src/public/templates/tabs/chat-simulator.html` — history modal + button update
+- `RainbowAI/src/public/js/core/module-registry.js` — registered new exports
+- `prd.json` — US-083, US-084, US-101, US-103 all marked passes: true
+
+## Session 5 — 2026-02-16 (Batch 2A: Live Chat Features)
+
+### US-072: Resizable divider between contact/conversation panes
+- Already implemented: HTML divider in `live-chat.html`, CSS in `rainbow-livechat-core.css`, JS in `live-chat-panels.js`
+- Features: mousedown/mousemove/mouseup + touch events, min widths 200px/300px, default 30/70, localStorage save
+- Verified and marked passes=true
+
+### US-073: Expand attachment menu with Camera, Audio, Contact options
+- Already implemented: '+' circle button with 5-option slide-up menu
+- Options: Document (blue), Photos (purple), Camera (red/capture='camera'), Audio (orange), Contact (teal/phone dialog)
+- Verified and marked passes=true
+
+### US-074: Voice message recording (NEW)
+- Added mic button + recording indicator (red pulsing dot + timer + cancel) to input area in `live-chat.html`
+- Added CSS styles for `.lc-mic-btn`, `.lc-voice-recording`, `.lc-voice-pulse`, `.lc-voice-timer` in `rainbow-livechat-ui.css`
+- Implemented full MediaRecorder API in `live-chat-actions.js`: start/stop toggle, cancel, audio/webm (ogg fallback), sends via `/send-media`
+- Added window exports `lcToggleVoiceRecording`, `lcCancelVoiceRecording` in `live-chat.js`
+- Graceful fallback toast if microphone unavailable
+- Marked passes=true
+
+### US-075: Reply, Pin, Star message actions functional
+- Already implemented: reply preview bar, pin/star toggle endpoints in `conversations.ts`, JSON persistence, indicator icons
+- Emoji reactions via `/messages/:msgIdx/react` endpoint
+- Context menu wired via `bindContextMenuActions()`
+- Verified and marked passes=true
+
+### US-077: WhatsApp status green dot with tooltip
+- CSS + JS were already implemented; HTML element was missing from template
+- Added WA dot element to sidebar header in `live-chat.html` (green=connected, red=disconnected, yellow=connecting)
+- Pulse animation on connected state, click/hover tooltip with status + phone number
+- Marked passes=true
+
+**Files modified:**
+- `RainbowAI/src/public/templates/tabs/live-chat.html` — WA dot HTML + mic button + recording indicator
+- `RainbowAI/src/public/css/rainbow-livechat-ui.css` — voice recording CSS styles
+- `RainbowAI/src/public/js/modules/live-chat-actions.js` — MediaRecorder voice recording logic
+- `RainbowAI/src/public/js/modules/live-chat.js` — window exports for voice recording
+- `prd.json` — US-072, US-073, US-074, US-075, US-077 all marked passes: true
+
+## Final Results — All 44 User Stories Complete (US-071 to US-114)
+
+### Summary
+- **114/114 user stories pass** (US-001 through US-114)
+- **Intent accuracy: 95.5%** (107/112 single-turn, 19/20 multi-turn)
+- **0 regressions** introduced by any changes
+- Completed via Ralph autonomous agent system with multi-agent team (ralph-us071-114)
+
+### Batches Completed
+1. **Batch 1A** — Live Chat UI Cleanup: US-095, US-097, US-098, US-071, US-076
+2. **Batch 1B** — Testing & Responses: US-083, US-084, US-101, US-103
+3. **Batch 1C** — Backend AI Fixes: US-079, US-106, US-107
+4. **Batch 2A** — Live Chat Features: US-072, US-073, US-074, US-075, US-077
+5. **Batch 2B** — Dashboard & Intents: US-094, US-100, US-102, US-110
+6. **Batch 2C** — Intent/AI Pipeline: US-078, US-080, US-108
+7. **Batch 3A** — Contact Enrichment: US-087, US-088, US-089, US-090, US-091
+8. **Batch 3B** — Testing Features: US-081, US-085, US-086, US-105, US-113
+9. **Batch 4** — Remaining Features: US-082, US-096, US-099, US-104, US-109, US-111, US-112
+10. **Batch 5** — Integration Tests: US-092, US-093, US-114

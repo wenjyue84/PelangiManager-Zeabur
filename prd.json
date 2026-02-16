@@ -1,7 +1,7 @@
 {
   "productName": "Rainbow AI System Enhancements",
   "branchName": "main",
-  "overview": "Comprehensive Rainbow AI improvements: pipeline refactoring (US-001–008), advanced check-in workflow (US-009), Ralph infrastructure upgrades (US-010), checkout workflow (US-011–012), complaint routing fixes (US-013), node-based workflows (US-014–017), dashboard UX polish (US-018–026), intent accuracy tuning (US-027–032), capsule assignment rules system (US-033–040), intent classification accuracy hardening (US-041–048), dashboard & UX enhancements (US-049–069), WhatsApp Web UX overhaul & advanced features (US-070–093), dashboard activity views & UX refinements & advanced features (US-094–114).",
+  "overview": "Comprehensive Rainbow AI improvements: pipeline refactoring (US-001–008), advanced check-in workflow (US-009), Ralph infrastructure upgrades (US-010), checkout workflow (US-011–012), complaint routing fixes (US-013), node-based workflows (US-014–017), dashboard UX polish (US-018–026), intent accuracy tuning (US-027–032), capsule assignment rules system (US-033–040), intent classification accuracy hardening (US-041–048), dashboard & UX enhancements (US-049–069), WhatsApp Web UX overhaul & advanced features (US-070–093), dashboard activity views & UX refinements & advanced features (US-094–114), codebase refactoring & technical debt reduction (US-115–142), smart maintenance assignment & UX performance (US-143–148), system speed optimization (US-149–169).",
   "goals": [
     "Reduce intent-classifier.ts from 501 to ~100 lines",
     "Reduce imports from 19 to ~8",
@@ -54,7 +54,23 @@
     "Add KB-only test input box in Knowledge Base page for accuracy testing",
     "Create per-contact context files for all existing contacts",
     "Add clickable token usage breakdown in Chat Simulator",
-    "Refine Chat Simulator layout to match Live Chat visual style"
+    "Refine Chat Simulator layout to match Live Chat visual style",
+    "Enforce 800-line rule: refactor all files exceeding threshold into smaller, focused modules",
+    "Eliminate code duplication: consolidate repeated patterns (MCP tools, uploaders, error handlers, templates)",
+    "Reduce complexity: extract magic numbers, flatten nested conditionals, split god objects",
+    "Apply Interface Segregation: split oversized interfaces into domain-specific sub-interfaces",
+    "Maintain zero regressions: verify dashboard and intent accuracy after each refactoring phase",
+    "Auto-link capsules with active maintenance problems to deprioritization list",
+    "Notify primary operator via WhatsApp when maintenance capsule is assigned due to no alternatives",
+    "Reduce live-chat loading time from 3-7s to under 1s via SQL optimization and skeleton UI",
+    "Align Chat Simulator Live Simulation styling with Live Chat for consistent developer experience",
+    "Make URLs clickable across all chat views (Simulator, Live Chat, Real Chat)",
+    "Reduce per-message AI pipeline latency by 200-500ms through caching and regex pre-compilation",
+    "Eliminate N+1 database queries in conversation listing (400+ queries → 1 query)",
+    "Add gzip compression to reduce API bandwidth by 60-80%",
+    "Lazy-load frontend modules to cut initial page load from 3s to under 1s",
+    "Replace aggressive 3s polling with SSE for real-time chat updates",
+    "Fix memory leaks from uncleaned intervals across dashboard tabs"
   ],
   "userStories": [
     {
@@ -1852,7 +1868,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-072",
@@ -1876,7 +1892,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-073",
@@ -1903,7 +1919,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-074",
@@ -1931,7 +1947,7 @@
         "US-073"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-075",
@@ -1957,7 +1973,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-076",
@@ -1984,7 +2000,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-077",
@@ -2010,7 +2026,7 @@
         "US-071"
       ],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-078",
@@ -2036,7 +2052,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-079",
@@ -2060,7 +2076,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-080",
@@ -2084,7 +2100,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-081",
@@ -2108,7 +2124,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-082",
@@ -2134,7 +2150,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-083",
@@ -2157,7 +2173,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-084",
@@ -2181,7 +2197,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-085",
@@ -2204,7 +2220,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-086",
@@ -2228,7 +2244,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-087",
@@ -2255,7 +2271,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-088",
@@ -2281,7 +2297,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-089",
@@ -2307,7 +2323,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-090",
@@ -2333,7 +2349,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-091",
@@ -2360,7 +2376,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-092",
@@ -2394,7 +2410,7 @@
         "US-077"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-093",
@@ -2441,7 +2457,7 @@
         "US-092"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-094",
@@ -2466,7 +2482,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-095",
@@ -2506,7 +2522,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-097",
@@ -2527,7 +2543,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-098",
@@ -2548,7 +2564,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-099",
@@ -2570,7 +2586,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-100",
@@ -2593,7 +2609,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-101",
@@ -2614,7 +2630,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-102",
@@ -2636,7 +2652,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-103",
@@ -2657,7 +2673,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-104",
@@ -2681,7 +2697,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "large",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-105",
@@ -2705,7 +2721,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-106",
@@ -2728,7 +2744,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-107",
@@ -2752,7 +2768,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-108",
@@ -2778,7 +2794,7 @@
         "US-107"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-109",
@@ -2806,7 +2822,7 @@
         "US-108"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-110",
@@ -2832,7 +2848,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-111",
@@ -2862,7 +2878,7 @@
         "US-110"
       ],
       "estimatedComplexity": "large",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-112",
@@ -2887,7 +2903,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "large",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-113",
@@ -2913,7 +2929,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-114",
@@ -2958,6 +2974,1408 @@
         "US-111",
         "US-112",
         "US-113"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-115",
+      "title": "Extract PRICING_CONSTANTS from pricing.ts",
+      "priority": 115,
+      "description": "Replace all magic numbers in RainbowAI/src/assistant/pricing.ts (45, 270, 650, 200, 20, 10, 5, 30, 7, etc.) with named constants in a PRICING_CONSTANTS object. Make the constants exportable so other modules can reference them.",
+      "acceptanceCriteria": [
+        "All numeric literals in pricing.ts replaced with named constants",
+        "PRICING_CONSTANTS object exported from pricing.ts",
+        "Constants include: DAILY_RATE, WEEKLY_RATE, MONTHLY_RATE, SECURITY_DEPOSIT, LATE_CHECKOUT_HOURLY, KEYCARD_DEPOSIT, LAUNDRY_PER_LOAD, MONTHLY_THRESHOLD_NIGHTS, WEEKLY_THRESHOLD_NIGHTS, MS_PER_DAY",
+        "All existing pricing calculations produce identical results",
+        "Server starts without errors"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/assistant/pricing.ts (138 lines)",
+        "Keep constants at top of file, export as named object",
+        "Do NOT change any calculation logic, only replace literals with constant references",
+        "Run: npx tsc --noEmit to verify no type errors"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": true
+    },
+    {
+      "id": "US-116",
+      "title": "Create MCP tool factory to eliminate boilerplate",
+      "priority": 116,
+      "description": "Create RainbowAI/src/tools/tool-factory.ts with a createToolHandler() factory function that wraps the repeated try/catch/JSON.stringify pattern used across 8+ MCP tool files. Refactor guests.ts, capsules.ts, problems.ts, dashboard.ts to use the factory.",
+      "acceptanceCriteria": [
+        "tool-factory.ts exports createToolHandler() and createListToolHandler() functions",
+        "At least 4 tool files (guests, capsules, problems, dashboard) refactored to use factory",
+        "Each refactored tool file reduced by 40%+ lines",
+        "All MCP tools return identical responses as before",
+        "Server starts and MCP tools respond correctly"
+      ],
+      "technicalNotes": [
+        "Factory signature: createToolHandler<T>(apiCall: () => Promise<T>, options?: { formatResult?: (data: T) => string }): Promise<MCPToolResult>",
+        "Files: RainbowAI/src/tools/guests.ts, capsules.ts, problems.ts, dashboard.ts, analytics.ts, settings-tools.ts",
+        "Preserve the exact MCPToolResult shape: { content: [{ type: 'text', text: string }], isError?: boolean }",
+        "Test via Chat Simulator after changes"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-117",
+      "title": "Consolidate daily memory template to single source",
+      "priority": 117,
+      "description": "The daily memory template string is duplicated in 3 files: memory-writer.ts, rainbow-kb.ts (server), admin/memory.ts. Extract to a single constant in RainbowAI/src/assistant/default-configs.ts and import from there.",
+      "acceptanceCriteria": [
+        "DAILY_MEMORY_TEMPLATE exported from RainbowAI/src/assistant/default-configs.ts (or similar central file)",
+        "All 3 files import the template instead of defining inline",
+        "Template content is identical to current version",
+        "Memory creation works correctly from all 3 entry points"
+      ],
+      "technicalNotes": [
+        "Files: RainbowAI/src/assistant/memory-writer.ts (line 133), server/routes/rainbow-kb.ts (line 236), RainbowAI/src/routes/admin/memory.ts (line 148)",
+        "Note: server/routes/rainbow-kb.ts is in the server module — import rule says server cannot import from RainbowAI",
+        "Solution: put template in a string literal file or duplicate only in server/routes with a comment pointing to canonical source",
+        "Alternative: create shared/templates.ts if template is truly shared"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": true
+    },
+    {
+      "id": "US-118",
+      "title": "Merge client error handlers into single module",
+      "priority": 118,
+      "description": "Consolidate client/src/lib/errorHandler.ts and client/src/lib/errorUtils.ts into a single client/src/lib/error-handling.ts module. Both define overlapping error types, parsing, and retry logic.",
+      "acceptanceCriteria": [
+        "Single file client/src/lib/error-handling.ts contains all error handling functionality",
+        "All imports from errorHandler.ts and errorUtils.ts updated to import from error-handling.ts",
+        "errorHandler.ts and errorUtils.ts deleted (or re-export from error-handling.ts for backward compat)",
+        "No duplicate type definitions or functions",
+        "Client builds without errors: npm run build"
+      ],
+      "technicalNotes": [
+        "Files: client/src/lib/errorHandler.ts (~300 lines), client/src/lib/errorUtils.ts (~275 lines)",
+        "Both have error type enums — merge into single enum",
+        "Both have retry logic — keep the more complete version (retryWithBackoff from errorUtils)",
+        "Search all client/src/ imports to update: grep -r 'errorHandler\\|errorUtils' client/src/",
+        "Consider re-exporting from old paths temporarily if too many imports to update"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-119",
+      "title": "Extract MemStorage magic numbers to constants",
+      "priority": 119,
+      "description": "Replace magic numbers in server/Storage/MemStorage.ts (22 capsules, 0.8 payment percentage, 24*60*60*1000 day-in-ms, etc.) with named constants.",
+      "acceptanceCriteria": [
+        "All magic numbers in MemStorage.ts replaced with named constants",
+        "Constants defined at top of file or in server/lib/constants.ts",
+        "Includes: TOTAL_CAPSULES, DEFAULT_PAYMENT_PERCENTAGE, MS_PER_DAY, MS_PER_HOUR",
+        "MemStorage initialization produces identical data",
+        "Server starts and all storage operations work"
+      ],
+      "technicalNotes": [
+        "File: server/Storage/MemStorage.ts (1,214 lines)",
+        "Focus only on magic numbers, not the structural refactoring (that's a separate story)",
+        "Be careful with seed data — some numbers are intentional test values, not magic numbers"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": true
+    },
+    {
+      "id": "US-120",
+      "title": "Extract knowledge base regex patterns to JSON config",
+      "priority": 120,
+      "description": "Move the TOPIC_FILE_MAP regex patterns from RainbowAI/src/assistant/knowledge-base.ts to RainbowAI/src/assistant/data/kb-patterns.json. Load patterns at startup. This makes patterns editable without code changes.",
+      "acceptanceCriteria": [
+        "kb-patterns.json contains all topic→file mappings with regex patterns",
+        "knowledge-base.ts loads patterns from JSON at startup",
+        "Pattern matching produces identical results to current behavior",
+        "Admin can edit kb-patterns.json without restarting server (hot reload optional)",
+        "Server starts and KB topic resolution works"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/assistant/knowledge-base.ts — TOPIC_FILE_MAP object (lines 23-80+)",
+        "JSON format: { \"patterns\": [{ \"regex\": \"availab|vacancy|room\", \"files\": [\"rooms.md\"] }] }",
+        "RegExp must be constructed at runtime from string patterns",
+        "Test with Chat Simulator: ask about rooms, pricing, check-in to verify correct KB files load"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-121",
+      "title": "Create centralized dashboard cache manager",
+      "priority": 121,
+      "description": "Create RainbowAI/src/public/js/core/cache-manager.js with a centralized cache for all dashboard modules. Replace the 17+ individual module-level cache variables (cachedRouting, cachedKnowledge, cachedWorkflows, etc.) with cache manager calls.",
+      "acceptanceCriteria": [
+        "cache-manager.js exports cacheManager with get(), set(), clear(), clearAll() methods",
+        "At least 5 dashboard modules refactored to use cacheManager instead of local variables",
+        "Cache behavior is identical: data is cached until explicitly cleared or page reload",
+        "Dashboard loads and all tabs display correctly",
+        "No regression in module load times"
+      ],
+      "technicalNotes": [
+        "Files: All in RainbowAI/src/public/js/modules/ — intents.js, workflows.js, settings.js, llm-settings.js, etc.",
+        "Register cache-manager.js in module-registry.js",
+        "Use namespaced keys: cacheManager.get('intents.routing'), cacheManager.get('workflows.list')",
+        "Keep it simple — plain JS object cache, no TTL needed (page reload clears)"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-122",
+      "title": "Phase 1 verification: agent-browser dashboard check",
+      "priority": 122,
+      "description": "After completing US-115 through US-121 (Phase 1 quick wins), use agent-browser to verify the entire Rainbow dashboard loads correctly on all tabs with no JavaScript errors. Run intent accuracy test to confirm no regressions.",
+      "acceptanceCriteria": [
+        "Dashboard loads at http://localhost:3002/admin/rainbow without errors",
+        "All tabs render: Dashboard, Live Chat, Chat Simulator, Intents, Responses, Knowledge Base, Testing, Settings, Help",
+        "No JavaScript console errors on any tab",
+        "Intent accuracy test passes at 95%+ (run: node RainbowAI/scripts/intent-accuracy-test.js)",
+        "MCP tools respond correctly via Chat Simulator"
+      ],
+      "technicalNotes": [
+        "Start all 3 servers: start-all.bat or npm run dev:clean + cd RainbowAI && npm run dev",
+        "Use agent-browser to navigate each tab and check for errors",
+        "Screenshot each tab for verification record",
+        "If failures found, create fix stories before proceeding to Phase 2"
+      ],
+      "dependencies": [
+        "US-115",
+        "US-116",
+        "US-117",
+        "US-118",
+        "US-119",
+        "US-120",
+        "US-121"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-123",
+      "title": "Refactor sortable-guest-table.tsx: extract sub-components",
+      "priority": 123,
+      "description": "Split the 1,941-line sortable-guest-table.tsx into focused sub-components. Extract: GuestTableRow (desktop), SwipeableGuestCard (mobile), GuestSortControls, GuestFilterBar, and custom hooks useGuestSorting() and useGuestFiltering().",
+      "acceptanceCriteria": [
+        "sortable-guest-table.tsx reduced to <500 lines (orchestration only)",
+        "New files created: GuestTableRow.tsx, SwipeableGuestCard.tsx, GuestSortControls.tsx, GuestFilterBar.tsx",
+        "New hooks: hooks/useGuestSorting.ts, hooks/useGuestFiltering.ts",
+        "All existing functionality preserved: sorting, filtering, search, pagination, modals, extend stay, checkout",
+        "Client builds without errors",
+        "Guest table renders identically on desktop and mobile"
+      ],
+      "technicalNotes": [
+        "File: client/src/components/sortable-guest-table.tsx (1,941 lines — 2.4x over limit)",
+        "14 state variables — group related state into hooks",
+        "parseCapsuleNumber, compareCapsuleNumbers at lines 50-67 → move to useGuestSorting",
+        "Modal dialogs (GuestDetailsModal, ExtendStayDialog) may already be separate — check imports",
+        "Test: navigate to check-in and check-out pages to verify table works"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-124",
+      "title": "Split server/routes/tests.ts into per-domain test files",
+      "priority": 124,
+      "description": "Split the 1,534-line tests.ts into separate test definition files organized by domain. Create server/routes/tests/ directory with: auth-tests.ts, guest-tests.ts, capsule-tests.ts, storage-tests.ts, settings-tests.ts, etc. Keep tests.ts as a thin registry that imports and re-exports all test definitions.",
+      "acceptanceCriteria": [
+        "server/routes/tests/ directory with 5+ domain-specific test files",
+        "tests.ts reduced to <100 lines (imports + registry)",
+        "All 30+ test definitions preserved with identical behavior",
+        "System Tests page on dashboard shows all tests",
+        "Each test file is self-contained and independently testable"
+      ],
+      "technicalNotes": [
+        "File: server/routes/tests.ts (1,534 lines)",
+        "Create interface: SystemTest { name, description, test, suggestions }",
+        "Each domain file exports: export const authTests: SystemTest[] = [...]",
+        "tests.ts combines: const systemTests = [...authTests, ...guestTests, ...]",
+        "Test: visit Settings > Tests tab and run all system tests"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-125",
+      "title": "Refactor push-notification-settings.tsx: extract sub-components",
+      "priority": 125,
+      "description": "Split the 1,441-line push-notification-settings.tsx into focused sub-components: NotificationPermissionFlow.tsx, NotificationErrorDisplay.tsx, NotificationTroubleshooting.tsx. Extract hooks: useNotificationSettings(), useNotificationTesting().",
+      "acceptanceCriteria": [
+        "push-notification-settings.tsx reduced to <500 lines",
+        "New components: NotificationPermissionFlow, NotificationErrorDisplay, NotificationTroubleshooting",
+        "New hooks: useNotificationSettings, useNotificationTesting",
+        "All notification features work: permission request, test send, troubleshooting, error display",
+        "Client builds without errors"
+      ],
+      "technicalNotes": [
+        "File: client/src/components/ui/push-notification-settings.tsx (1,441 lines)",
+        "TestNotificationError interface (line 45-51) has 5 error types",
+        "State management for: preferences, testError, troubleshooting, testAttempts, isTestInProgress",
+        "Test: navigate to Settings page and verify push notification settings work"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-126",
+      "title": "Audit and consolidate check-in form directories",
+      "priority": 126,
+      "description": "Audit client/src/components/check-in/ (9 files) and client/src/components/guest-checkin/ (17 files) to determine which is canonical. Consolidate duplicate sections (AdditionalNotesSection, EmergencyContactSection, DocumentUploadSection) into a single component library. Remove the deprecated directory.",
+      "acceptanceCriteria": [
+        "One canonical check-in component directory exists",
+        "Duplicate sections consolidated into shared components",
+        "Deprecated directory removed (after confirming no active imports)",
+        "Check-in flow works for both admin check-in and guest self-check-in",
+        "Client builds without errors",
+        "No dead imports referencing removed files"
+      ],
+      "technicalNotes": [
+        "Directories: client/src/components/check-in/ (9 files), client/src/components/guest-checkin/ (17 files)",
+        "Search for all imports: grep -r 'check-in\\|guest-checkin' client/src/",
+        "guest-checkin/ has more files — likely the newer/more complete version",
+        "check-in/ may be used by admin check-in page (client/src/pages/check-in.tsx)",
+        "Both may be needed if they serve different UX flows (admin vs guest self-service)"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-127",
+      "title": "Consolidate file uploaders from 5 to 2 components",
+      "priority": 127,
+      "description": "Consolidate the 5 file uploader variants (ObjectUploader, SmartPhotoUploader, OptimizedPhotoUploader, LazyObjectUploader, EnhancedObjectUploader) into 2: a configurable BaseUploader.tsx and a LazyUploader.tsx wrapper. Use props/config to handle different behaviors instead of separate components.",
+      "acceptanceCriteria": [
+        "Only 2 uploader components remain: BaseUploader.tsx and LazyUploader.tsx",
+        "BaseUploader accepts config props for: smart mode, optimization, enhancement features",
+        "All current upload functionality preserved across all pages that use uploaders",
+        "Deprecated uploader files removed",
+        "All imports updated to use new components",
+        "File uploads work on: guest check-in (photo), finance (receipt photos), settings"
+      ],
+      "technicalNotes": [
+        "Files: ObjectUploader.tsx, SmartPhotoUploader.tsx, OptimizedPhotoUploader.tsx, LazyObjectUploader.tsx, EnhancedObjectUploader.tsx",
+        "LazyObjectUploader wraps ObjectUploader with React.lazy/Suspense — keep this pattern",
+        "Search all usages: grep -r 'Uploader' client/src/ --include='*.tsx'",
+        "Test uploads on each page that uses uploaders"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-128",
+      "title": "Refactor check-out.tsx: extract view mode components",
+      "priority": 128,
+      "description": "Split the 1,176-line check-out.tsx into focused components. Extract: CheckoutCardView.tsx, CheckoutListView.tsx, CheckoutTableView.tsx. Extract hooks: useCheckoutFilters(), useBulkCheckout().",
+      "acceptanceCriteria": [
+        "check-out.tsx reduced to <400 lines (orchestration + state)",
+        "New components: CheckoutCardView, CheckoutListView, CheckoutTableView",
+        "New hooks: useCheckoutFilters, useBulkCheckout",
+        "All 3 view modes render correctly with filtering and sorting",
+        "Bulk checkout works with optimistic updates",
+        "Client builds without errors"
+      ],
+      "technicalNotes": [
+        "File: client/src/pages/check-out.tsx (1,176 lines)",
+        "Three view modes: card, list, table — each should be its own component",
+        "Filter state: datetime calculations, status filters, search",
+        "Bulk operations: select multiple guests, batch checkout mutation",
+        "Test: navigate to checkout page, switch view modes, filter, bulk checkout"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-129",
+      "title": "Refactor intent-manager.tsx: extract tab components",
+      "priority": 129,
+      "description": "Split the 1,375-line intent-manager.tsx into tab-specific components: KeywordsTab.tsx, ExamplesTab.tsx, IntentTestingTab.tsx, IntentSettingsTab.tsx. Extract hooks: useIntentManager(), useIntentTesting().",
+      "acceptanceCriteria": [
+        "intent-manager.tsx reduced to <300 lines (tab orchestration)",
+        "New components: KeywordsTab, ExamplesTab, IntentTestingTab, IntentSettingsTab",
+        "New hooks: useIntentManager, useIntentTesting",
+        "All CRUD operations work: add/edit/delete keywords, add/edit/delete examples",
+        "Testing functionality works: test intent classification inline",
+        "Client builds without errors"
+      ],
+      "technicalNotes": [
+        "File: client/src/pages/intent-manager.tsx (1,375 lines)",
+        "8 state variables managing different data types",
+        "Tab-based interface with complex logic per tab",
+        "Test: navigate to Intent Manager page, switch tabs, perform CRUD operations"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-130",
+      "title": "Refactor finance.tsx: extract sub-components",
+      "priority": 130,
+      "description": "Split the 1,119-line finance.tsx into focused sub-components: ExpenseForm.tsx, ExpenseTable.tsx, CategoryFilter.tsx, OutstandingBalances.tsx. Extract hooks: useExpenseFilters(), useExpenseMutations().",
+      "acceptanceCriteria": [
+        "finance.tsx reduced to <400 lines",
+        "New components created for major UI sections",
+        "CRUD operations work: add/edit/delete expenses, upload receipts",
+        "Category filtering and date range filtering work",
+        "Outstanding balances display correctly",
+        "Client builds without errors"
+      ],
+      "technicalNotes": [
+        "File: client/src/pages/finance.tsx (1,119 lines)",
+        "Has CRUD, categories, photo uploads, outstanding balances",
+        "Test: navigate to Finance page, add expense, filter by category, upload receipt photo"
+      ],
+      "dependencies": [
+        "US-122"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-131",
+      "title": "Phase 2 verification: agent-browser comprehensive check",
+      "priority": 131,
+      "description": "After completing US-123 through US-130 (Phase 2 high-value splits), use agent-browser to verify all affected pages render correctly. Focus on pages with refactored components: guest table, checkout, finance, intent manager, settings.",
+      "acceptanceCriteria": [
+        "Dashboard loads at http://localhost:3002/admin/rainbow without errors",
+        "Guest table on check-in/check-out pages sorts, filters, and paginates correctly",
+        "Checkout page: all 3 view modes work (card, list, table)",
+        "Finance page: CRUD operations work, photo upload works",
+        "Intent Manager: all tabs functional, CRUD works",
+        "Push notification settings: permission flow, test send, troubleshooting all work",
+        "No JavaScript console errors on any page",
+        "Intent accuracy test passes at 95%+"
+      ],
+      "technicalNotes": [
+        "Start all 3 servers: start-all.bat",
+        "Use agent-browser to navigate each affected page",
+        "Test critical user flows: check-in, check-out, finance CRUD, intent management",
+        "Run: node RainbowAI/scripts/intent-accuracy-test.js",
+        "If failures found, create fix stories before proceeding to Phase 3"
+      ],
+      "dependencies": [
+        "US-123",
+        "US-124",
+        "US-125",
+        "US-126",
+        "US-127",
+        "US-128",
+        "US-129",
+        "US-130"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-132",
+      "title": "Split IStorage interface into domain-specific sub-interfaces",
+      "priority": 132,
+      "description": "Apply Interface Segregation Principle to server/Storage/IStorage.ts. Split the 50+ method interface into domain sub-interfaces: IUserStorage, IGuestStorage, ICapsuleStorage, ITokenStorage, INotificationStorage, IProblemStorage, ISessionStorage. Keep IStorage as composition of all sub-interfaces.",
+      "acceptanceCriteria": [
+        "IStorage.ts defines 7+ sub-interfaces grouped by domain",
+        "IStorage extends all sub-interfaces: IStorage extends IUserStorage, IGuestStorage, ...",
+        "MemStorage and DatabaseStorage implement IStorage (no changes to implementations yet)",
+        "All imports of IStorage continue to work",
+        "TypeScript compilation succeeds with zero errors",
+        "Server starts without errors"
+      ],
+      "technicalNotes": [
+        "File: server/Storage/IStorage.ts (80+ lines, 50+ methods)",
+        "Group methods by entity: User (6), Session (4), Guest (15), Capsule (9), Problem (6), Token (7), Notification (4), Settings (3+)",
+        "This is a type-only refactoring — no runtime behavior changes",
+        "Test: npx tsc --noEmit && npm run dev"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-133",
+      "title": "Refactor MemStorage.ts with entity store pattern",
+      "priority": 133,
+      "description": "Split MemStorage.ts (1,214 lines) into entity-specific stores: MemUserStore.ts, MemGuestStore.ts, MemCapsuleStore.ts, MemTokenStore.ts, MemProblemStore.ts. MemStorage becomes a facade that delegates to entity stores.",
+      "acceptanceCriteria": [
+        "MemStorage.ts reduced to <300 lines (facade + initialization)",
+        "5+ entity store files created in server/Storage/mem/",
+        "Each store implements its corresponding sub-interface from US-132",
+        "All storage operations produce identical results",
+        "In-memory fallback works: disconnect DB → verify MemStorage takes over",
+        "Server starts and all API endpoints work"
+      ],
+      "technicalNotes": [
+        "File: server/Storage/MemStorage.ts (1,214 lines)",
+        "10 Map fields need to be distributed to entity stores",
+        "Initialization logic (seed data) goes to MemStorageInitializer",
+        "Depends on US-132 for sub-interfaces",
+        "Test: run system tests from Settings page"
+      ],
+      "dependencies": [
+        "US-132"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-134",
+      "title": "Flatten booking.ts nested conditionals with stage handlers",
+      "priority": 134,
+      "description": "Refactor RainbowAI/src/assistant/booking.ts handleBookingStep() function by extracting each booking stage into a separate handler function. Replace 3+ level nesting with guard clauses and early returns.",
+      "acceptanceCriteria": [
+        "handleBookingStep() reduced to <50 lines (stage dispatch only)",
+        "New functions: handleInquiryStage(), handleDatesStage(), handleGuestCountStage(), handleConfirmStage()",
+        "Maximum nesting depth reduced from 4+ to 2",
+        "Date parsing extracted to pure function parseCheckInOut()",
+        "All booking workflow scenarios work correctly",
+        "Chat Simulator booking test passes"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/assistant/booking.ts (461 lines)",
+        "handleBookingStep() at lines 148-461 with deep switch/if nesting",
+        "Date parsing logic at lines 251-344 is the most complex section",
+        "Test with Chat Simulator: simulate full booking flow (dates → guests → confirm)"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-135",
+      "title": "Refactor workflow-executor.ts: create WorkflowContext interface",
+      "priority": 135,
+      "description": "Create WorkflowContext interface to bundle the 5 parameters of executeWorkflowStep() into 3 (state, userMessage, context). Apply same pattern to workflow-enhancer.ts enhanceWorkflowStep().",
+      "acceptanceCriteria": [
+        "WorkflowContext interface defined with: language, phone, pushName fields",
+        "executeWorkflowStep() signature reduced to 3 parameters: (state, userMessage, context)",
+        "enhanceWorkflowStep() also uses context pattern",
+        "All callers updated to pass WorkflowContext object",
+        "Workflow execution produces identical results",
+        "Server starts without errors"
+      ],
+      "technicalNotes": [
+        "Files: RainbowAI/src/assistant/workflow-executor.ts (709 lines), workflow-enhancer.ts (707 lines)",
+        "Search callers: grep -r 'executeWorkflowStep\\|enhanceWorkflowStep' RainbowAI/src/",
+        "Define WorkflowContext in RainbowAI/src/assistant/types.ts or similar",
+        "Test with Chat Simulator: trigger a multi-step workflow (check-in, complaint)"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-136",
+      "title": "Consolidate validation schemas to shared module",
+      "priority": 136,
+      "description": "Audit duplicated validation regex patterns between shared/schema-validation.ts and client/src/lib/validation.ts. Move all regex constants (IC format, phone format, email format) to shared/validation-patterns.ts and import from both locations.",
+      "acceptanceCriteria": [
+        "shared/validation-patterns.ts exports common regex patterns: IC_REGEX, PHONE_REGEX, EMAIL_REGEX, etc.",
+        "client/src/lib/validation.ts imports patterns from shared instead of defining inline",
+        "shared/schema-validation.ts imports patterns from shared/validation-patterns.ts",
+        "All validation works identically on client and server",
+        "No duplicate regex definitions remain",
+        "Both client and server build without errors"
+      ],
+      "technicalNotes": [
+        "Files: shared/schema-validation.ts (1,067 lines), client/src/lib/validation.ts (802 lines)",
+        "IC format: Malaysian IC regex (YYMMDD-XX-XXXX)",
+        "Phone format: international phone with country code",
+        "Both modules may have slightly different regex — compare and use the stricter one"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-137",
+      "title": "Extract conversation-logger.ts fallback pattern to utility",
+      "priority": 137,
+      "description": "Create a withFallback() utility to replace the repeated try/catch DB-then-JSON fallback pattern in conversation-logger.ts. Apply to all methods that have DB primary + JSON fallback logic.",
+      "acceptanceCriteria": [
+        "withFallback<T>(primary: () => Promise<T>, fallback: () => Promise<T>) utility created",
+        "conversation-logger.ts uses withFallback for DB/JSON dual-mode methods",
+        "Fallback behavior is identical: try DB first, fall back to JSON on error",
+        "Logging preserved: log when fallback is used",
+        "Conversation logging works in both DB and JSON modes"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/assistant/conversation-logger.ts (738 lines)",
+        "Multiple methods follow pattern: try { db.query() } catch { readJsonFile() }",
+        "Utility can live in RainbowAI/src/lib/utils.ts",
+        "Test: verify conversations load in Chat Simulator and Live Chat"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "small",
+      "passes": true
+    },
+    {
+      "id": "US-138",
+      "title": "Refactor i18n.ts: split translation data from engine",
+      "priority": 138,
+      "description": "Split client/src/lib/i18n.ts (1,045 lines) into translation engine (i18n.ts) and translation data files per language (en.json, ms.json, zh-cn.json, etc.). This reduces the main file and makes translations editable without touching code.",
+      "acceptanceCriteria": [
+        "i18n.ts reduced to <200 lines (engine + loader)",
+        "Translation data moved to client/src/lib/i18n/ directory: en.json, ms.json, zh-cn.json, es.json, ja.json, ko.json",
+        "All 6 languages load correctly",
+        "Language switching works without page reload",
+        "Client builds without errors"
+      ],
+      "technicalNotes": [
+        "File: client/src/lib/i18n.ts (1,045 lines)",
+        "Most of the file is translation key-value pairs for 6 languages",
+        "Use dynamic import or static JSON import for each language",
+        "Keep the t() function, language detection, and switching logic in i18n.ts",
+        "Test: switch languages on any page and verify all strings translate"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-139",
+      "title": "Refactor DatabaseStorage.ts: align with MemStorage entity pattern",
+      "priority": 139,
+      "description": "If US-132 and US-133 were successful, apply the same entity store pattern to server/Storage/DatabaseStorage.ts (812 lines). Create db/ directory with entity-specific query files.",
+      "acceptanceCriteria": [
+        "DatabaseStorage.ts reduced to <300 lines (facade)",
+        "Entity query files: db/UserQueries.ts, db/GuestQueries.ts, db/CapsuleQueries.ts, etc.",
+        "Each query file implements its corresponding sub-interface",
+        "All database operations produce identical results",
+        "PostgreSQL connection works correctly",
+        "Server starts and all API endpoints work"
+      ],
+      "technicalNotes": [
+        "File: server/Storage/DatabaseStorage.ts (812 lines)",
+        "Uses Drizzle ORM — entity files should import from shared/schema",
+        "Depends on sub-interfaces from US-132",
+        "Test: run system tests with DATABASE_URL set"
+      ],
+      "dependencies": [
+        "US-133"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-140",
+      "title": "Standardize dashboard API request patterns",
+      "priority": 140,
+      "description": "Create RainbowAI/src/public/js/core/api-helpers.js with standardized patterns: loadMultipleConfigs() for parallel config fetches, renderTableFromData() for consistent table rendering. Refactor 5+ dashboard modules to use helpers.",
+      "acceptanceCriteria": [
+        "api-helpers.js exports loadMultipleConfigs(), renderTableFromData(), formatApiError()",
+        "At least 5 dashboard modules refactored to use helpers",
+        "Boilerplate code reduced by 30%+ per module",
+        "Dashboard loads and all tabs display correctly",
+        "No regression in API call behavior"
+      ],
+      "technicalNotes": [
+        "Files: RainbowAI/src/public/js/modules/ — multiple modules use identical Promise.all + api() patterns",
+        "loadMultipleConfigs(['intents', 'routing', 'knowledge']) returns { intents, routing, knowledge }",
+        "Register in module-registry.js",
+        "Test: verify each refactored tab loads data correctly"
+      ],
+      "dependencies": [
+        "US-131"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-141",
+      "title": "Split schema-validation.ts into domain-specific validators",
+      "priority": 141,
+      "description": "Split shared/schema-validation.ts (1,067 lines) into domain-specific files: user-validation.ts, guest-validation.ts, capsule-validation.ts, token-validation.ts, settings-validation.ts. Keep schema-validation.ts as barrel re-export.",
+      "acceptanceCriteria": [
+        "shared/validation/ directory with 5+ domain-specific files",
+        "schema-validation.ts reduced to <50 lines (re-exports only)",
+        "All Zod schemas preserved with identical validation behavior",
+        "All imports from 'shared/schema-validation' continue to work",
+        "Both client and server build without errors"
+      ],
+      "technicalNotes": [
+        "File: shared/schema-validation.ts (1,067 lines)",
+        "Contains Zod schemas for: users, guests, capsules, tokens, settings, etc.",
+        "Use barrel re-export: export * from './validation/user-validation'",
+        "Test: npm run build (full build covers both client and server)"
+      ],
+      "dependencies": [
+        "US-136"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-142",
+      "title": "Phase 3 verification: final agent-browser comprehensive check",
+      "priority": 142,
+      "description": "After completing US-132 through US-141 (Phase 3 architectural improvements), run comprehensive verification: all dashboard tabs, all client pages, system tests, intent accuracy, and MCP tools. This is the final quality gate for the entire refactoring effort.",
+      "acceptanceCriteria": [
+        "Rainbow dashboard loads on all tabs without JavaScript errors",
+        "Client app loads: check-in, check-out, finance, settings, history, help — all functional",
+        "System tests pass (Settings > Tests tab or direct API call)",
+        "Intent accuracy test passes at 95%+ (node RainbowAI/scripts/intent-accuracy-test.js)",
+        "MCP tools respond correctly via Chat Simulator",
+        "In-memory fallback works: storage operations succeed without DB",
+        "Guest check-in flow works end-to-end",
+        "Guest check-out flow works end-to-end",
+        "Total codebase reduction: 15%+ fewer lines in refactored files",
+        "No file exceeds 800 lines (excluding auto-generated and data files)"
+      ],
+      "technicalNotes": [
+        "Start all 3 servers: start-all.bat",
+        "Use agent-browser to navigate all pages systematically",
+        "Run: node RainbowAI/scripts/intent-accuracy-test.js",
+        "Run: npm run build (verify full build succeeds)",
+        "Run: npx tsc --noEmit (verify zero type errors)",
+        "Document final line counts for all previously-oversized files",
+        "If any regressions found, create hotfix stories"
+      ],
+      "dependencies": [
+        "US-132",
+        "US-133",
+        "US-134",
+        "US-135",
+        "US-136",
+        "US-137",
+        "US-138",
+        "US-139",
+        "US-140",
+        "US-141"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-143",
+      "title": "Auto-populate maintenance deprioritization list from active problems",
+      "priority": 143,
+      "description": "In http://localhost:3000/settings > Capsule Rules tab, the 'Maintenance Deprioritization' section currently requires manual entry of capsule numbers. Instead, auto-populate the deprioritized list from capsules that have active (unresolved) problem records in the Maintenance tab. Show these auto-linked capsules as read-only chips with a link to the Maintenance tab. Users can still manually add extra capsules, but cannot remove auto-linked ones (they must resolve the problem instead). The deprioritizedCapsules field in capsule-rules should be computed as: manual list UNION capsules with active problems.",
+      "acceptanceCriteria": [
+        "CapsuleRulesTab fetches active problems from GET /api/problems/active and extracts unique capsule numbers",
+        "Auto-linked capsules shown as distinct chips (e.g., different color or lock icon) that cannot be removed via UI",
+        "Clicking an auto-linked chip navigates to Maintenance tab filtered to that capsule",
+        "Manually added capsules remain editable (add/remove) as before",
+        "The saved deprioritizedCapsules in PUT /api/settings/capsule-rules merges both lists",
+        "Assignment algorithm in client/src/components/check-in/utils.ts sees the merged list without changes",
+        "When a problem is resolved, the capsule automatically disappears from auto-linked chips on next load"
+      ],
+      "technicalNotes": [
+        "File: client/src/components/settings/CapsuleRulesTab.tsx (lines 211-241) — deprioritization UI section",
+        "File: server/routes/problems.ts — GET /api/problems/active (line 23) already returns active problems",
+        "File: server/routes/settings.ts (lines 162-223) — capsule-rules API with deprioritizedCapsules array",
+        "File: client/src/components/check-in/utils.ts (lines 104-108) — assignment algorithm reads deprioritizedCapsules",
+        "Approach: On CapsuleRulesTab mount, fetch active problems and compute autoLinkedCapsules. Display them as locked chips. On save, merge manual + autoLinked into deprioritizedCapsules before PUT.",
+        "Alternative: Compute merge server-side in GET /api/settings/capsule-rules by joining with active problems. Preferred: server-side merge so assignment algorithm always gets the full list."
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-144",
+      "title": "WhatsApp notify primary operator when maintenance capsule is assigned",
+      "priority": 144,
+      "description": "When a capsule with active maintenance problems is assigned to a guest (either via manual assignment in check-in page or auto-assignment in guest-token generation), send a WhatsApp notification to the primary capsule operator (first operator in http://localhost:3002/#settings/operators). The message should include: capsule number, guest name, active problem description(s), and a note that the capsule was assigned because no better options were available. Only send if there are truly no non-maintenance capsules available.",
+      "acceptanceCriteria": [
+        "When a maintenance capsule is assigned and no clean capsule alternatives exist, a WhatsApp message is sent to operators[0].phone",
+        "Message includes: capsule number, guest name (or phone), list of active problems, reason for assignment",
+        "Message is trilingual (follows guest language or defaults to English)",
+        "No notification sent if a non-maintenance capsule is available (normal assignment)",
+        "Notification works for both manual assignment (check-in page) and auto-assignment (guest-token API)",
+        "If WhatsApp send fails, log error but do not block the assignment",
+        "Operator phone is fetched from Rainbow AI admin-notifications settings (GET /api/rainbow/admin-notifications)"
+      ],
+      "technicalNotes": [
+        "File: server/routes/guest-tokens.ts (lines 100-142) — auto-assignment during token generation",
+        "File: client/src/components/check-in/CapsuleAssignmentSection.tsx (lines 31-48) — manual assignment with warnings",
+        "File: server/routes/capsules.ts (lines 45-93) — canAssign check and activeProblems array",
+        "Operator data: GET http://localhost:3002/api/rainbow/admin-notifications → operators[0] is primary",
+        "WhatsApp send: POST http://localhost:3002/api/rainbow/send-message { phone, text } or use internal sendWhatsAppMessage()",
+        "Since server/ cannot import from RainbowAI/, use HTTP call to port 3002 to send the WhatsApp message",
+        "Add a new server route POST /api/capsule-assignment-notify that: 1) fetches operator from port 3002, 2) sends message via port 3002's send-message API",
+        "Check: only notify if ALL non-excluded, non-maintenance capsules are occupied"
+      ],
+      "dependencies": [
+        "US-143"
+      ],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-145",
+      "title": "Optimize live-chat conversation loading speed with SQL join and skeleton UI",
+      "priority": 145,
+      "description": "The live-chat tab takes 3-7 seconds to show conversations because listConversations() in conversation-logger.ts runs N+1 queries (1 initial + 3 per conversation for last message, total count, unread count). Fix by: (1) replacing the N+1 loop with a single SQL query using LEFT JOIN and window functions, (2) showing a skeleton loading UI immediately while data loads, (3) increasing the list cache TTL from 3s to 10s. The user should see placeholder content within 100ms and real data within 500ms.",
+      "acceptanceCriteria": [
+        "listConversations() uses a single SQL query with LEFT JOIN instead of N+1 loop",
+        "Query uses window functions or subqueries for lastMessage, messageCount, unreadCount per conversation",
+        "Skeleton loading UI (gray pulsing placeholder cards) shown immediately when tab opens",
+        "Skeleton replaced with real conversations when data arrives",
+        "Loading time reduced from 3-7s to under 1s for 50 conversations",
+        "List cache TTL increased from 3s to 10s",
+        "Auto-refresh interval unchanged at 10s",
+        "All conversation data (pushName, lastMessage, unreadCount, pinned, favourite) displays correctly"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/assistant/conversation-logger.ts (lines 286-365) — listConversations() with N+1 queries",
+        "Current: 1 SELECT conversations + FOR EACH: 3 SELECTs (last msg, count, unread count) = 3N+1 queries",
+        "Fix: Single query with LEFT JOIN rainbow_messages, use DISTINCT ON or ROW_NUMBER() for last message, COUNT for totals, conditional COUNT for unread",
+        "PostgreSQL supports DISTINCT ON (phone) ORDER BY timestamp DESC for last message efficiently",
+        "Cache TTL constant: LIST_CACHE_TTL = 3_000 (line 279) → change to 10_000",
+        "Skeleton UI: Add to live-chat.html inside #lc-chat-list, show on loadLiveChat() entry, hide after renderList()",
+        "File: RainbowAI/src/public/js/modules/live-chat-core.js (line 101-188) — loadLiveChat() — show skeleton before api() calls",
+        "File: RainbowAI/src/public/templates/tabs/live-chat.html (line 101-106) — replace empty state with skeleton",
+        "CSS: Add .lc-skeleton-item with pulse animation to rainbow-livechat-ui.css",
+        "Drizzle ORM: Use db.execute(sql`...`) for raw query with window functions if Drizzle query builder doesn't support DISTINCT ON"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "large",
+      "passes": true
+    },
+    {
+      "id": "US-146",
+      "title": "Align Chat Simulator Live Simulation UI with Live Chat interface",
+      "priority": 146,
+      "description": "The Chat Simulator Live Simulation tab (http://localhost:3002/#chat-simulator/live-simulation) should visually match the Live Chat tab (http://localhost:3002/#live-chat) more closely, while retaining its developer-specific features (dev badges, inline editing, metadata). Key differences to fix: (1) message bubbles should use identical styling (max-width, border-radius, colors), (2) add timestamp + checkmark meta to each bubble like live-chat, (3) dev badges should be collapsible (collapsed by default, expand on click) instead of always-visible, (4) add the WhatsApp-style chat wallpaper background, (5) match the input area styling. Developer features like intent badges, edit buttons, and KB file badges should remain but be tucked into an expandable section.",
+      "acceptanceCriteria": [
+        "Message bubbles in Live Simulation match Live Chat styling (same max-width 65%, border-radius 7.5px, colors)",
+        "Each bubble shows timestamp and checkmark like Live Chat",
+        "Dev badges (intent, action, model, confidence, etc.) collapsed by default into a small toggle button",
+        "Clicking toggle expands dev badges row below the message",
+        "Chat area has WhatsApp-style wallpaper background matching Live Chat",
+        "Input area styling matches Live Chat (same border, padding, send button)",
+        "Conversation list sidebar matches Live Chat sidebar styling",
+        "Bot avatar and robot icon prefix match Live Chat rendering"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/public/js/modules/chat-preview.js (lines 243-345) — message rendering for simulator",
+        "File: RainbowAI/src/public/js/modules/live-chat-core.js (lines 480-546) — message rendering for live-chat (reference)",
+        "File: RainbowAI/src/public/css/rainbow-livechat-core.css (lines 503-796) — shared bubble styles",
+        "Current simulator uses max-width:75% on bot bubbles, live-chat uses 65% (CSS line 523)",
+        "Dev badges currently in .cs-dev-badges always-visible div — wrap in collapsible container",
+        "Add a small info icon button (ℹ️) at bubble bottom that toggles .cs-dev-badges visibility",
+        "Wallpaper: Live Chat uses background pattern on .lc-messages — apply same to simulator chat container",
+        "Preserve inline editing capability (click-to-edit on bot messages) as simulator-only feature",
+        "Use same .lc-bubble-meta structure for time/checkmark in simulator bubbles"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-147",
+      "title": "Make URLs clickable in Chat Simulator and Real Chat message views",
+      "priority": 147,
+      "description": "URLs in messages (like self-check-in links http://localhost:5000/guest-checkin?token=..., YouTube links, etc.) are only clickable in Live Chat but appear as plain text in Chat Simulator and Real Chat views. Extend the existing linkifyUrls() function from live-chat-core.js to also apply in chat-preview.js (simulator) and real-chat-core.js. All views should render URLs as clickable blue underlined links that open in a new tab.",
+      "acceptanceCriteria": [
+        "URLs in Chat Simulator messages are clickable (open in new tab)",
+        "URLs in Real Chat messages are clickable (open in new tab)",
+        "Self-check-in links (http://localhost:5000/guest-checkin?token=...) are clickable in all views",
+        "YouTube links (https://youtu.be/...) are clickable in all views",
+        "Link styling matches Live Chat (.lc-link class: blue #027eb5, underline, break-all)",
+        "No XSS vulnerability: linkification happens AFTER escapeHtml()",
+        "Existing Live Chat linkification continues to work unchanged"
+      ],
+      "technicalNotes": [
+        "File: RainbowAI/src/public/js/modules/live-chat-core.js (lines 558-560) — existing linkifyUrls() function",
+        "File: RainbowAI/src/public/js/modules/chat-preview.js (lines 243-248, 305-320) — message rendering WITHOUT linkification",
+        "File: RainbowAI/src/public/js/modules/real-chat-core.js (lines 486-509) — formatMessage() WITHOUT linkification",
+        "Approach: Extract linkifyUrls() to utils-global.js (shared utility), import in all 3 modules",
+        "Current regex: /(https?:\\/\\/[^\\s<&]+)/g — converts URLs to <a> tags",
+        "Apply AFTER esc() (escapeHtml) but BEFORE DOM insertion to prevent XSS",
+        "CSS: .lc-link already defined in rainbow-livechat-core.css (lines 601-609), .rc-link already in rainbow-realchat.css (lines 816-825) but unused — wire it up",
+        "chat-preview.js line 247: change esc(msg.content) to linkifyUrls(esc(msg.content))",
+        "chat-preview.js line 336: change esc(msg.content) to linkifyUrls(esc(msg.content))",
+        "real-chat-core.js: add linkifyUrls() call in formatMessage() after escapeHtml()"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": true
+    },
+    {
+      "id": "US-148",
+      "title": "Run verification after US-143–147 changes",
+      "priority": 148,
+      "description": "After all US-143 through US-147 are implemented, verify: (1) capsule assignment with maintenance deprioritization auto-linking works, (2) operator WhatsApp notification fires correctly, (3) live-chat loads in under 1 second, (4) Chat Simulator Live Simulation matches Live Chat visually, (5) URLs are clickable in all chat views, (6) intent accuracy remains at 95%+.",
+      "acceptanceCriteria": [
+        "CapsuleRulesTab shows auto-linked capsules from active problems",
+        "Assigning a maintenance capsule when no alternatives exist sends WhatsApp to primary operator",
+        "Live-chat conversations appear within 1 second of tab click",
+        "Skeleton loading animation visible during data fetch",
+        "Chat Simulator Live Simulation visually matches Live Chat styling",
+        "Dev badges in simulator are collapsible",
+        "Self-check-in URLs are clickable in Chat Simulator, Live Chat, and Real Chat",
+        "Intent accuracy test: 95%+ (node RainbowAI/scripts/intent-accuracy-test.js)",
+        "No JavaScript errors on any dashboard tab",
+        "All 3 servers start and run without errors"
+      ],
+      "technicalNotes": [
+        "Run: start-all.bat to start all 3 servers",
+        "Run: node RainbowAI/scripts/intent-accuracy-test.js for intent accuracy",
+        "Test maintenance flow: create a problem for a capsule in Maintenance tab, verify it appears in CapsuleRulesTab as auto-linked",
+        "Test notification: assign that capsule in check-in, verify WhatsApp message sent to operator",
+        "Test loading: open live-chat tab and measure time to first conversation visible",
+        "Test simulator: compare live-simulation side-by-side with live-chat",
+        "Test links: send a message with URL in chat simulator, verify it's clickable"
+      ],
+      "dependencies": [
+        "US-143",
+        "US-144",
+        "US-145",
+        "US-146",
+        "US-147"
+      ],
+      "estimatedComplexity": "medium",
+      "passes": true
+    },
+    {
+      "id": "US-149",
+      "title": "Add gzip compression middleware to both servers",
+      "priority": 149,
+      "description": "Neither the MCP server (port 3002) nor the Express backend (port 5000) use compression middleware. Every API response and HTML page is sent uncompressed, wasting 60-80% bandwidth. Install and configure the 'compression' package on both servers.",
+      "acceptanceCriteria": [
+        "npm install compression in both RainbowAI/ and root package.json",
+        "app.use(compression()) added before routes in RainbowAI/src/index.ts",
+        "app.use(compression()) added before routes in server/index.ts",
+        "API responses include Content-Encoding: gzip header when Accept-Encoding: gzip is sent",
+        "Dashboard HTML response size reduced by at least 50%",
+        "No functional regressions — all existing endpoints work correctly"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/index.ts:51-68 — add compression() before express.json()",
+        "server/index.ts:11-15 — add compression() before express.json()",
+        "import compression from 'compression'; app.use(compression());",
+        "Test: curl -H 'Accept-Encoding: gzip' -I http://localhost:3002/api/rainbow/status"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-150",
+      "title": "Pre-compile all regexes in fuzzy-matcher and knowledge-base",
+      "priority": 150,
+      "description": "Multiple regex patterns are compiled from scratch on every incoming message. In fuzzy-matcher.ts, date/number/confirmation patterns (lines 199, 240-246) create new RegExp objects per call. In knowledge-base.ts, guessTopicFiles() (lines 96-106) compiles 30+ topic patterns per message via new RegExp(). Move all regex compilation to module load or class construction time.",
+      "acceptanceCriteria": [
+        "All regex patterns in fuzzy-matcher.ts compiled once as class properties or module constants",
+        "containsDateKeywords() and containsNumberKeywords() use pre-compiled regex",
+        "Confirmation regex at line 199 compiled once, not inline",
+        "guessTopicFiles() uses pre-compiled COMPILED_TOPIC_PATTERNS array",
+        "No new RegExp() calls on the per-message hot path",
+        "Intent accuracy test still passes at 95%+"
+      ],
+      "technicalNotes": [
+        "fuzzy-matcher.ts:199 — move /\\b(yes|ya|ok|...)\\b/i to class property",
+        "fuzzy-matcher.ts:240-246 — move datePatterns and numberPatterns to class properties",
+        "knowledge-base.ts:96-106 — create COMPILED_TOPIC_PATTERNS = Object.entries(TOPIC_FILE_MAP).map(([p,f]) => ({regex: new RegExp(p,'i'), files: f}))",
+        "Then loop over COMPILED_TOPIC_PATTERNS instead of creating new RegExp per iteration"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-151",
+      "title": "Add composite database indexes for hot query patterns",
+      "priority": 151,
+      "description": "Several frequently-run queries lack covering composite indexes, causing full table scans. Add composite indexes for: (1) rainbow_messages(phone, role, timestamp) for unread count queries, (2) rainbow_feedback(created_at, intent) for filtered stats, (3) intent_predictions(was_correct, created_at) for accuracy metrics, (4) admin_notifications(is_read, created_at) for unread notifications.",
+      "acceptanceCriteria": [
+        "Composite index idx_rainbow_messages_phone_role_timestamp on (phone, role, timestamp) added",
+        "Composite index idx_rainbow_feedback_created_at_intent on (created_at, intent) added",
+        "Composite index idx_intent_predictions_correct_created on (was_correct, created_at) added",
+        "Composite index idx_admin_notifications_read_created on (is_read, created_at) added",
+        "npm run db:push succeeds without errors",
+        "Feedback stats API response time improved (verify manually)"
+      ],
+      "technicalNotes": [
+        "shared/schema-tables.ts — add indexes in the table definition callback arrays",
+        "rainbow_messages table (lines 323-328): add index('idx_rainbow_messages_phone_role_timestamp').on(table.phone, table.role, table.timestamp)",
+        "rainbow_feedback table (lines 240-246): add index('idx_rainbow_feedback_created_at_intent').on(table.createdAt, table.intent)",
+        "intent_predictions table (lines 262-269): add index('idx_intent_predictions_correct_created').on(table.wasCorrect, table.createdAt)",
+        "Run npm run db:push after adding indexes"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-152",
+      "title": "Enable HTTP keep-alive and connection pooling on http-client",
+      "priority": 152,
+      "description": "The Axios instance in RainbowAI/src/lib/http-client.ts creates a new TCP connection for every API call to the backend (port 5000). This adds 3-way handshake latency on every MCP tool call. Configure an HTTP agent with keepAlive and maxSockets for persistent connections.",
+      "acceptanceCriteria": [
+        "http-client.ts uses an http.Agent with keepAlive: true",
+        "maxSockets set to at least 20",
+        "keepAliveMsecs set to reasonable value (e.g. 30000)",
+        "Both httpAgent and httpsAgent configured on the Axios instance",
+        "MCP tool calls (list_guests, search_guests etc.) no longer open new TCP connections per call",
+        "No regression in API functionality"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/lib/http-client.ts:10-17",
+        "import http from 'http'; import https from 'https';",
+        "const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 20, keepAliveMsecs: 30000 });",
+        "const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20, keepAliveMsecs: 30000 });",
+        "Add httpAgent and httpsAgent to axios.create() options"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-153",
+      "title": "Cache dashboard HTML in memory instead of re-reading from disk",
+      "priority": 153,
+      "description": "getDashboardHtml() in RainbowAI/src/index.ts (lines 148-171) calls readFileSync() and runs regex cache-bust replacement on every single page request (~15+ times per session). Cache the HTML in memory at startup with a file watcher for development hot-reload.",
+      "acceptanceCriteria": [
+        "Dashboard HTML read once at startup and cached in a module-level variable",
+        "Cache-bust query string uses a stable build hash (not Date.now() per request)",
+        "File watcher (fs.watch or chokidar) invalidates cache when rainbow-admin.html changes in dev",
+        "Dashboard pages (/, /dashboard, /performance, etc.) serve from memory cache",
+        "Page load time for dashboard reduced (no disk I/O per request)",
+        "Hot-reload still works in development"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/index.ts:148-171 — getDashboardHtml() is the target",
+        "Replace readFileSync per-request with: let cachedHtml = null; function getDashboardHtml() { if (!cachedHtml) { cachedHtml = buildCacheBustedHtml(); } return cachedHtml; }",
+        "Use crypto.createHash('md5').update(html).digest('hex').slice(0,8) for stable cache-bust hash",
+        "In dev: fs.watch(htmlPath, () => { cachedHtml = null; }) to invalidate on file change"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-154",
+      "title": "Parallelize all dashboard stat API calls",
+      "priority": 154,
+      "description": "In dashboard.js (line 184), the /conversations/stats/response-time call happens sequentially AFTER the Promise.allSettled() for the other 3 stats. This adds 200-500ms to dashboard load. Move it into the parallel batch.",
+      "acceptanceCriteria": [
+        "All 4 stat endpoints called in a single Promise.allSettled(): /conversations, /intent/accuracy, /feedback/stats, /conversations/stats/response-time",
+        "Response time stat renders at the same time as other stats (not delayed)",
+        "Dashboard load time reduced by 200-500ms",
+        "Error handling still works independently for each stat (allSettled pattern)"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/public/js/modules/dashboard.js:156-188",
+        "Move api('/conversations/stats/response-time') from line 184 into the Promise.allSettled array at line 156",
+        "Add a 4th destructured result: [conversationsResult, accuracyResult, feedbackResult, responseTimeResult]",
+        "Handle responseTimeResult.status === 'fulfilled' like the others"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-155",
+      "title": "Skip semantic matcher when fuzzy confidence is high",
+      "priority": 155,
+      "description": "The semantic matcher (100-300ms embedding + cosine similarity) runs even when the fuzzy matcher already returned high confidence (e.g. 0.95). Add a confidence threshold guard in the tier classification pipeline to skip the expensive semantic match when fuzzy is confident enough.",
+      "acceptanceCriteria": [
+        "If fuzzy matcher returns confidence >= 0.85, semantic matcher is skipped entirely",
+        "A devMetadata flag 'skippedSemantic: true' is set when semantic is skipped",
+        "Per-message latency reduced by 100-300ms for high-confidence fuzzy matches",
+        "Intent accuracy test still passes at 95%+ (semantic only helps low-confidence cases)",
+        "Chat Simulator shows 'skippedSemantic' in metadata when applicable"
+      ],
+      "technicalNotes": [
+        "The guard should be added in the tier classification pipeline where semantic match is invoked",
+        "Check message-router.ts or tier-classification pipeline for where semantic-matcher.match() is called",
+        "Add: if (fuzzyResult && fuzzyResult.confidence >= 0.85) { return fuzzyResult; /* skip semantic */ }",
+        "Threshold 0.85 balances speed vs accuracy — fuzzy at 0.85+ is almost always correct"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-156",
+      "title": "Eliminate N+1 query pattern in listConversations",
+      "priority": 156,
+      "description": "conversation-logger.ts listConversations() (lines 301-347) executes 4 separate DB queries per conversation in a loop: last message, message count, and 2 unread count queries. With 100 conversations this generates 400+ round-trips to Neon Postgres. Refactor into a single query using window functions or subqueries.",
+      "acceptanceCriteria": [
+        "listConversations() executes at most 2-3 total queries regardless of conversation count",
+        "Last message, message count, and unread count fetched via joins or subqueries",
+        "Dashboard conversations list loads in under 500ms with 100+ conversations",
+        "Real Chat tab loads in under 1 second",
+        "Conversation data shape remains the same (no frontend changes needed)",
+        "Existing 3-second cache still works as before"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/assistant/conversation-logger.ts:301-347",
+        "Replace the for-loop with a single query joining rainbow_conversations with rainbow_messages",
+        "Use SQL subqueries or window functions: SELECT c.*, (SELECT content FROM rainbow_messages WHERE phone=c.phone ORDER BY timestamp DESC LIMIT 1) as last_message, (SELECT count(*) FROM rainbow_messages WHERE phone=c.phone) as message_count",
+        "For unread count: SUM(CASE WHEN m.role='user' AND m.timestamp > c.last_read_at THEN 1 ELSE 0 END)",
+        "Test with: curl http://localhost:3002/api/rainbow/conversations"
+      ],
+      "dependencies": [
+        "US-151"
+      ],
+      "estimatedComplexity": "large",
+      "passes": false
+    },
+    {
+      "id": "US-157",
+      "title": "Cache KB system prompt template (rebuild only on config change)",
+      "priority": 157,
+      "description": "buildSystemPrompt() in knowledge-base.ts (lines 276-399) concatenates all core KB files, memory files, and operational content into a ~50-100KB string on every single incoming WhatsApp message. Core content and memory sections are identical across messages. Cache the base template and only interpolate topic-specific files per message.",
+      "acceptanceCriteria": [
+        "Core KB content (CORE_FILES concatenation) cached in module-level variable",
+        "Memory sections (today/yesterday logs) cached and refreshed only when date changes",
+        "buildSystemPrompt() only concatenates topic-specific files per call",
+        "Cache invalidated when KB files are reloaded (reloadAllKB call)",
+        "Per-message string allocation reduced from ~100KB to ~10KB (topic files only)",
+        "AI responses remain accurate and contextual (no missing KB content)"
+      ],
+      "technicalNotes": [
+        "knowledge-base.ts:276-399 — buildSystemPrompt() is the target",
+        "Add module-level: let cachedCoreContent = null; let cachedMemoryContent = null; let lastMemoryDate = null;",
+        "In buildSystemPrompt: if (!cachedCoreContent) cachedCoreContent = buildCoreContent();",
+        "For memory: const today = getTodayDate(); if (today !== lastMemoryDate) { cachedMemoryContent = buildMemoryContent(); lastMemoryDate = today; }",
+        "In reloadAllKB(): cachedCoreContent = null; cachedMemoryContent = null; // force rebuild",
+        "Return `${basePersona}...${cachedCoreContent}${cachedMemoryContent}${topicContent}`"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-158",
+      "title": "Lazy-load frontend tab modules with dynamic import()",
+      "priority": 158,
+      "description": "rainbow-admin.html (lines 341-366) loads ALL JavaScript modules on page init: testing.js, real-chat.js, kb-editor.js, settings.js, etc. Most users only need the dashboard tab on initial load. Convert tab modules to dynamic imports that load only when a tab is activated.",
+      "acceptanceCriteria": [
+        "Only core modules (utils, tabs, sidebar, state) load on page init",
+        "Tab-specific modules (testing, real-chat, kb-editor, settings, etc.) load on first tab activation",
+        "Tab loading shows a brief spinner while module is fetched",
+        "Subsequent tab switches use cached module (no re-fetch)",
+        "Initial page load time reduced (fewer scripts parsed upfront)",
+        "No functional regressions — all tabs still work when clicked"
+      ],
+      "technicalNotes": [
+        "rainbow-admin.html:341-366 — remove tab-specific script tags from static HTML",
+        "In tabs.js tab loader: use dynamic import() instead of assuming modules are pre-loaded",
+        "Example: const module = await import('/public/js/modules/real-chat.js');",
+        "Keep type='module' on core scripts, remove from tab scripts",
+        "The module-registry.js already exists — may be able to extend it for lazy loading"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-159",
+      "title": "Replace 3-second Real Chat polling with SSE events",
+      "priority": 159,
+      "description": "real-chat-core.js line 193 polls /conversations every 3 seconds while the Real Chat tab is open. Combined with the N+1 query, this hammers the database constantly. The dashboard already has an SSE activity stream (dashboard-helpers.js). Extend the SSE endpoint to emit conversation update events and use that in Real Chat instead of polling.",
+      "acceptanceCriteria": [
+        "SSE endpoint emits 'conversation_update' events when new messages arrive",
+        "Real Chat uses EventSource to receive updates instead of 3-second polling",
+        "Conversation list updates in real-time when new messages arrive via WhatsApp",
+        "Fallback: if SSE disconnects, poll every 15 seconds (not 3)",
+        "Network requests in Real Chat tab reduced by 80%+",
+        "No duplicate messages or missed updates"
+      ],
+      "technicalNotes": [
+        "real-chat-core.js:193 — replace setInterval(3000) with EventSource subscription",
+        "RainbowAI/src/routes/admin/ — extend existing SSE endpoint or create /api/rainbow/events/conversations",
+        "In conversation-logger.ts logMessage(): emit SSE event after message is saved",
+        "EventSource reconnects automatically on disconnect — add retry: 15000 in SSE stream",
+        "Keep a lightweight poll (every 30s) as heartbeat/fallback"
+      ],
+      "dependencies": [
+        "US-156"
+      ],
+      "estimatedComplexity": "large",
+      "passes": false
+    },
+    {
+      "id": "US-160",
+      "title": "Clean up intervals and event listeners on tab exit",
+      "priority": 160,
+      "description": "When navigating between tabs, intervals from Real Chat (3s poll, 15s WA status, 1s timestamp updater), Performance (30s feedback refresh, 30s accuracy refresh), and Dashboard (activity timestamp updater) continue running in the background, consuming CPU and making stale API calls. Clean up all intervals when leaving a tab.",
+      "acceptanceCriteria": [
+        "Real Chat intervals (autoRefresh, waStatusPoll, timestampUpdater) cleared when leaving tab",
+        "Performance intervals (feedbackRefreshInterval, intentAccuracyRefreshInterval) cleared when leaving tab",
+        "Dashboard activity timestamp interval cleared when leaving tab",
+        "No stale API calls visible in browser DevTools Network tab after switching tabs",
+        "Intervals properly re-created when returning to the tab",
+        "No memory growth when rapidly switching between tabs"
+      ],
+      "technicalNotes": [
+        "real-chat-core.js:162-205 — $.autoRefresh, $.waStatusPoll, window._rcTimestampUpdater need cleanup",
+        "performance-stats.js:108-115, 228-235 — feedbackRefreshInterval, intentAccuracyRefreshInterval",
+        "dashboard-helpers.js:373-378 — activity timestamp interval",
+        "tabs.js already calls stopStatusPolling() for dashboard — extend pattern to all tabs",
+        "Add cleanup functions: cleanupRealChat(), cleanupPerformance() called from tabs.js on tab switch"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-161",
+      "title": "Reduce body parser limits and add rate limiting to MCP endpoint",
+      "priority": 161,
+      "description": "server/index.ts allows 50MB JSON payloads (excessive for a hostel management app). RainbowAI allows 10MB. The /mcp endpoint has zero rate limiting despite express-rate-limit being installed. Reduce limits and protect the MCP handler.",
+      "acceptanceCriteria": [
+        "server/index.ts body limit reduced from 50mb to 5mb",
+        "RainbowAI/src/index.ts body limit reduced from 10mb to 2mb",
+        "Rate limiter applied to /mcp endpoint (e.g. 60 requests/minute per IP)",
+        "Rate limiter applied to /api/rainbow/ routes (e.g. 120 requests/minute per IP)",
+        "429 Too Many Requests returned when limit exceeded with Retry-After header",
+        "Existing functionality unaffected at normal usage rates"
+      ],
+      "technicalNotes": [
+        "server/index.ts:14-15 — change '50mb' to '5mb'",
+        "RainbowAI/src/index.ts:59 — change '10mb' to '2mb'",
+        "express-rate-limit already in package.json — import and configure",
+        "import rateLimit from 'express-rate-limit'; const mcpLimiter = rateLimit({ windowMs: 60*1000, max: 60 });",
+        "app.use('/mcp', mcpLimiter); app.use('/api/rainbow', apiLimiter);"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-162",
+      "title": "Add selective cache headers for stable API endpoints",
+      "priority": 162,
+      "description": "Admin API middleware (admin/index.ts:47-53) sets no-store/no-cache on ALL responses. Some endpoints (settings, intents list, templates, KB files) change rarely and can safely cache for 30-300 seconds. Add per-route cache headers instead of blanket no-cache.",
+      "acceptanceCriteria": [
+        "Frequently-changing endpoints (/conversations, /feedback/recent) keep no-cache",
+        "Stable endpoints (/settings, /templates, /intents) get Cache-Control: public, max-age=60",
+        "Semi-stable endpoints (/feedback/stats, /intent/accuracy) get Cache-Control: public, max-age=30",
+        "Static template HTML responses get Cache-Control: public, max-age=300",
+        "ETag header added to settings and intents endpoints for conditional requests",
+        "Browser DevTools shows reduced network requests on repeated page views"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/routes/admin/index.ts:47-53 — replace blanket no-cache with per-route middleware",
+        "Create helper: const cacheFor = (seconds) => (req, res, next) => { res.set('Cache-Control', 'public, max-age=' + seconds); next(); };",
+        "Apply: router.get('/settings', cacheFor(60), settingsHandler);",
+        "Keep no-cache as default for unspecified routes"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-163",
+      "title": "Add debounce to search inputs and auto-resize events",
+      "priority": 163,
+      "description": "Conversation search in Real Chat (real-chat-core.js:315) triggers full list re-render on every keystroke. Chat input auto-resize (real-chat-messaging.js:174) fires on every input event without throttle. Add 300ms debounce to search and 100ms throttle to resize.",
+      "acceptanceCriteria": [
+        "filterConversations() debounced by 300ms — typing 'booking' triggers 1 render, not 7",
+        "autoResizeInput() throttled to fire at most every 100ms",
+        "Search results still appear responsive (300ms feels instant to users)",
+        "No visual lag when typing in chat input",
+        "Debounce utility added to utils.js or inline (no new dependencies)"
+      ],
+      "technicalNotes": [
+        "real-chat-core.js:315 — wrap filterConversations with debounce",
+        "real-chat-messaging.js:174 — wrap autoResizeInput with throttle",
+        "Simple debounce: function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }",
+        "Bind debounced version to the input event listener, not the function itself"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-164",
+      "title": "Replace Tailwind CDN with pre-built CSS",
+      "priority": 164,
+      "description": "rainbow-admin.html line 27 loads Tailwind via CDN script tag synchronously, blocking HTML parsing and adding 1-2 seconds to First Contentful Paint. Replace with a pre-built Tailwind CSS file that includes only the classes used in the dashboard.",
+      "acceptanceCriteria": [
+        "Tailwind CDN script tag removed from rainbow-admin.html",
+        "Pre-built tailwind.min.css generated with only used classes (via Tailwind CLI or standalone)",
+        "CSS file served from /public/css/tailwind.min.css with long cache-control",
+        "Dashboard renders correctly with no missing styles",
+        "First Contentful Paint improved by 1-2 seconds",
+        "Build script or npm script added to regenerate CSS when templates change"
+      ],
+      "technicalNotes": [
+        "rainbow-admin.html:27 — remove <script src='https://cdn.tailwindcss.com'></script>",
+        "Option 1: npx tailwindcss -i input.css -o public/css/tailwind.min.css --minify",
+        "Option 2: Use Tailwind standalone CLI (no Node dependency needed)",
+        "Content paths: rainbow-admin.html, templates/tabs/*.html, js/modules/*.js",
+        "Add to RainbowAI/package.json scripts: 'build:css': 'tailwindcss -o src/public/css/tailwind.min.css --minify'"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-165",
+      "title": "Consolidate feedback stats into fewer database queries",
+      "priority": 165,
+      "description": "The /feedback/stats endpoint (feedback.ts:53-91) executes 4 separate full table scans: overall, byIntent, byTier, and dailyTrend. Consolidate into fewer queries or add result caching with a short TTL.",
+      "acceptanceCriteria": [
+        "Feedback stats computed in at most 2 DB queries (down from 4)",
+        "OR: stats result cached for 10 seconds (repeated requests within 10s serve cache)",
+        "Performance tab loads feedback data noticeably faster",
+        "Stats accuracy unchanged (same numbers as before)",
+        "Date range filtering still works correctly"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/routes/admin/feedback.ts:53-91",
+        "Option A: Combine overall + byIntent + byTier into single query using GROUPING SETS or UNION ALL",
+        "Option B: Simple in-memory cache: let statsCache = null; let cacheTime = 0; if (Date.now() - cacheTime < 10000) return statsCache;",
+        "Option B is simpler and sufficient for a dashboard that polls every 30s"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-166",
+      "title": "Batch UPDATE for intent prediction validation",
+      "priority": 166,
+      "description": "intent-analytics.ts (lines 414-425) loops through predictions and executes individual UPDATE queries for each. Replace with a single batch update using inArray().",
+      "acceptanceCriteria": [
+        "Bulk validation uses a single UPDATE query with inArray() filter",
+        "All predictions in the batch updated atomically",
+        "API response time for bulk validation reduced proportionally to batch size",
+        "Individual validation still works as before"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/routes/admin/intent-analytics.ts:414-425",
+        "Replace for-loop with: await db.update(intentPredictions).set({wasCorrect, actualIntent, correctedAt: new Date()}).where(inArray(intentPredictions.id, ids));",
+        "Import inArray from drizzle-orm"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-167",
+      "title": "Add date range filter to calendar occupancy endpoint",
+      "priority": 167,
+      "description": "server/routes/dashboard.ts line 70 loads ALL historical guests into memory for calendar occupancy calculation. Add a date range filter to only fetch guests relevant to the requested month.",
+      "acceptanceCriteria": [
+        "Calendar endpoint accepts month/year parameters and only fetches relevant guests",
+        "Query uses WHERE clause on checkin_time and checkout_time to limit results",
+        "Memory usage reduced (no longer loads 10K+ historical guests)",
+        "Calendar occupancy display unchanged (same visual output)"
+      ],
+      "technicalNotes": [
+        "server/routes/dashboard.ts:70 — replace getAllGuests() with date-filtered query",
+        "Filter: guests where checkout_time >= monthStart OR checkin_time <= monthEnd",
+        "This captures guests who overlap with the requested month",
+        "Add storage method getGuestsByDateRange(start, end) if not existing"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-168",
+      "title": "Wrap multi-step DB operations in transactions",
+      "priority": 168,
+      "description": "conversation-logger.ts logMessage() (lines 165-236) performs 3 separate DB operations (upsert conversation, insert message, delete old messages) without a transaction. If the process crashes mid-way, data becomes inconsistent. Wrap in an explicit Drizzle transaction.",
+      "acceptanceCriteria": [
+        "logMessage() wrapped in db.transaction(async (trx) => { ... })",
+        "All 3 operations (upsert, insert, delete) use the transaction handle 'trx'",
+        "If any operation fails, all changes are rolled back",
+        "No functional regressions — messages still logged correctly",
+        "Error logging still captures transaction failures"
+      ],
+      "technicalNotes": [
+        "RainbowAI/src/assistant/conversation-logger.ts:165-236",
+        "await db.transaction(async (trx) => { await upsertConversation(trx, ...); await trx.insert(rainbowMessages)...; if (totalCount > 500) await trx.execute(sql`DELETE...`); });",
+        "The upsertConversation helper may need to accept a transaction handle parameter"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-169",
+      "title": "Verify all speed optimizations and run performance benchmark",
+      "priority": 169,
+      "description": "After all US-149 through US-168 are implemented, run a comprehensive verification: (1) measure dashboard load time, (2) measure per-message AI pipeline latency, (3) check conversation list query count, (4) verify compression headers, (5) confirm no regressions in intent accuracy or dashboard functionality.",
+      "acceptanceCriteria": [
+        "Dashboard loads in under 2 seconds (vs. previous 3-5s)",
+        "API responses include Content-Encoding: gzip header",
+        "listConversations executes 3 or fewer DB queries (verify in server logs)",
+        "No JavaScript errors on any dashboard tab",
+        "Intent accuracy test passes at 95%+",
+        "All 3 servers start and run without errors (start-all.bat)",
+        "Real Chat tab does not poll every 3 seconds (check Network tab)",
+        "Switching tabs does not leave orphan intervals (check browser console)",
+        "Browser DevTools shows reduced number of network requests vs. baseline"
+      ],
+      "technicalNotes": [
+        "Run: start-all.bat to start all 3 servers",
+        "Run: node RainbowAI/scripts/intent-accuracy-test.js for intent accuracy",
+        "Open browser DevTools Network tab, navigate through all tabs, verify request count",
+        "Check server console for DB query logs during conversation list load",
+        "Measure dashboard load: Performance tab in DevTools, record page load",
+        "Test compression: curl -H 'Accept-Encoding: gzip' -v http://localhost:3002/api/rainbow/status 2>&1 | grep Content-Encoding"
+      ],
+      "dependencies": [
+        "US-149",
+        "US-150",
+        "US-151",
+        "US-152",
+        "US-153",
+        "US-154",
+        "US-155",
+        "US-156",
+        "US-157",
+        "US-158",
+        "US-159",
+        "US-160",
+        "US-161",
+        "US-162",
+        "US-163",
+        "US-164",
+        "US-165",
+        "US-166",
+        "US-167",
+        "US-168"
       ],
       "estimatedComplexity": "medium",
       "passes": false
@@ -3016,9 +4434,70 @@
       "RainbowAI/src/public/js/modules/responses-crud.js",
       "RainbowAI/src/routes/admin/testing-preview.ts",
       "RainbowAI/src/routes/admin/knowledge-base.ts",
-      "RainbowAI/.rainbow-kb/contacts/"
+      "RainbowAI/.rainbow-kb/contacts/",
+      "RainbowAI/src/assistant/pricing.ts",
+      "RainbowAI/src/tools/tool-factory.ts",
+      "RainbowAI/src/tools/guests.ts",
+      "RainbowAI/src/tools/capsules.ts",
+      "RainbowAI/src/tools/problems.ts",
+      "RainbowAI/src/tools/dashboard.ts",
+      "RainbowAI/src/assistant/default-configs.ts",
+      "RainbowAI/src/assistant/memory-writer.ts",
+      "RainbowAI/src/routes/admin/memory.ts",
+      "RainbowAI/src/public/js/core/cache-manager.js",
+      "RainbowAI/src/public/js/core/api-helpers.js",
+      "RainbowAI/src/assistant/booking.ts",
+      "RainbowAI/src/assistant/data/kb-patterns.json",
+      "client/src/lib/error-handling.ts",
+      "client/src/lib/errorHandler.ts",
+      "client/src/lib/errorUtils.ts",
+      "client/src/lib/i18n.ts",
+      "client/src/lib/validation.ts",
+      "client/src/components/sortable-guest-table.tsx",
+      "client/src/components/ui/push-notification-settings.tsx",
+      "client/src/components/check-in/",
+      "client/src/components/guest-checkin/",
+      "client/src/components/ObjectUploader.tsx",
+      "client/src/components/SmartPhotoUploader.tsx",
+      "client/src/components/OptimizedPhotoUploader.tsx",
+      "client/src/components/LazyObjectUploader.tsx",
+      "client/src/components/EnhancedObjectUploader.tsx",
+      "client/src/pages/check-out.tsx",
+      "client/src/pages/finance.tsx",
+      "client/src/pages/intent-manager.tsx",
+      "server/Storage/IStorage.ts",
+      "server/Storage/MemStorage.ts",
+      "server/Storage/DatabaseStorage.ts",
+      "server/Storage/mem/",
+      "server/Storage/db/",
+      "server/routes/tests.ts",
+      "server/routes/tests/",
+      "server/lib/constants.ts",
+      "shared/schema-validation.ts",
+      "shared/validation/",
+      "shared/validation-patterns.ts",
+      "client/src/components/settings/CapsuleRulesTab.tsx",
+      "client/src/components/settings/MaintenanceTab.tsx",
+      "server/routes/guest-tokens.ts",
+      "server/routes/capsules.ts",
+      "RainbowAI/src/lib/admin-notification-settings.ts",
+      "RainbowAI/src/lib/operator-escalation.ts",
+      "RainbowAI/src/public/js/modules/real-chat-core.js",
+      "RainbowAI/src/public/js/core/utils-global.js",
+      "RainbowAI/src/public/css/rainbow-realchat.css",
+      "RainbowAI/src/lib/http-client.ts",
+      "RainbowAI/src/lib/db.ts",
+      "RainbowAI/src/assistant/fuzzy-matcher.ts",
+      "RainbowAI/src/assistant/semantic-matcher.ts",
+      "RainbowAI/src/public/js/modules/real-chat-messaging.js",
+      "RainbowAI/src/public/js/modules/dashboard-helpers.js",
+      "RainbowAI/src/public/rainbow-admin.html",
+      "RainbowAI/src/routes/admin/feedback.ts",
+      "RainbowAI/src/routes/admin/intent-analytics.ts",
+      "server/routes/dashboard.ts",
+      "server/vite.ts"
     ],
-    "testingStrategy": "TypeScript compilation + 100-scenario intent accuracy test (node scripts/intent-accuracy-test.js) + agent-browser dashboard verification (mandatory for UI stories) + MCP tool testing for capsule rules + mobile viewport testing for responsive stories + gibberish input test for unknown fallback + KB-only test for knowledge base accuracy",
+    "testingStrategy": "TypeScript compilation + 100-scenario intent accuracy test (node scripts/intent-accuracy-test.js) + agent-browser dashboard verification (mandatory for UI stories) + MCP tool testing for capsule rules + mobile viewport testing for responsive stories + gibberish input test for unknown fallback + KB-only test for knowledge base accuracy + phase-gated refactoring verification (US-122, US-131, US-142) with zero-regression requirement",
     "rollbackPlan": "git checkout HEAD -- RainbowAI/src/ && git checkout HEAD -- RainbowAI/scripts/"
   }
 }
