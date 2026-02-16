@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { getTodayDate, getMYTTimestamp, listMemoryDays, getDurableMemory, getMemoryDir } from '../../assistant/knowledge-base.js';
+import { getDailyMemoryTemplate } from '../../assistant/default-configs.js';
 import { resolveKBDir } from './utils.js';
 import { ok, badRequest, notFound, serverError } from './http-utils.js';
 
@@ -145,19 +146,6 @@ router.post('/memory/:date/append', async (req: Request, res: Response) => {
     return;
   }
 
-  const DAILY_TEMPLATE = `# ${date} -- Daily Memory
-
-## Staff Notes
-
-## Issues Reported
-
-## Operational Changes
-
-## Patterns Observed
-
-## AI Notes
-`;
-
   try {
     const memDir = getMemoryDir();
     await fsPromises.mkdir(memDir, { recursive: true });
@@ -167,7 +155,7 @@ router.post('/memory/:date/append', async (req: Request, res: Response) => {
     try {
       content = await fsPromises.readFile(filePath, 'utf-8');
     } catch {
-      content = DAILY_TEMPLATE;
+      content = getDailyMemoryTemplate(date);
     }
 
     const timestamp = getMYTTimestamp();

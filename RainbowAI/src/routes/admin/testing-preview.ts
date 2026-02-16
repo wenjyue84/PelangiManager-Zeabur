@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { configStore } from '../../assistant/config-store.js';
 import { isAIAvailable, classifyAndRespond } from '../../assistant/ai-client.js';
+import { UNKNOWN_FALLBACK_MESSAGES } from '../../assistant/ai-response-generator.js';
 import { buildSystemPrompt, guessTopicFiles } from '../../assistant/knowledge-base.js';
 import { badRequest, serverError } from './http-utils.js';
 
@@ -190,6 +191,7 @@ router.post('/preview/chat', async (req: Request, res: Response) => {
     let topicFiles: string[] = [];
     let problemOverride = false;
     let activeWorkflowId = activeWorkflow?.workflowId || null;
+    let llmUsage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
     let editMeta: {
       type: 'knowledge' | 'workflow' | 'template';
       intent?: string;
@@ -254,6 +256,7 @@ router.post('/preview/chat', async (req: Request, res: Response) => {
           const result = await classifyAndRespond(systemPrompt, conversationHistory, sanitizedMessage);
           finalMessage = result.response || staticText;
           llmModel = result.model || 'unknown';
+          llmUsage = result.usage;
         } else {
           finalMessage = staticText;
         }
@@ -329,6 +332,7 @@ router.post('/preview/chat', async (req: Request, res: Response) => {
           const result = await classifyAndRespond(systemPrompt, conversationHistory, sanitizedMessage);
           finalMessage = result.response;
           llmModel = result.model || 'unknown';
+          llmUsage = result.usage;
         } else {
           finalMessage = 'Workflow not configured';
         }
@@ -340,11 +344,51 @@ router.post('/preview/chat', async (req: Request, res: Response) => {
       const result = await classifyAndRespond(systemPrompt, conversationHistory, sanitizedMessage);
       finalMessage = result.response;
       llmModel = result.model || 'unknown';
+      llmUsage = result.usage;
     } else {
       finalMessage = 'AI not available';
     }
 
+    // Catch-all fallback: if no response was generated (gibberish, LLM failure, etc.),
+    // return a polite clarification message in the detected language
+    if (!finalMessage || !finalMessage.trim()) {
+      const detectedLang = (intentResult.detectedLanguage === 'ms' || intentResult.detectedLanguage === 'zh')
+        ? intentResult.detectedLanguage as 'en' | 'ms' | 'zh'
+        : 'en';
+      finalMessage = UNKNOWN_FALLBACK_MESSAGES[detectedLang];
+      llmModel = llmModel === 'none' ? 'static_fallback' : llmModel;
+    }
+
     const responseTime = Date.now() - startTime;
+
+    // Build token breakdown estimate (char/4 approximation)
+    const usage = intentResult.usage || llmUsage || null;
+    let tokenBreakdown: {
+      systemPrompt: number; kbContext: number;
+      conversationHistory: number; userMessage: number;
+      aiResponse: number;
+    } | null = null;
+    if (usage && (usage.prompt_tokens || usage.completion_tokens)) {
+      const settings = configStore.getSettings();
+      const basePromptChars = (settings.system_prompt || '').length;
+      const kbChars = topicFiles.length > 0 ? topicFiles.length * 800 : 0; // rough estimate per KB file
+      const histChars = conversationHistory.reduce((s, m) => s + m.content.length, 0);
+      const userChars = sanitizedMessage.length;
+      const totalInputChars = basePromptChars + kbChars + histChars + userChars;
+      const promptTokens = usage.prompt_tokens || 0;
+      const completionTokens = usage.completion_tokens || 0;
+      // Distribute prompt tokens proportionally by character count
+      if (totalInputChars > 0 && promptTokens > 0) {
+        const ratio = promptTokens / totalInputChars;
+        tokenBreakdown = {
+          systemPrompt: Math.round(basePromptChars * ratio),
+          kbContext: Math.round(kbChars * ratio),
+          conversationHistory: Math.round(histChars * ratio),
+          userMessage: Math.round(userChars * ratio),
+          aiResponse: completionTokens
+        };
+      }
+    }
 
     res.json({
       message: finalMessage,
@@ -363,7 +407,8 @@ router.post('/preview/chat', async (req: Request, res: Response) => {
       problemOverride: problemOverride,
       sentiment: sentimentScore,
       editMeta: editMeta,
-      usage: intentResult.usage
+      usage: usage,
+      tokenBreakdown: tokenBreakdown
     });
   } catch (err: any) {
     // Log the error for debugging

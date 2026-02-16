@@ -55,7 +55,7 @@ router.get('/status', async (_req: Request, res: Response) => {
     servers: {
       mcp: {
         name: 'MCP Server',
-        port: 3001,
+        port: parseInt(process.env.MCP_SERVER_PORT || '3002', 10),
         online: true,
         responseTime: 0,
         lastCheckedAt

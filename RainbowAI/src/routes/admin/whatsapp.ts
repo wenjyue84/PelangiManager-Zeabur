@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import QRCode from 'qrcode';
 import { logoutWhatsApp, whatsappManager } from '../../lib/baileys-client.js';
+import { getAvatarFilePath, ensureAvatar } from '../../lib/whatsapp/avatar-cache.js';
 import { ok, badRequest, notFound, serverError } from './http-utils.js';
 
 const router = Router();
@@ -102,6 +103,23 @@ router.get('/whatsapp/instances/:id/qr', async (req: Request, res: Response) => 
     });
   } catch (e: any) {
     serverError(res, e);
+  }
+});
+
+// ─── WhatsApp Avatar ─────────────────────────────────────────────────
+
+router.get('/whatsapp/avatar/:phone', (req: Request, res: Response) => {
+  const phone = req.params.phone.replace(/[^0-9]/g, '');
+  if (!phone) { res.status(400).end(); return; }
+
+  const filePath = getAvatarFilePath(phone);
+  if (filePath) {
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.sendFile(filePath);
+  } else {
+    // Trigger background fetch for next time
+    ensureAvatar(phone).catch(() => {});
+    res.status(404).end();
   }
 });
 

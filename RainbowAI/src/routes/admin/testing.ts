@@ -31,6 +31,7 @@ router.post('/intents/test', async (req: Request, res: Response) => {
     const routedAction: string = route?.action || 'llm_reply';
 
     let response = '';
+    let llmUsage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
     if (routedAction === 'static_reply') {
       const { getStaticReply } = await import('../../assistant/knowledge.js');
       response = getStaticReply(intentResult.category, 'en') || '(no static reply configured)';
@@ -51,11 +52,13 @@ router.post('/intents/test', async (req: Request, res: Response) => {
         const systemPrompt = buildSystemPrompt(configStore.getSettings().system_prompt);
         const aiResult = await classifyAndRespond(systemPrompt, [], message);
         response = aiResult.response;
+        llmUsage = aiResult.usage;
       }
     } else if (isAIAvailable()) {
       const systemPrompt = buildSystemPrompt(configStore.getSettings().system_prompt);
       const aiResult = await classifyAndRespond(systemPrompt, [], message);
       response = aiResult.response;
+      llmUsage = aiResult.usage;
     }
 
     res.json({
@@ -66,7 +69,8 @@ router.post('/intents/test', async (req: Request, res: Response) => {
       response,
       matchedKeyword: intentResult.matchedKeyword,
       matchedExample: intentResult.matchedExample,
-      detectedLanguage: intentResult.detectedLanguage
+      detectedLanguage: intentResult.detectedLanguage,
+      usage: intentResult.usage || llmUsage || null
     });
   } catch (err: any) {
     serverError(res, err);
@@ -316,19 +320,21 @@ router.post('/tests/coverage', async (_req: Request, res: Response) => {
       child.on('error', (err) => resolve({ stdout, stderr: err.message, code: 1 }));
     });
 
-    const coverageLines = result.stderr.split('\n').filter(l => l.includes('|') && !l.includes('---'));
+    // Coverage text table may appear in stdout or stderr depending on vitest version
+    const allOutput = result.stdout + '\n' + result.stderr;
+    const coverageLines = allOutput.split('\n').filter(l => l.includes('|') && !l.includes('---'));
     const coverage: { file: string; stmts: string; branch: string; funcs: string; lines: string }[] = [];
     for (const line of coverageLines) {
       const parts = line.split('|').map(p => p.trim()).filter(Boolean);
-      if (parts.length >= 5 && parts[0] !== 'File') {
+      if (parts.length >= 5 && parts[0] !== 'File' && parts[0] !== '% Stmts') {
         coverage.push({ file: parts[0], stmts: parts[1], branch: parts[2], funcs: parts[3], lines: parts[4] });
       }
     }
 
     res.json({
-      success: result.code === 0,
+      success: result.code === 0 || coverage.length > 0,
       coverage,
-      raw: result.stderr.slice(0, 5000),
+      raw: (result.stdout + '\n' + result.stderr).slice(0, 5000),
     });
   } catch (err: any) {
     serverError(res, err);

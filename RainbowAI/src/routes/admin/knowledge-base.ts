@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { promises as fsPromises } from 'fs';
+import { promises as fsPromises, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { configStore } from '../../assistant/config-store.js';
 import { getKnowledgeMarkdown, setKnowledgeMarkdown, buildSystemPrompt, guessTopicFiles } from '../../assistant/knowledge-base.js';
-import { isAIAvailable, classifyAndRespond, chat } from '../../assistant/ai-client.js';
+import { isAIAvailable, classifyAndRespond, chat, chatWithFallback, getAISettings } from '../../assistant/ai-client.js';
+import { listConversations, getConversation } from '../../assistant/conversation-logger.js';
 import { KB_FILES_DIR } from './utils.js';
 import { ok, badRequest, notFound, conflict, serverError, validateFilename } from './http-utils.js';
+
+const CONTACTS_DIR = path.join(KB_FILES_DIR, 'contacts');
 
 const router = Router();
 
@@ -191,22 +194,39 @@ router.post('/knowledge/generate', async (req: Request, res: Response) => {
   }
 
   const kb = getKnowledgeMarkdown();
-  const prompt = `You are a helpful assistant for Pelangi Capsule Hostel. Generate a short, friendly static reply for the WhatsApp bot intent "${intent}".
+  const isUnknown = intent === 'unknown' || intent === 'unknown_intent';
+  const intentGuidance = isUnknown
+    ? `This is the "unknown" intent — the guest said something Rainbow AI couldn't understand.
+Generate a polite, helpful clarification message that:
+- Acknowledges the guest's message warmly
+- Asks them to rephrase or choose from common topics (check-in, pricing, facilities, directions)
+- Mentions they can also contact staff directly if needed
+- Does NOT say "I'm just a bot" or similar dismissive language`
+    : `This is for the "${intent}" intent. Generate a reply that:
+- Directly answers the guest's likely question for this intent
+- References specific Pelangi Capsule Hostel details from the knowledge base (prices, times, policies, location)
+- Is helpful and actionable (include specific info like times, prices, instructions)
+- If the KB lacks info for this intent, write a reasonable hostel-specific response`;
 
-Use ONLY information from the knowledge base below. If the knowledge base doesn't have specific info for this intent, write a generic but helpful hostel response.
+  const prompt = `You are Rainbow AI, the WhatsApp concierge for Pelangi Capsule Hostel — a capsule hostel in Johor Bahru, Malaysia.
+
+${intentGuidance}
 
 Rules:
 - Keep each response under 300 characters
-- Be warm, concise, and professional
-- Do NOT sign off as Rainbow or use emojis excessively
-- The reply should feel natural for a WhatsApp message
+- Be warm, concise, and professional — suitable for WhatsApp
+- Include specific details (prices, times, locations) when available
+- Do NOT sign off as "Rainbow" or use excessive emojis
+- Each language version should feel natural, not machine-translated
 
 <knowledge_base>
 ${kb}
 </knowledge_base>
 
-Return ONLY valid JSON (no markdown fences):
-{"en": "English reply", "ms": "Malay reply", "zh": "Chinese reply"}`;
+CRITICAL: Return ONLY a single-line valid JSON object (no markdown, no code fences, no explanation before or after):
+{"en": "English reply", "ms": "Malay reply", "zh": "Chinese reply"}
+
+Keep each translation UNDER 200 characters to fit in the response.`;
 
   try {
     const raw = await chat(prompt, [], `Generate static reply for intent: ${intent}`);
@@ -292,12 +312,114 @@ function repairJsonFromLLM(s: string): string {
   return out;
 }
 
+/**
+ * Extract the first JSON object from a string (handles trailing text after JSON).
+ * Returns the substring from first '{' to matching '}'.
+ */
+function extractJsonObject(s: string): string {
+  const start = s.indexOf('{');
+  if (start === -1) return s;
+  let depth = 0;
+  let inStr = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (c === '\\') { i++; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') depth++;
+    if (c === '}') { depth--; if (depth === 0) return s.substring(start, i + 1); }
+  }
+  // Incomplete JSON — return from start and attempt repair
+  return s.substring(start);
+}
+
+/**
+ * Attempt to close truncated JSON by appending missing closing quotes/braces.
+ */
+function closeTruncatedJson(s: string): string {
+  let trimmed = s.trimEnd();
+  // If it doesn't start with '{', wrap
+  if (!trimmed.startsWith('{')) return trimmed;
+  // Try to close: strip trailing comma, close open strings, close braces
+  // Remove trailing comma
+  if (trimmed.endsWith(',')) trimmed = trimmed.slice(0, -1);
+  // Count unmatched quotes (simplistic: if odd number of unescaped quotes, add one)
+  let quoteCount = 0;
+  for (let i = 0; i < trimmed.length; i++) {
+    if (trimmed[i] === '"' && (i === 0 || trimmed[i - 1] !== '\\')) quoteCount++;
+  }
+  if (quoteCount % 2 !== 0) trimmed += '"';
+  // Count unmatched braces
+  let braces = 0;
+  let inStr = false;
+  for (let i = 0; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (inStr) {
+      if (c === '\\') { i++; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') braces++;
+    if (c === '}') braces--;
+  }
+  while (braces > 0) { trimmed += '}'; braces--; }
+  return trimmed;
+}
+
+/**
+ * Extract field values using regex as last resort.
+ * Looks for patterns like "en": "value" in the raw text.
+ */
+function extractFieldsViaRegex(raw: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const fieldPattern = /"(en|ms|zh|intent|phase)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let match;
+  while ((match = fieldPattern.exec(raw)) !== null) {
+    if (!result[match[1]]) {
+      result[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+  }
+  return result;
+}
+
 function parseJsonFromLLM<T = unknown>(cleaned: string): T {
+  // Attempt 1: direct parse
   try {
     return JSON.parse(cleaned) as T;
-  } catch {
-    return JSON.parse(repairJsonFromLLM(cleaned)) as T;
+  } catch { /* continue */ }
+
+  // Attempt 2: extract JSON object then parse
+  const extracted = extractJsonObject(cleaned);
+  try {
+    return JSON.parse(extracted) as T;
+  } catch { /* continue */ }
+
+  // Attempt 3: repair escape issues then parse
+  try {
+    return JSON.parse(repairJsonFromLLM(extracted)) as T;
+  } catch { /* continue */ }
+
+  // Attempt 4: close truncated JSON then repair and parse
+  const closed = closeTruncatedJson(extracted);
+  try {
+    return JSON.parse(closed) as T;
+  } catch { /* continue */ }
+  try {
+    return JSON.parse(repairJsonFromLLM(closed)) as T;
+  } catch { /* continue */ }
+
+  // Attempt 5: regex field extraction as last resort
+  const fields = extractFieldsViaRegex(cleaned);
+  if (Object.keys(fields).length > 0) {
+    return fields as unknown as T;
   }
+
+  // All attempts failed — throw with context
+  throw new Error('Unexpected end of JSON input');
 }
 
 router.post('/knowledge/translate', async (req: Request, res: Response) => {
@@ -323,7 +445,7 @@ router.post('/knowledge/translate', async (req: Request, res: Response) => {
 
 Translate it to ${targetLangs.map(l => LANG_NAMES[l]).join(' and ')}. Keep the same tone (warm, concise). Suitable for guest messages. No emoji unless the original has them.
 
-Return ONLY valid JSON (no markdown, no code fence) with exactly three keys: "en", "ms", "zh". Use the EXACT original text for the "${sourceLang}" key. For the other two keys, provide your translation. Inside JSON string values, escape double quotes as \\" and newlines as \\n.
+CRITICAL: Return ONLY a single-line valid JSON object (no markdown, no code fence, no explanation). Use exactly three keys: "en", "ms", "zh". Use the EXACT original text for the "${sourceLang}" key. For the other two keys, provide your translation. Inside JSON string values, escape double quotes as \\" and newlines as \\n. Keep translations UNDER 300 characters each.
 
 Original (${LANG_NAMES[sourceLang]}):
 ${sourceText}
@@ -374,7 +496,7 @@ Rules:
 ${kb}
 </knowledge_base>
 
-Return ONLY valid JSON (no markdown fences, no code block):
+CRITICAL: Return ONLY a single-line valid JSON object (no markdown, no code fences, no explanation before or after). Keep each response UNDER 200 characters.
 {"intent":"snake_case_key","phase":"ONE_OF_THE_PHASES_ABOVE","response":{"en":"English text","ms":"Malay text","zh":"Chinese text"}}`;
 
     const raw = await chat(prompt, [], 'Generate draft intent reply with category');
@@ -390,12 +512,321 @@ Return ONLY valid JSON (no markdown fences, no code block):
       ms: typeof parsed.response?.ms === 'string' ? parsed.response.ms : '',
       zh: typeof parsed.response?.zh === 'string' ? parsed.response.zh : '',
     };
+    // Fallback: if regex extraction returned flat fields (en/ms/zh at top level)
     if (!response.en) response.en = (parsed as any).en || '';
+    if (!response.ms) response.ms = (parsed as any).ms || '';
+    if (!response.zh) response.zh = (parsed as any).zh || '';
 
     ok(res, { intent, phase, response });
   } catch (err: any) {
     if (res.headersSent) return;
     serverError(res, err?.message ? `AI generation failed: ${err.message}` : 'AI generation failed');
+  }
+});
+
+// ─── Bulk Translate: fill missing languages for all intents ───────────
+
+router.post('/knowledge/translate-all', async (req: Request, res: Response) => {
+  if (!isAIAvailable()) {
+    res.status(503).json({ error: 'AI not available — configure an AI provider' });
+    return;
+  }
+
+  const data = configStore.getKnowledge();
+  const entries = data.static || [];
+  const results: Array<{ intent: string; status: string }> = [];
+  let translated = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const entry of entries) {
+    const en = (entry.response?.en || '').trim();
+    const ms = (entry.response?.ms || '').trim();
+    const zh = (entry.response?.zh || '').trim();
+
+    // Skip if all three languages are present
+    if (en && ms && zh) {
+      skipped++;
+      results.push({ intent: entry.intent, status: 'complete' });
+      continue;
+    }
+
+    // Need at least one language to translate from
+    const sourceLang = LANG_ORDER.find(l => (entry.response?.[l] || '').trim().length > 0);
+    if (!sourceLang) {
+      skipped++;
+      results.push({ intent: entry.intent, status: 'no_source' });
+      continue;
+    }
+
+    const sourceText = (entry.response[sourceLang] || '').trim();
+    const targetLangs = LANG_ORDER.filter(l => !(entry.response?.[l] || '').trim());
+
+    try {
+      const prompt = `You are a translator for a hostel WhatsApp bot. Translate the following ${LANG_NAMES[sourceLang]} message to ${targetLangs.map(l => LANG_NAMES[l]).join(' and ')}.
+
+CRITICAL: Return ONLY a single-line valid JSON object with keys: "en", "ms", "zh". Use the original text for "${sourceLang}". Escape quotes as \\" and newlines as \\n. Keep translations UNDER 300 characters.
+
+Original (${LANG_NAMES[sourceLang]}):
+${sourceText}
+
+JSON:`;
+
+      const raw = await chat(prompt, [], 'Bulk translate: ' + entry.intent);
+      const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const parsed = parseJsonFromLLM<{ en?: string; ms?: string; zh?: string }>(cleaned);
+
+      // Fill missing only
+      if (!en && typeof parsed.en === 'string' && parsed.en.trim()) entry.response.en = parsed.en.trim();
+      if (!ms && typeof parsed.ms === 'string' && parsed.ms.trim()) entry.response.ms = parsed.ms.trim();
+      if (!zh && typeof parsed.zh === 'string' && parsed.zh.trim()) entry.response.zh = parsed.zh.trim();
+
+      translated++;
+      results.push({ intent: entry.intent, status: 'translated' });
+    } catch (err: any) {
+      failed++;
+      results.push({ intent: entry.intent, status: 'error: ' + (err.message || 'unknown') });
+    }
+
+    // Small delay between API calls to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  // Save updated data
+  if (translated > 0) {
+    configStore.setKnowledge(data);
+  }
+
+  ok(res, { translated, skipped, failed, total: entries.length, results });
+});
+
+// ─── Contact Context Files (US-104) ─────────────────────────────────
+
+function ensureContactsDir(): void {
+  if (!existsSync(CONTACTS_DIR)) {
+    mkdirSync(CONTACTS_DIR, { recursive: true });
+  }
+}
+
+/** List all contact context files */
+router.get('/contact-contexts', async (_req: Request, res: Response) => {
+  try {
+    ensureContactsDir();
+    const files = await fsPromises.readdir(CONTACTS_DIR);
+    const contextFiles = files.filter(f => f.endsWith('-context.md'));
+    const fileList = await Promise.all(
+      contextFiles.map(async (filename) => {
+        const stats = await fsPromises.stat(path.join(CONTACTS_DIR, filename));
+        const phone = filename.replace('-context.md', '');
+        return { filename, phone, size: stats.size, modified: stats.mtime };
+      })
+    );
+    res.json({ files: fileList });
+  } catch (e: any) {
+    serverError(res, e);
+  }
+});
+
+/** Get a specific contact context file */
+router.get('/contact-contexts/:phone', async (req: Request, res: Response) => {
+  try {
+    const phone = req.params.phone.replace(/\D/g, '');
+    if (!phone) { badRequest(res, 'phone required'); return; }
+    const filename = `${phone}-context.md`;
+    const filePath = path.join(CONTACTS_DIR, filename);
+    const content = await fsPromises.readFile(filePath, 'utf-8');
+    res.json({ phone, filename, content });
+  } catch (e: any) {
+    if (e.code === 'ENOENT') notFound(res, 'Contact context');
+    else serverError(res, e);
+  }
+});
+
+/** Save/update a contact context file */
+router.put('/contact-contexts/:phone', async (req: Request, res: Response) => {
+  try {
+    const phone = req.params.phone.replace(/\D/g, '');
+    if (!phone) { badRequest(res, 'phone required'); return; }
+    const { content } = req.body;
+    if (typeof content !== 'string') { badRequest(res, 'content (string) required'); return; }
+    ensureContactsDir();
+    const filename = `${phone}-context.md`;
+    await fsPromises.writeFile(path.join(CONTACTS_DIR, filename), content, 'utf-8');
+    ok(res, { phone, filename });
+  } catch (e: any) {
+    serverError(res, e);
+  }
+});
+
+/** Generate context files for all contacts with conversation history */
+router.post('/contact-contexts/generate', async (_req: Request, res: Response) => {
+  try {
+    ensureContactsDir();
+    const conversations = await listConversations();
+    let generated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const summary of conversations) {
+      const phone = summary.phone.replace(/\D/g, '');
+      if (!phone) { skipped++; continue; }
+
+      try {
+        const convo = await getConversation(summary.phone);
+        if (!convo || convo.messages.length === 0) { skipped++; continue; }
+
+        // Build context from conversation data
+        const messages = convo.messages;
+        const userMsgs = messages.filter(m => m.role === 'user');
+        const lastMsg = messages[messages.length - 1];
+
+        // Detect language from user messages
+        const langCounts: Record<string, number> = {};
+        for (const msg of userMsgs) {
+          const lang = detectSimpleLanguage(msg.content);
+          langCounts[lang] = (langCounts[lang] || 0) + 1;
+        }
+        const primaryLang = Object.entries(langCounts)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] || 'en';
+
+        // Extract key intents from messages
+        const intentSet = new Set<string>();
+        for (const msg of messages) {
+          if (msg.intent && msg.intent !== 'unknown') {
+            intentSet.add(msg.intent);
+          }
+        }
+
+        // Build summary of recent topics
+        const recentUserMsgs = userMsgs.slice(-10).map(m => m.content).join('; ');
+        const topicSummary = recentUserMsgs.length > 300
+          ? recentUserMsgs.slice(0, 300) + '...'
+          : recentUserMsgs;
+
+        // Contact details from DB
+        const details = convo.contactDetails || {};
+
+        const contextContent = [
+          `# Contact: ${convo.pushName || phone}`,
+          '',
+          `- **Phone:** ${phone}`,
+          `- **Name:** ${convo.pushName || 'Unknown'}`,
+          details.language ? `- **Language:** ${details.language}` : `- **Language:** ${primaryLang}`,
+          details.country ? `- **Country:** ${details.country}` : '',
+          `- **Total Messages:** ${messages.length}`,
+          `- **Last Interaction:** ${new Date(lastMsg.timestamp).toISOString().split('T')[0]}`,
+          `- **First Contact:** ${new Date(convo.createdAt).toISOString().split('T')[0]}`,
+          '',
+          '## Key Topics',
+          '',
+          intentSet.size > 0
+            ? Array.from(intentSet).map(i => `- ${i}`).join('\n')
+            : '- No classified intents yet',
+          '',
+          '## Recent Conversation Summary',
+          '',
+          topicSummary || 'No messages yet.',
+          '',
+          details.notes ? `## Notes\n\n${details.notes}\n` : '',
+          details.tags && details.tags.length > 0 ? `## Tags\n\n${details.tags.join(', ')}\n` : '',
+        ].filter(Boolean).join('\n');
+
+        const filename = `${phone}-context.md`;
+        await fsPromises.writeFile(path.join(CONTACTS_DIR, filename), contextContent, 'utf-8');
+        generated++;
+      } catch (err: any) {
+        console.error(`[ContactContext] Failed for ${phone}:`, err.message);
+        errors++;
+      }
+    }
+
+    ok(res, { generated, skipped, errors, total: conversations.length });
+  } catch (e: any) {
+    serverError(res, e);
+  }
+});
+
+/** Simple language detection for context files */
+function detectSimpleLanguage(text: string): string {
+  if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
+  if (/\b(saya|boleh|nak|mahu|ada|ini|itu|di|dan|untuk|tidak|dengan)\b/i.test(text)) return 'ms';
+  return 'en';
+}
+
+// ─── KB Accuracy Test (US-112) ──────────────────────────────────────
+
+router.post('/kb-test', async (req: Request, res: Response) => {
+  const { question, history: chatHistory } = req.body;
+  if (!question || typeof question !== 'string') {
+    badRequest(res, 'question (string) required');
+    return;
+  }
+  if (!isAIAvailable()) {
+    res.status(503).json({ error: 'AI not available — configure an AI provider' });
+    return;
+  }
+
+  const startTime = Date.now();
+
+  try {
+    // Guess which topic files to load based on the question
+    const topicFiles = guessTopicFiles(question);
+
+    // Build KB-only system prompt (no intent classification, just answer from KB)
+    const kb = getKnowledgeMarkdown();
+    const systemPrompt = `You are Rainbow AI, the WhatsApp concierge for Pelangi Capsule Hostel in Johor Bahru, Malaysia.
+
+IMPORTANT: Answer the user's question using ONLY the Knowledge Base content below.
+- If the answer is NOT in the Knowledge Base, say: "This information is not in the Knowledge Base."
+- Do NOT guess, infer, or use external knowledge.
+- Be warm, concise, and helpful.
+- Respond in the same language as the question.
+
+<knowledge_base>
+${kb}
+</knowledge_base>`;
+
+    // Build message history for multi-turn
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt }
+    ];
+
+    if (Array.isArray(chatHistory)) {
+      for (const msg of chatHistory.slice(-10)) {
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      }
+    }
+    messages.push({ role: 'user', content: question });
+
+    const chatCfg = getAISettings();
+    const { content, provider, usage } = await chatWithFallback(
+      messages,
+      chatCfg.max_chat_tokens,
+      chatCfg.chat_temperature
+    );
+
+    const responseTime = Date.now() - startTime;
+
+    if (!content) {
+      throw new Error('AI temporarily unavailable');
+    }
+
+    ok(res, {
+      answer: content,
+      devInfo: {
+        responseTime,
+        tokensUsed: usage?.total_tokens || null,
+        promptTokens: usage?.prompt_tokens || null,
+        completionTokens: usage?.completion_tokens || null,
+        kbFilesMatched: topicFiles,
+        provider: provider?.name || 'unknown',
+        model: provider?.model || 'unknown',
+      }
+    });
+  } catch (err: any) {
+    serverError(res, `KB test failed: ${err.message}`);
   }
 });
 

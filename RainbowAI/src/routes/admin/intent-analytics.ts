@@ -4,6 +4,51 @@ import { db } from '../../lib/db.js';
 import { intentPredictions } from '../../../../shared/schema.js';
 import { desc, eq, sql, isNull, isNotNull } from 'drizzle-orm';
 import { serverError, badRequest, notFound } from './http-utils.js';
+import { safeReadJSON, atomicWriteJSON } from './file-utils.js';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const EXAMPLES_PATH = join(__dirname, '../../assistant/data/intent-examples.json');
+
+// ─── Training Data Helper ──────────────────────────────────────────
+// When staff approves a prediction, add the message text to intent-examples.json
+// so it improves future intent classification (T3 semantic matching).
+
+interface IntentExamplesFile {
+  intents: Array<{
+    intent: string;
+    examples: Record<string, string[]>;
+  }>;
+}
+
+async function addToTrainingData(messageText: string, intent: string): Promise<boolean> {
+  try {
+    const data = await safeReadJSON<IntentExamplesFile>(EXAMPLES_PATH, { intents: [] });
+    const entry = data.intents.find(i => i.intent === intent);
+    if (!entry) {
+      // Intent doesn't exist in examples — skip (don't create new intents automatically)
+      console.log(`[Staff Review] Intent "${intent}" not in intent-examples.json, skipping training add`);
+      return false;
+    }
+
+    // Add to 'en' examples by default (the text is as-received from the guest)
+    if (!entry.examples.en) entry.examples.en = [];
+
+    // Skip if already present (case-insensitive dedup)
+    const lower = messageText.toLowerCase().trim();
+    const alreadyExists = entry.examples.en.some(ex => ex.toLowerCase().trim() === lower);
+    if (alreadyExists) return false;
+
+    entry.examples.en.push(messageText.trim());
+    await atomicWriteJSON(EXAMPLES_PATH, data);
+    console.log(`[Staff Review] Added training example for "${intent}": "${messageText.substring(0, 60)}..."`);
+    return true;
+  } catch (err: any) {
+    console.error('[Staff Review] Failed to add training data:', err.message);
+    return false;
+  }
+}
 
 const router = Router();
 
@@ -262,6 +307,7 @@ router.get('/intent/predictions/validated', async (req: Request, res: Response) 
 
 // ─── PATCH /api/rainbow/intent/predictions/:id ──────────────────────
 // Validate a single prediction (staff marks correct or provides actual intent)
+// When approved as correct, also adds the message to intent-examples.json for training.
 router.patch('/intent/predictions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -273,7 +319,10 @@ router.patch('/intent/predictions/:id', async (req: Request, res: Response) => {
 
     // Fetch the prediction to compare
     const existing = await db
-      .select({ predictedIntent: intentPredictions.predictedIntent })
+      .select({
+        predictedIntent: intentPredictions.predictedIntent,
+        messageText: intentPredictions.messageText,
+      })
       .from(intentPredictions)
       .where(eq(intentPredictions.id, id))
       .limit(1);
@@ -294,9 +343,15 @@ router.patch('/intent/predictions/:id', async (req: Request, res: Response) => {
       })
       .where(eq(intentPredictions.id, id));
 
+    // Add approved message to training data (intent-examples.json)
+    let addedToTraining = false;
+    if (existing[0].messageText) {
+      addedToTraining = await addToTrainingData(existing[0].messageText, actualIntent);
+    }
+
     res.json({
       success: true,
-      updated: { id, wasCorrect, actualIntent },
+      updated: { id, wasCorrect, actualIntent, addedToTraining },
     });
   } catch (error) {
     console.error('[Intent Analytics] Error validating prediction:', error);
@@ -306,6 +361,7 @@ router.patch('/intent/predictions/:id', async (req: Request, res: Response) => {
 
 // ─── POST /api/rainbow/intent/predictions/bulk-validate ─────────────
 // Bulk validate multiple predictions at once (approve all, reject all, etc.)
+// When approved as correct, also adds messages to intent-examples.json for training.
 router.post('/intent/predictions/bulk-validate', async (req: Request, res: Response) => {
   try {
     const { ids, wasCorrect, actualIntent } = req.body;
@@ -324,9 +380,13 @@ router.post('/intent/predictions/bulk-validate', async (req: Request, res: Respo
       return badRequest(res, 'actualIntent is required when wasCorrect is false');
     }
 
-    // Fetch all predictions to determine actualIntent if wasCorrect=true
+    // Fetch all predictions (include messageText for training data)
     const predictions = await db
-      .select({ id: intentPredictions.id, predictedIntent: intentPredictions.predictedIntent })
+      .select({
+        id: intentPredictions.id,
+        predictedIntent: intentPredictions.predictedIntent,
+        messageText: intentPredictions.messageText,
+      })
       .from(intentPredictions)
       .where(
         ids.length === 1
@@ -345,12 +405,13 @@ router.post('/intent/predictions/bulk-validate', async (req: Request, res: Respo
     const updates = predictions.map((p) => ({
       id: p.id,
       actualIntent: wasCorrect ? p.predictedIntent : actualIntent,
+      messageText: p.messageText,
       wasCorrect,
       correctionSource: 'manual' as const,
       correctedAt: new Date(),
     }));
 
-    // Bulk update all predictions
+    // Bulk update all predictions in DB
     for (const update of updates) {
       await db
         .update(intentPredictions)
@@ -363,9 +424,19 @@ router.post('/intent/predictions/bulk-validate', async (req: Request, res: Respo
         .where(eq(intentPredictions.id, update.id));
     }
 
+    // Add approved messages to training data (intent-examples.json)
+    let trainingAdded = 0;
+    for (const update of updates) {
+      if (update.messageText) {
+        const added = await addToTrainingData(update.messageText, update.actualIntent);
+        if (added) trainingAdded++;
+      }
+    }
+
     res.json({
       success: true,
       updated: updates.length,
+      trainingAdded,
       ids: predictions.map((p) => p.id),
     });
   } catch (error) {

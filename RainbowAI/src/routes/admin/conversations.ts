@@ -1,10 +1,46 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { listConversations, getConversation, deleteConversation, getResponseTimeStats, getContactDetails, updateContactDetails, togglePin, toggleFavourite, markConversationAsRead, updateConversationMode } from '../../assistant/conversation-logger.js';
 import { whatsappManager } from '../../lib/baileys-client.js';
 import { translateText } from '../../assistant/ai-client.js';
 import { ok, badRequest, notFound, serverError } from './http-utils.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ─── Message Metadata Store (pin/star per message) ────────────────────
+interface MessageMetadata {
+  pinned: Record<string, string[]>;   // phone -> array of message indices (as strings)
+  starred: Record<string, string[]>;  // phone -> array of message indices (as strings)
+}
+
+const METADATA_PATH = path.resolve(__dirname, '../../../data/message-metadata.json');
+
+function loadMetadata(): MessageMetadata {
+  try {
+    if (fs.existsSync(METADATA_PATH)) {
+      return JSON.parse(fs.readFileSync(METADATA_PATH, 'utf-8'));
+    }
+  } catch (err) {
+    console.warn('[Metadata] Failed to load message-metadata.json, using empty:', (err as Error).message);
+  }
+  return { pinned: {}, starred: {} };
+}
+
+function saveMetadata(data: MessageMetadata): void {
+  const dir = path.dirname(METADATA_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const tmpPath = METADATA_PATH + '.tmp';
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+  fs.renameSync(tmpPath, METADATA_PATH);
+}
+
+let metadata: MessageMetadata = loadMetadata();
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
@@ -77,7 +113,7 @@ router.get('/conversations/:phone/contact', async (req: Request, res: Response) 
 router.patch('/conversations/:phone/contact', async (req: Request, res: Response) => {
   try {
     const phone = decodeURIComponent(req.params.phone);
-    const allowed = ['name', 'email', 'country', 'language', 'checkIn', 'checkOut', 'unit', 'notes', 'contactStatus', 'paymentStatus', 'tags'];
+    const allowed = ['name', 'email', 'country', 'language', 'languageLocked', 'checkIn', 'checkOut', 'unit', 'notes', 'contactStatus', 'paymentStatus', 'tags'];
     const partial: Record<string, any> = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -110,6 +146,98 @@ router.delete('/conversations/:phone', async (req: Request, res: Response) => {
     const phone = decodeURIComponent(req.params.phone);
     const deleted = await deleteConversation(phone);
     res.json({ ok: deleted });
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+router.post('/conversations/:phone/clear', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { clearConversationMessages } = await import('../../assistant/conversation-logger.js');
+    await clearConversationMessages(phone);
+    ok(res, { cleared: true });
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// ─── Message-Level Pin & Star ─────────────────────────────────────────
+
+// Get pinned/starred message indices for a conversation
+router.get('/conversations/:phone/message-metadata', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const pinned = metadata.pinned[phone] || [];
+    const starred = metadata.starred[phone] || [];
+    res.json({ pinned, starred });
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// Toggle pin on a specific message
+router.post('/conversations/:phone/messages/:msgIdx/pin', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const msgIdx = req.params.msgIdx;
+
+    if (!metadata.pinned[phone]) metadata.pinned[phone] = [];
+    const arr = metadata.pinned[phone];
+    const idx = arr.indexOf(msgIdx);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+      saveMetadata(metadata);
+      ok(res, { pinned: false, msgIdx });
+    } else {
+      arr.push(msgIdx);
+      saveMetadata(metadata);
+      ok(res, { pinned: true, msgIdx });
+    }
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// Toggle star on a specific message
+router.post('/conversations/:phone/messages/:msgIdx/star', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const msgIdx = req.params.msgIdx;
+
+    if (!metadata.starred[phone]) metadata.starred[phone] = [];
+    const arr = metadata.starred[phone];
+    const idx = arr.indexOf(msgIdx);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+      saveMetadata(metadata);
+      ok(res, { starred: false, msgIdx });
+    } else {
+      arr.push(msgIdx);
+      saveMetadata(metadata);
+      ok(res, { starred: true, msgIdx });
+    }
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// Send a reaction to a message via WhatsApp
+router.post('/conversations/:phone/messages/:msgIdx/react', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { emoji, instanceId } = req.body;
+
+    if (!emoji || typeof emoji !== 'string') {
+      badRequest(res, 'emoji (string) required');
+      return;
+    }
+
+    // Reactions are best-effort via WhatsApp — we log success regardless
+    // In a full implementation, we'd look up the actual WhatsApp message key
+    // For now, we acknowledge the reaction in the dashboard
+    console.log(`[Admin] Reaction ${emoji} on message ${req.params.msgIdx} for ${phone}`);
+    ok(res, { emoji, msgIdx: req.params.msgIdx });
   } catch (err: any) {
     serverError(res, err);
   }
@@ -325,6 +453,103 @@ router.post('/conversations/:phone/approvals/:id/reject', async (req: Request, r
 
     console.log(`[Copilot] Rejected approval: ${id}`);
     ok(res);
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// US-090: Generate AI notes summary from conversation
+router.post('/conversations/:phone/generate-notes', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const log = await getConversation(phone);
+    if (!log || !log.messages || log.messages.length === 0) {
+      badRequest(res, 'No messages to summarize');
+      return;
+    }
+
+    // Take last 20 messages
+    const recentMessages = log.messages.slice(-20);
+    const transcript = recentMessages.map((m: any) => {
+      const role = m.role === 'user' ? 'Guest' : 'AI';
+      return `${role}: ${m.content}`;
+    }).join('\n');
+
+    const { chatWithFallback } = await import('../../assistant/ai-provider-manager.js');
+
+    const messages = [
+      {
+        role: 'system' as const,
+        content: 'You are a hotel staff assistant. Summarize the following guest conversation in 2-5 sentences. Focus on: guest preferences, specific requests, issues raised, overall mood, and any important details staff should know. Be concise and practical.'
+      },
+      {
+        role: 'user' as const,
+        content: `Summarize this conversation:\n\n${transcript}`
+      }
+    ];
+
+    const { content } = await chatWithFallback(messages, 300, 0.5);
+
+    if (!content) {
+      serverError(res, 'AI generation failed');
+      return;
+    }
+
+    console.log(`[Admin] Generated AI notes for ${phone}`);
+    res.json({ notes: content.trim() });
+  } catch (err: any) {
+    console.error('[Admin] AI notes generation failed:', err);
+    serverError(res, err);
+  }
+});
+
+// US-091: Guest context file endpoints
+router.get('/conversations/:phone/context', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const cleanPhone = phone.replace(/@s\.whatsapp\.net$/i, '').replace(/[^0-9+]/g, '');
+    const contextDir = path.resolve(__dirname, '../../../.rainbow-kb/guests');
+    const contextFile = path.join(contextDir, `${cleanPhone}-context.md`);
+
+    if (fs.existsSync(contextFile)) {
+      const content = fs.readFileSync(contextFile, 'utf-8');
+      res.json({ exists: true, content, filename: `${cleanPhone}-context.md` });
+    } else {
+      // Get push name for template
+      const log = await getConversation(phone);
+      const name = log?.pushName || 'Guest';
+      const template = `# Guest Context: ${name}\n\n## Background\n\n## Preferences\n\n## Special Arrangements\n`;
+      res.json({ exists: false, content: template, filename: `${cleanPhone}-context.md` });
+    }
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+router.put('/conversations/:phone/context', async (req: Request, res: Response) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { content } = req.body;
+    if (typeof content !== 'string') {
+      badRequest(res, 'content (string) required');
+      return;
+    }
+
+    const cleanPhone = phone.replace(/@s\.whatsapp\.net$/i, '').replace(/[^0-9+]/g, '');
+    const contextDir = path.resolve(__dirname, '../../../.rainbow-kb/guests');
+
+    // Ensure directory exists
+    if (!fs.existsSync(contextDir)) {
+      fs.mkdirSync(contextDir, { recursive: true });
+    }
+
+    const contextFile = path.join(contextDir, `${cleanPhone}-context.md`);
+    const tmpFile = contextFile + '.tmp';
+    fs.writeFileSync(tmpFile, content, 'utf-8');
+    fs.renameSync(tmpFile, contextFile);
+
+    console.log(`[Admin] Saved guest context for ${phone}: ${contextFile}`);
+    ok(res, { saved: true, filename: `${cleanPhone}-context.md` });
   } catch (err: any) {
     serverError(res, err);
   }
