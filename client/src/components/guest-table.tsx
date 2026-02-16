@@ -143,8 +143,17 @@ export default function GuestTable() {
                   <tr key={guest.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 bg-hostel-primary bg-opacity-10 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-hostel-primary font-medium text-sm">{getInitials(guest.name)}</span>
+                        <div className="w-8 h-8 bg-hostel-primary bg-opacity-10 rounded-full flex items-center justify-center mr-3 overflow-hidden">
+                          {guest.phoneNumber ? (
+                            <img
+                              src={`/api/rainbow/whatsapp/avatar/${guest.phoneNumber.replace(/[^0-9]/g, '')}`}
+                              className="w-full h-full object-cover rounded-full"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling!.removeAttribute('style'); }}
+                              loading="lazy"
+                              alt=""
+                            />
+                          ) : null}
+                          <span className="text-hostel-primary font-medium text-sm" style={guest.phoneNumber ? { display: 'none' } : undefined}>{getInitials(guest.name)}</span>
                         </div>
                         <span className="text-sm font-medium text-hostel-text">{guest.name}</span>
                       </div>

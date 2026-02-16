@@ -1,131 +1,55 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { useVisibilityQuery } from "@/hooks/useVisibilityQuery";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserMinus, ArrowUpDown, ArrowUp, ArrowDown, ToggleLeft, ToggleRight, ChevronLeft, Copy, Filter as FilterIcon, CalendarPlus, Phone, AlertCircle, Clock, Ban, Star, LogOut, Building2, Undo2, Bell } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { Undo2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
-import { phoneUtils } from "@/lib/validation";
+import { useIsMobile } from "@/hooks/use-mobile";
 import GuestDetailsModal from "./guest-details-modal";
 import ExtendStayDialog from "./ExtendStayDialog";
 import { CheckoutConfirmationDialog } from "./confirmation-dialog";
 import CheckoutAlertDialog from "./CheckoutAlertDialog";
-
-import type { Guest, GuestToken, PaginatedResponse, UpdateGuestTokenCapsule } from "@shared/schema";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
-import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  getInitials,
-  truncateName,
-  getFirstInitial,
-  getGenderIcon,
-  formatShortDateTime,
-  formatShortDate,
-  ROW_HEIGHT
-} from "@/components/guest-table/utils";
-import { SortButton } from "@/components/guest-table/SortButton";
-import { SwipeableGuestRow } from "@/components/guest-table/SwipeableGuestRow";
-import { SwipeableGuestCard } from "@/components/guest-table/SwipeableGuestCard";
-import { DesktopRow } from "@/components/guest-table/DesktopRow";
-import { getGuestBalance, isGuestPaid } from "@/lib/guest";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-
-type SortField = 'name' | 'capsuleNumber' | 'checkinTime' | 'expectedCheckoutDate';
-type SortOrder = 'asc' | 'desc';
-
-// Helper for natural capsule number sorting: first by prefix (C, J, R), then by number (1, 2, ..., 10, 11)
-const parseCapsuleNumber = (cap: string | null | undefined) => {
-  if (!cap) return { prefix: 'ZZZ', num: 999999 };
-  const match = cap.match(/^([A-Za-z]+)(\d+)$/);
-  if (match) {
-    return { prefix: match[1].toUpperCase(), num: parseInt(match[2], 10) };
-  }
-  return { prefix: cap.toUpperCase(), num: 0 };
-};
-
-const compareCapsuleNumbers = (a: string | null | undefined, b: string | null | undefined): number => {
-  const aParsed = parseCapsuleNumber(a);
-  const bParsed = parseCapsuleNumber(b);
-  
-  if (aParsed.prefix !== bParsed.prefix) {
-    return aParsed.prefix.localeCompare(bParsed.prefix);
-  }
-  return aParsed.num - bParsed.num;
-};
-
-// Define proper context interface for checkout mutation
-interface CheckoutMutationContext {
-  previousGuests: PaginatedResponse<Guest> | null;
-}
+import type { Guest, PaginatedResponse } from "@shared/schema";
+import type { AllCapsule, AvailableCapsule } from "./guest-table/types";
+import { GuestTableHeader } from "./guest-table/GuestTableHeader";
+import { GuestDesktopTable } from "./guest-table/GuestTableRow";
+import { GuestCardView } from "./guest-table/GuestCardView";
+import { useGuestSorting } from "./guest-table/useGuestSorting";
+import { useGuestFiltering } from "./guest-table/useGuestFiltering";
+import { useGuestMutations } from "./guest-table/useGuestMutations";
 
 export default function SortableGuestTable() {
-  const queryClient = useQueryClient();
-  const labels = useAccommodationLabels();
   const isMobile = useIsMobile();
-  const [, setLocation] = useLocation();
-  const [isCondensedView, setIsCondensedView] = useState(() => isMobile);
-  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [extendGuest, setExtendGuest] = useState<Guest | null>(null);
-  const [isExtendOpen, setIsExtendOpen] = useState(false);
-  const [checkoutGuest, setCheckoutGuest] = useState<Guest | null>(null);
-  const [showCheckoutConfirmation, setShowCheckoutConfirmation] = useState(false);
-  const [undoGuest, setUndoGuest] = useState<Guest | null>(null);
-  const [showUndoConfirmation, setShowUndoConfirmation] = useState(false);
-  const [capsuleChangeGuest, setCapsuleChangeGuest] = useState<Guest | null>(null);
-  const [showAllCapsules, setShowAllCapsules] = useState(false);
-  const [toggledOutstandingGuests, setToggledOutstandingGuests] = useState<Set<string>>(new Set());
-  const [alertDialogGuest, setAlertDialogGuest] = useState<Guest | null>(null);
-  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
-  const { toast } = useToast();
   const { isAuthenticated, logout } = useAuth();
+  const [isCondensedView, setIsCondensedView] = useState(() => isMobile);
+  const [showAllCapsules, setShowAllCapsules] = useState(false);
 
-  // Load settings to get showAllCapsules preference
+  // Auto-switch view mode based on device type
+  useEffect(() => {
+    setIsCondensedView(isMobile);
+  }, [isMobile]);
+
+  // ---------- Data queries ----------
+
   const { data: settings } = useVisibilityQuery<{ showAllCapsules?: boolean }>({
     queryKey: ["/api/settings"],
     enabled: isAuthenticated,
-    // Uses smart config: standard (5min stale, 10min refetch)
   });
 
-  // Initialize showAllCapsules from settings
   useEffect(() => {
     if (settings && typeof settings.showAllCapsules === 'boolean') {
       setShowAllCapsules(settings.showAllCapsules);
     }
   }, [settings]);
 
-  // Auto-switch view mode based on device type
-  useEffect(() => {
-    setIsCondensedView(isMobile);
-  }, [isMobile]);
-  const [sortConfig, setSortConfig] = useState<{ field: SortField; order: SortOrder }>({
-    field: 'capsuleNumber',
-    order: 'asc'
-  });
-  
   const { data: guestsResponse, isLoading } = useVisibilityQuery<PaginatedResponse<Guest>>({
     queryKey: ["/api/guests/checked-in"],
-    // Uses smart config: realtime (10s stale, 30s refetch)
   });
-  
   const guests = guestsResponse?.data || [];
 
-  const { data: occupancy } = useVisibilityQuery<{total: number; occupied: number; available: number}>({
+  const { data: occupancy } = useVisibilityQuery<{ total: number; occupied: number; available: number }>({
     queryKey: ["/api/occupancy"],
-    // Uses smart config: realtime (10s stale, 30s refetch)
   });
 
   const { data: activeTokensResponse } = useVisibilityQuery<PaginatedResponse<{
@@ -138,910 +62,42 @@ export default function SortableGuestTable() {
     expiresAt: string;
   }>>({
     queryKey: ["/api/guest-tokens/active"],
-    // Uses smart config: nearRealtime (30s stale, 60s refetch)
   });
-  
   const activeTokens = activeTokensResponse?.data || [];
 
-  // Get all capsules (used for both empty capsule display and WhatsApp export)
-  const { data: allCapsulesResponse } = useVisibilityQuery<Array<{
-    id: string;
-    number: string;
-    section: string;
-    isAvailable: boolean;
-    cleaningStatus: string;
-    toRent: boolean;
-    lastCleanedAt: string | null;
-    lastCleanedBy: string | null;
-    color: string | null;
-    purchaseDate: string | null;
-    position: string | null;
-    remark: string | null;
-  }>>({
+  const { data: allCapsulesResponse } = useVisibilityQuery<AllCapsule[]>({
     queryKey: ["/api/capsules"],
-    // Always enabled (used for both empty capsule display and WhatsApp export)
-    // Uses smart config: nearRealtime (30s stale, 60s refetch)
   });
-
-  // Get available capsules for switching
-  const { data: availableCapsules = [] } = useVisibilityQuery<Array<{
-    id: string;
-    number: string;
-    section: string;
-    isAvailable: boolean;
-    cleaningStatus: string;
-    toRent: boolean;
-    position: string | null;
-  }>>({
-    queryKey: ["/api/capsules/available"],
-    // Uses smart config: nearRealtime (30s stale, 60s refetch)
-  });
-  
-  // Use the same capsules data for both empty display and WhatsApp export
   const allCapsules = allCapsulesResponse || [];
   const exportCapsules = allCapsulesResponse || [];
 
-  // Filters
-  const [filters, setFilters] = useState({
-    gender: 'any' as 'any' | 'male' | 'female',
-    nationality: 'any' as 'any' | 'malaysian' | 'non-malaysian',
-    outstandingOnly: false,
-    checkoutTodayOnly: false,
+  const { data: availableCapsules = [] } = useVisibilityQuery<AvailableCapsule[]>({
+    queryKey: ["/api/capsules/available"],
   });
 
-  const hasActiveGuestFilters = filters.gender !== 'any' || filters.nationality !== 'any' || filters.outstandingOnly || filters.checkoutTodayOnly;
+  // ---------- Hooks ----------
 
-  const calculatePlannedStayDays = (checkinTime: string | Date, expectedCheckoutDate?: string | Date | null): number => {
-    try {
-      if (!expectedCheckoutDate) return 0;
-      const checkin = new Date(checkinTime);
-      const plannedCheckout = new Date(expectedCheckoutDate);
-      const diffMs = plannedCheckout.getTime() - checkin.getTime();
-      if (Number.isNaN(diffMs)) return 0;
-      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    } catch {
-      return 0;
-    }
-  };
-
-  const isDateToday = (dateStr?: string) => {
-    if (!dateStr) return false;
-    try {
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const todayStr = `${yyyy}-${mm}-${dd}`;
-      // dateStr in DB is often YYYY-MM-DD; fallback to local date string compare
-      return dateStr.slice(0, 10) === todayStr;
-    } catch {
-      return false;
-    }
-  };
-
-  const extractOutstandingAmount = (guest: Guest): string | null => {
-    if (isGuestPaid(guest)) return null;
-    const balance = getGuestBalance(guest);
-    if (balance > 0) {
-      return `RM${balance.toFixed(2)}`;
-    }
-    return null;
-  };
-
-  const handleToggleOutstandingDisplay = (guestId: string) => {
-    setToggledOutstandingGuests(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(guestId)) {
-        newSet.delete(guestId);
-      } else {
-        newSet.add(guestId);
-      }
-      return newSet;
-    });
-  };
-
-  const getGuestStatusInfo = (guest: Guest) => {
-    if (guest.status === 'blacklisted') {
-      return {
-        label: 'Blacklisted',
-        icon: <Ban className="h-4 w-4 text-red-600" />,
-        variant: 'destructive' as const,
-      };
-    }
-    if (guest.status === 'vip') {
-      return {
-        label: 'VIP',
-        icon: <Star className="h-4 w-4 text-yellow-500" />,
-        variant: 'default' as const,
-        className: 'bg-yellow-500 text-black',
-      };
-    }
-    const today = new Date();
-    const checkout = guest.expectedCheckoutDate ? new Date(guest.expectedCheckoutDate) : null;
-    if (checkout && checkout < new Date(today.toDateString())) {
-      return {
-        label: 'Overdue',
-        icon: <Clock className="h-4 w-4 text-red-600" />,
-        variant: 'destructive' as const,
-      };
-    }
-    if (!isGuestPaid(guest)) {
-      return {
-        label: 'Outstanding',
-        icon: <AlertCircle className="h-4 w-4 text-orange-500" />,
-        variant: 'destructive' as const,
-      };
-    }
-    return null;
-  };
-
-  // Create a combined and filtered list of guests, pending check-ins, and empty capsules
-  // Merged combinedData and filteredData into a single memo for better performance
-  const filteredData = useMemo(() => {
-    // 1. Build combined data (guests + pending + empty capsules)
-    const guestData = guests.map(guest => ({ type: 'guest' as const, data: guest }));
-    const pendingData = activeTokens.map(token => ({
-      type: 'pending' as const,
-      data: {
-        id: token.id,
-        name: token.guestName || 'Pending Check-in',
-        capsuleNumber: token.capsuleNumber,
-        createdAt: token.createdAt,
-        expiresAt: token.expiresAt,
-        phoneNumber: token.phoneNumber,
-      }
-    }));
-
-    let data: Array<{ type: 'guest' | 'pending' | 'empty'; data: any }> = [...guestData, ...pendingData];
-
-    // Add empty capsules when showAllCapsules is enabled
-    if (showAllCapsules && allCapsules.length > 0) {
-      const occupiedCapsules = new Set([
-        ...guests.map(g => g.capsuleNumber),
-        ...activeTokens.map(t => t.capsuleNumber)
-      ]);
-
-      const emptyCapsules = allCapsules
-        .filter(capsule => !occupiedCapsules.has(capsule.number) && capsule.toRent !== false)
-        .map(capsule => ({
-          type: 'empty' as const,
-          data: {
-            id: `empty-${capsule.id}`,
-            name: 'Empty',
-            capsuleNumber: capsule.number,
-            checkinTime: null,
-            expectedCheckoutDate: null,
-            phoneNumber: null,
-            gender: null,
-            nationality: null,
-            isPaid: true,
-            paymentAmount: null,
-            paymentMethod: null,
-            paymentCollector: null,
-            notes: null,
-            email: null,
-            idNumber: null,
-            emergencyContact: null,
-            emergencyPhone: null,
-            age: null,
-            profilePhotoUrl: null,
-            selfCheckinToken: null,
-            status: null,
-            checkoutTime: null,
-            isCheckedIn: false,
-            // Add capsule-specific info
-            section: capsule.section,
-            isAvailable: capsule.isAvailable,
-            cleaningStatus: capsule.cleaningStatus,
-            toRent: capsule.toRent,
-            remark: capsule.remark,
-          }
-        }));
-
-      data = [...data, ...emptyCapsules];
-    }
-
-    // 2. Apply filters (no separate useMemo needed)
-    if (!data.length) return [];
-    return data.filter(item => {
-      if (item.type !== 'guest') {
-        // Hide pending rows when any guest-specific filter is active
-        return !hasActiveGuestFilters;
-      }
-      const g = item.data as Guest;
-      if (filters.gender !== 'any' && g.gender !== filters.gender) return false;
-      if (filters.nationality === 'malaysian' && g.nationality !== 'Malaysian') return false;
-      if (filters.nationality === 'non-malaysian' && g.nationality === 'Malaysian') return false;
-      if (filters.outstandingOnly && isGuestPaid(g)) return false;
-      if (filters.checkoutTodayOnly) {
-        if (!g.expectedCheckoutDate) return false;
-        if (!isDateToday(g.expectedCheckoutDate)) return false;
-      }
-      return true;
-    });
-  }, [guests, activeTokens, showAllCapsules, allCapsules, filters, hasActiveGuestFilters]);
-
-  const sortedData = useMemo(() => {
-    if (!filteredData.length) return [];
-    
-    return [...filteredData].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-      
-      switch (sortConfig.field) {
-        case 'name':
-          aValue = (a.type === 'guest' ? a.data.name : a.data.name).toLowerCase();
-          bValue = (b.type === 'guest' ? b.data.name : b.data.name).toLowerCase();
-          break;
-        case 'capsuleNumber':
-          // Natural sort for capsule numbers using helper function
-          const capsuleCompare = compareCapsuleNumbers(a.data.capsuleNumber, b.data.capsuleNumber);
-          return sortConfig.order === 'asc' ? capsuleCompare : -capsuleCompare;
-        case 'checkinTime':
-          aValue = a.type === 'guest' ? new Date(a.data.checkinTime).getTime() : new Date(a.data.createdAt).getTime();
-          bValue = b.type === 'guest' ? new Date(b.data.checkinTime).getTime() : new Date(b.data.createdAt).getTime();
-          break;
-        case 'expectedCheckoutDate':
-          aValue = a.type === 'guest' 
-            ? (a.data.expectedCheckoutDate ? new Date(a.data.expectedCheckoutDate).getTime() : 0)
-            : new Date(a.data.expiresAt).getTime();
-          bValue = b.type === 'guest' 
-            ? (b.data.expectedCheckoutDate ? new Date(b.data.expectedCheckoutDate).getTime() : 0)
-            : new Date(b.data.expiresAt).getTime();
-          break;
-        default:
-          return 0;
-      }
-      
-      if (aValue < bValue) return sortConfig.order === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortConfig.order === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [filteredData, sortConfig]);
-
-  const handleSort = (field: SortField) => {
-    setSortConfig(prev => ({
-      field,
-      order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  const checkoutMutation = useMutation({
-    mutationFn: async (guestId: string) => {
-      const response = await apiRequest("POST", "/api/guests/checkout", { id: guestId });
-      return response.json();
-    },
-    onMutate: async (guestId: string): Promise<CheckoutMutationContext> => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ["/api/guests/checked-in"] });
-      
-      // Snapshot the previous value with proper type checking
-      const previousGuests = queryClient.getQueryData<PaginatedResponse<Guest>>(["/api/guests/checked-in"]);
-      
-      if (!previousGuests) {
-        return { previousGuests: null };
-      }
-      
-      // Optimistically update by removing the guest from the list
-      const filteredData = previousGuests.data.filter(guest => guest.id !== guestId);
-      const updatedGuests = {
-        ...previousGuests,
-        data: filteredData
-      };
-      queryClient.setQueryData(["/api/guests/checked-in"], updatedGuests);
-      
-      // Show immediate feedback that checkout is processing
-      toast({
-        title: "Processing Checkout...",
-        description: "Guest is being checked out. Row will disappear momentarily.",
-        duration: 2000,
-      });
-      
-      // Return a context object with the snapshotted value
-      return { previousGuests };
-    },
-    onSuccess: () => {
-      // Invalidate all related queries for consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/guests/checked-in"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available-with-status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/cleaning-status/cleaned"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/cleaning-status/to_be_cleaned"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/needs-attention"] });
-      
-      toast({
-        title: "Guest Checked Out Successfully",
-        description: (
-          <div className="space-y-2">
-            <p>The guest has been checked out successfully. The guest list updates automatically every 30 seconds.</p>
-            <div className="flex flex-col space-y-1">
-              <button 
-                onClick={() => {
-                  // Force immediate refetch bypassing cache
-                  queryClient.refetchQueries({ 
-                    queryKey: ["/api/guests/checked-in"],
-                    type: 'active'
-                  });
-                  queryClient.refetchQueries({ 
-                    queryKey: ["/api/occupancy"],
-                    type: 'active'
-                  });
-                  toast({
-                    title: "Refreshing...",
-                    description: "Guest list is being updated with fresh data.",
-                    duration: 2000,
-                  });
-                }}
-                className="inline-flex items-center text-green-600 hover:text-green-800 underline text-sm font-medium w-fit"
-              >
-                🔄 Refresh guest list now
-              </button>
-              <button 
-                onClick={() => setLocation("/cleaning")}
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 underline text-sm font-medium w-fit gap-1"
-              >
-                🧹 Clean
-              </button>
-            </div>
-          </div>
-        ),
-        duration: 8000, // Show longer to give user time to click link
-      });
-    },
-    onError: (error: any, guestId: string, context: CheckoutMutationContext | undefined) => {
-      // Rollback optimistic update on error
-      if (context?.previousGuests) {
-        queryClient.setQueryData(["/api/guests/checked-in"], context.previousGuests);
-      }
-      
-      // Improved error handling with better type checking
-      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
-      const isAlreadyCheckedOut = /already|not found|checked out/i.test(errorMessage);
-      
-      if (isAlreadyCheckedOut) {
-        toast({
-          title: "Guest Already Checked Out",
-          description: "This guest has already been checked out. The list will refresh to show the current state.",
-          variant: "default",
-        });
-        // Immediate refresh to get accurate data for "already checked out" case
-        queryClient.refetchQueries({ queryKey: ["/api/guests/checked-in"] });
-        queryClient.refetchQueries({ queryKey: ["/api/occupancy"] });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to check out guest. Please try again.",
-          variant: "destructive",
-        });
-      }
-    },
+  const { filters, setFilters, hasActiveGuestFilters, filteredData, clearFilters } = useGuestFiltering({
+    guests,
+    activeTokens,
+    showAllCapsules,
+    allCapsules,
   });
 
-  const cancelTokenMutation = useMutation({
-    mutationFn: async (tokenId: string) => {
-      console.log(`🚀 Attempting to cancel guest token: ${tokenId}`);
-      const response = await apiRequest("DELETE", `/api/guest-tokens/${tokenId}`);
-      console.log(`✅ API response received:`, response);
-      return response;
-    },
-    onSuccess: () => {
-      console.log(`🎉 Guest token cancelled successfully, invalidating queries`);
-      queryClient.invalidateQueries({ queryKey: ["/api/guest-tokens/active"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
-      toast({
-        title: "Success",
-        description: "Pending check-in cancelled successfully",
-      });
-    },
-    onError: (error: any) => {
-      const detailedError = extractDetailedError(error);
-      const toastOptions = createErrorToast(detailedError);
-      
-      toast({
-        title: toastOptions.title,
-        description: toastOptions.description + (toastOptions.debugDetails ? `\n\n${toastOptions.debugDetails}` : ''),
-        variant: toastOptions.variant,
-        duration: 8000, // Longer duration for detailed errors
-      });
-    },
-  });
+  const { sortConfig, sortedData, handleSort } = useGuestSorting(filteredData);
 
-  const undoCheckoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/guests/undo-recent-checkout");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ["/api/guests/checked-in"] });
-      queryClient.refetchQueries({ queryKey: ["/api/capsules/needs-attention"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
-      
-      toast({
-        title: "Success",
-        description: "Check-out undone successfully",
-      });
-    },
-    onError: (error: any) => {
-      const errorMessage = error?.message || 'Failed to undo checkout';
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    },
-  });
+  const mutations = useGuestMutations({ guests, exportCapsules, activeTokens });
 
-  const updateSettingsMutation = useMutation({
-    mutationFn: async (showAllCapsules: boolean) => {
-      const response = await apiRequest("PATCH", "/api/settings", { 
-        showAllCapsules: showAllCapsules
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: "Failed to save setting. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutation for updating guest token capsule assignment
-  const updateTokenCapsuleMutation = useMutation({
-    mutationFn: async ({ tokenId, updateData }: { tokenId: string; updateData: UpdateGuestTokenCapsule }) => {
-      const response = await apiRequest("PATCH", `/api/guest-tokens/${tokenId}/capsule`, updateData);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      // Invalidate and refetch guest tokens to update the UI
-      queryClient.invalidateQueries({ queryKey: ["/api/guest-tokens/active"] });
-      
-      toast({
-        title: "Capsule Updated",
-        description: data.message || "Guest token capsule assignment updated successfully",
-      });
-    },
-    onError: (error: any) => {
-      const errorToast = createErrorToast(extractDetailedError(error));
-      toast({
-        title: errorToast.title,
-        description: errorToast.description,
-        variant: errorToast.variant,
-      });
-    },
-  });
-
-  const handleCheckout = (guestId: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to check out guests. Redirecting to login page...",
-        variant: "destructive",
-        duration: 3000,
-      });
-      
-      // Redirect to login page after a brief delay
-      setTimeout(() => {
-        setLocation('/login');
-      }, 1000);
-      
-      return;
-    }
-    
-    // Find the guest to show in confirmation dialog
-    const guest = guests.find(g => g.id === guestId);
-    if (guest) {
-      setCheckoutGuest(guest);
-      setShowCheckoutConfirmation(true);
-    }
-  };
-
-  const confirmCheckout = () => {
-    if (checkoutGuest) {
-      checkoutMutation.mutate(checkoutGuest.id);
-      setShowCheckoutConfirmation(false);
-      setCheckoutGuest(null);
-    }
-  };
-
-  const handleUndo = async () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to undo checkouts. Redirecting to login page...",
-        variant: "destructive",
-        duration: 3000,
-      });
-      
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 1000);
-      
-      return;
-    }
-    
-    try {
-      // First get the most recent checkout for confirmation
-      const response = await apiRequest("GET", "/api/guests/undo-recent-checkout");
-      const result = await response.json();
-      
-      if (result.statusCode === 200 && result.data?.guest) {
-        setUndoGuest(result.data.guest);
-        setShowUndoConfirmation(true);
-      } else {
-        toast({
-          title: "No Recent Checkout",
-          description: "No recently checked-out guest found to undo.",
-          variant: "default",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to find recent checkout to undo",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const confirmUndo = () => {
-    if (undoGuest) {
-      undoCheckoutMutation.mutate();
-      setShowUndoConfirmation(false);
-      setUndoGuest(null);
-    }
-  };
-
-  const handleCancelToken = (tokenId: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to cancel pending check-ins. Redirecting to login page...",
-        variant: "destructive",
-        duration: 3000,
-      });
-      
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 1000);
-      
-      return;
-    }
-    
-    cancelTokenMutation.mutate(tokenId);
-  };
-
-  // Handler for updating guest token capsule assignment
-  const handleTokenCapsuleChange = (tokenId: string, capsuleNumber: string | null, autoAssign?: boolean) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to update capsule assignments. Redirecting to login page...",
-        variant: "destructive",
-        duration: 3000,
-      });
-      
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 1000);
-      
-      return;
-    }
-    
-    const updateData: UpdateGuestTokenCapsule = autoAssign 
-      ? { autoAssign: true }
-      : { capsuleNumber: capsuleNumber! };
-    
-    updateTokenCapsuleMutation.mutate({ tokenId, updateData });
-  };
-
-  const handleGuestClick = (guest: Guest) => {
-    setSelectedGuest(guest);
-    setIsDetailsModalOpen(true);
-  };
-
-  const handleExtend = (guest: Guest) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please login to extend guest stays",
-        variant: "destructive",
-      });
-      // Redirect to login with return URL
-      const currentPath = window.location.pathname;
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-      return;
-    }
-
-    setExtendGuest(guest);
-    setIsExtendOpen(true);
-  };
-
-  const openAlertDialog = (guest: Guest) => {
-    setAlertDialogGuest(guest);
-    setAlertDialogOpen(true);
-  };
-
-  const handleCapsuleChange = async (guest: Guest, newCapsuleNumber: string) => {
-    if (newCapsuleNumber === guest.capsuleNumber) {
-      return; // No change needed
-    }
-
-    // Check authentication first
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please login to change capsule assignments",
-        variant: "destructive",
-      });
-      // Redirect to login with return URL
-      const currentPath = window.location.pathname;
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/guests/${guest.id}/capsule`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          capsuleNumber: newCapsuleNumber,
-          reason: 'Capsule change from dashboard'
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      toast({
-        title: "Capsule Changed",
-        description: `${guest.name} moved to capsule ${newCapsuleNumber}`,
-      });
-
-      // Refresh the guest list
-      queryClient.refetchQueries({ queryKey: ["/api/guests/checked-in"] });
-      queryClient.refetchQueries({ queryKey: ["/api/capsules/available"] });
-      queryClient.refetchQueries({ queryKey: ["/api/occupancy"] });
-    } catch (error) {
-      console.error('Error changing capsule:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to change capsule. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Simple capsule selector component
-  const CapsuleSelector = ({ guest }: { guest: Guest }) => {
-    const currentCapsule = guest.capsuleNumber;
-
-    // If not authenticated, show clickable capsule number
-    if (!isAuthenticated) {
-      return (
-        <button
-          onClick={() => {
-            toast({
-              title: "Authentication Required",
-              description: "Please login to change capsule assignments",
-              variant: "destructive",
-            });
-            const currentPath = window.location.pathname;
-            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-          }}
-          className="text-sm font-medium text-blue-600 hover:text-blue-800 underline cursor-pointer"
-          title="Click to login and change capsule"
-        >
-          {currentCapsule}
-        </button>
-      );
-    }
-
-    // Create options: current capsule + available capsules
-    const capsuleOptions = [
-      { number: currentCapsule, isCurrent: true },
-      ...availableCapsules
-        .filter(c => c.number !== currentCapsule && c.toRent)
-        .map(c => ({ number: c.number, isCurrent: false }))
-    ].sort((a, b) => compareCapsuleNumbers(a.number, b.number));
-
-    return (
-      <Select
-        value={currentCapsule}
-        onValueChange={(newCapsule) => handleCapsuleChange(guest, newCapsule)}
-      >
-        <SelectTrigger className="w-16 h-8 text-xs">
-          <SelectValue>{currentCapsule}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {capsuleOptions.map((option) => (
-            <SelectItem
-              key={option.number}
-              value={option.number}
-              className={option.isCurrent ? "font-medium bg-blue-50" : ""}
-            >
-              {option.number}
-              {option.isCurrent && " (current)"}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    );
-  };
-
-  const handleCloseModal = () => {
-    setIsDetailsModalOpen(false);
-    setSelectedGuest(null);
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied!",
-        description: "Check-in link copied to clipboard",
-      });
-    } catch (error) {
-      toast({
-        title: "Copy failed",
-        description: "Please copy the link manually",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getCheckinLink = (token: string) => {
-    return `${window.location.origin}/guest-checkin?token=${token}`;
-  };
-
-  const handlePendingCheckinClick = (tokenId: string) => {
-    // Find the token and copy the check-in link
-    const token = activeTokens.find(t => t.id === tokenId);
-    if (token) {
-      copyToClipboard(getCheckinLink(token.token));
-    }
-  };
-
-  // Handle empty capsule click - navigate to check-in page
-  const handleEmptyCapsuleClick = (capsuleNumber: string) => {
-    setLocation(`/check-in?capsule=${capsuleNumber}`);
-  };
-
-  // Handle WhatsApp export - generate capsule status in WhatsApp-friendly format
-  const handleWhatsAppExport = useCallback(() => {
-    // Get all capsules data
-    const checkedInGuests = guests || [];
-    
-    // Create WhatsApp-friendly format
-    let whatsappText = "🏨 *PELANGI CAPSULE STATUS* 🏨\n\n";
-    
-    // Handle FRONT SECTION (capsules 11-24)
-    whatsappText += '📍 *FRONT SECTION* 📍\n';
-    const frontSectionCapsules = exportCapsules.filter(capsule => {
-      const num = parseInt(capsule.number.replace('C', ''));
-      return num >= 11 && num <= 24;
-    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
-    
-    frontSectionCapsules.forEach(capsule => {
-      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
-      
-      if (guest) {
-        // Guest is checked in
-        const isPaid = isGuestPaid(guest);
-        const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
-        const paymentStatus = isPaid ? '✅' : '❌';
-        
-        // Check for outstanding balance
-        const balance = getGuestBalance(guest);
-        const outstandingText = balance > 0 ? ` (Outstanding RM${balance})` : '';
-        
-        whatsappText += `${capsule.number.replace('C', '')}) ${guest.name} ${paymentStatus}${checkoutDate}${outstandingText}\n`;
-      } else {
-        // Empty capsule
-        whatsappText += `${capsule.number.replace('C', '')})\n`;
-      }
-    });
-    
-    whatsappText += '\n';
-    
-    // Handle special sections - Living Room (capsules 25, 26)
-    whatsappText += '🏠 *LIVING ROOM* 🏠\n';
-    const livingRoomCapsules = exportCapsules.filter(capsule => {
-      const num = parseInt(capsule.number.replace('C', ''));
-      return num === 25 || num === 26;
-    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
-    
-    livingRoomCapsules.forEach(capsule => {
-      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
-      if (guest) {
-        const isPaid = isGuestPaid(guest);
-        const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
-        const paymentStatus = isPaid ? '✅' : '❌';
-        const balance = getGuestBalance(guest);
-        const outstandingText = balance > 0 ? ` (Outstanding RM${balance})` : '';
-        whatsappText += `${capsule.number.replace('C', '')}) ${guest.name} ${paymentStatus}${checkoutDate}${outstandingText}\n`;
-      } else {
-        whatsappText += `${capsule.number.replace('C', '')})\n`;
-      }
-    });
-    
-    // Handle special sections - Room (capsules 1-6)
-    whatsappText += '\n🛏️ *ROOM* 🛏️\n';
-    const roomCapsules = exportCapsules.filter(capsule => {
-      const num = parseInt(capsule.number.replace('C', ''));
-      return num >= 1 && num <= 6;
-    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
-    
-    roomCapsules.forEach(capsule => {
-      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
-      if (guest) {
-        const isPaid = isGuestPaid(guest);
-        const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
-        const paymentStatus = isPaid ? '✅' : '❌';
-        const balance = getGuestBalance(guest);
-        const outstandingText = balance > 0 ? ` (Outstanding RM${balance})` : '';
-        whatsappText += `${capsule.number.replace('C', '')}) ${guest.name} ${paymentStatus}${checkoutDate}${outstandingText}\n`;
-      } else {
-        whatsappText += `${capsule.number.replace('C', '')})\n`;
-      }
-    });
-    
-    whatsappText += '\n——————————————\n';
-    whatsappText += '📅 *Last Updated:* ' + new Date().toLocaleDateString('en-GB') + '\n';
-    whatsappText += '⏰ *Time:* ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(whatsappText).then(() => {
-      toast({
-        title: "WhatsApp Export Ready! 📱",
-        description: "Capsule status copied to clipboard. You can now paste it in WhatsApp!",
-        variant: "default",
-      });
-    }).catch(() => {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = whatsappText;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      
-      toast({
-        title: "WhatsApp Export Ready! 📱",
-        description: "Capsule status copied to clipboard. You can now paste it in WhatsApp!",
-        variant: "default",
-      });
-    });
-  }, [exportCapsules, guests, toast]);
+  // ---------- Loading state ----------
 
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Currently Checked In</CardTitle>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="h-6 w-48" />
             <Skeleton className="w-20 h-6" />
           </div>
-        </CardHeader>
-        <CardContent>
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex items-center space-x-4 p-4">
@@ -1056,886 +112,141 @@ export default function SortableGuestTable() {
               </div>
             ))}
           </div>
-        </CardContent>
+        </div>
       </Card>
     );
   }
 
+  // ---------- Render ----------
+
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-bold text-hostel-text flex items-center">
-            {showAllCapsules ? "All Capsules" : "Current Guest"}
-            {occupancy && (
-              <span className="ml-2 text-sm font-normal text-gray-600">
-                {showAllCapsules 
-                  ? `(${occupancy.occupied}/${allCapsules.length || occupancy.total})`
-                  : `(${occupancy.occupied}/${occupancy.total})`
-                }
-              </span>
-            )}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={isMobile ? "h-8 w-8 px-0" : "h-8 gap-2"}
-              onClick={handleUndo}
-              disabled={undoCheckoutMutation.isPending}
-              title="Undo recent checkout"
-            >
-              <Undo2 className="h-4 w-4" />
-              {!isMobile && "Undo"}
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={isMobile ? "h-8 w-8 px-0" : "h-8 gap-2"}
-                  title="Filter guests"
-                >
-                  <FilterIcon className="h-4 w-4" />
-                  {!isMobile && "Filter Guests"}
-                  {hasActiveGuestFilters && (
-                    <span className="ml-1 inline-block h-2 w-2 rounded-full bg-blue-600" />
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase text-gray-500">Gender</Label>
-                    <RadioGroup
-                      value={filters.gender}
-                      onValueChange={(val) => setFilters(prev => ({ ...prev, gender: val as any }))}
-                      className="grid grid-cols-3 gap-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="gender-any" value="any" />
-                        <Label htmlFor="gender-any">Any</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="gender-male" value="male" />
-                        <Label htmlFor="gender-male">Male</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="gender-female" value="female" />
-                        <Label htmlFor="gender-female">Female</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase text-gray-500">Nationality</Label>
-                    <RadioGroup
-                      value={filters.nationality}
-                      onValueChange={(val) => setFilters(prev => ({ ...prev, nationality: val as any }))}
-                      className="grid grid-cols-3 gap-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="nat-any" value="any" />
-                        <Label htmlFor="nat-any">Any</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="nat-my" value="malaysian" />
-                        <Label htmlFor="nat-my">Malaysian</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem id="nat-nonmy" value="non-malaysian" />
-                        <Label htmlFor="nat-nonmy">Non‑MY</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase text-gray-500">Quick filters</Label>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={filters.outstandingOnly}
-                          onCheckedChange={(val) => setFilters(prev => ({ ...prev, outstandingOnly: Boolean(val) }))}
-                        />
-                        Outstanding payment only
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={filters.checkoutTodayOnly}
-                          onCheckedChange={(val) => setFilters(prev => ({ ...prev, checkoutTodayOnly: Boolean(val) }))}
-                        />
-                        Expected to check out today
-                      </label>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase text-gray-500">Capsule Display</Label>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={showAllCapsules}
-                          onCheckedChange={(val) => {
-                            const newValue = Boolean(val);
-                            setShowAllCapsules(newValue);
-                            if (isAuthenticated) {
-                              updateSettingsMutation.mutate(newValue);
-                            }
-                          }}
-                        />
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Show all capsules
-                        </div>
-                      </label>
-                      {showAllCapsules && (
-                        <p className="text-xs text-gray-500 ml-6">
-                          Empty capsules will be shown with red background
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleWhatsAppExport}
-                        className="w-full text-xs"
-                      >
-                        📱 Export to WhatsApp
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between pt-2">
-                    <Button variant="ghost" size="sm" onClick={() => setFilters({ gender: 'any', nationality: 'any', outstandingOnly: false, checkoutTodayOnly: false })}>
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            {/* Mobile: icons with tooltips */}
-            <div className="md:hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ToggleLeft className="h-4 w-4 text-gray-600" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Condensed</TooltipContent>
-              </Tooltip>
-            </div>
-            {/* Desktop: text label */}
-            <span className="hidden md:inline text-xs text-gray-600">Condensed</span>
-            <Switch 
-              checked={!isCondensedView}
-              onCheckedChange={(checked) => setIsCondensedView(!checked)}
-            />
-            {/* Desktop: text label */}
-            <span className="hidden md:inline text-xs text-gray-600">Detailed</span>
-            {/* Mobile: icons with tooltips */}
-            <div className="md:hidden">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ToggleRight className="h-4 w-4 text-gray-600" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Detailed</TooltipContent>
-              </Tooltip>
-            </div>
-            {isAuthenticated && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0 md:hidden"
-                onClick={logout}
-                title="Logout"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
+      <GuestTableHeader
+        showAllCapsules={showAllCapsules}
+        occupancy={occupancy}
+        allCapsulesCount={allCapsules.length}
+        isMobile={isMobile}
+        isAuthenticated={isAuthenticated}
+        isCondensedView={isCondensedView}
+        setIsCondensedView={setIsCondensedView}
+        onUndo={mutations.handleUndo}
+        isUndoPending={mutations.undoCheckoutMutation.isPending}
+        filters={filters}
+        setFilters={setFilters}
+        hasActiveGuestFilters={hasActiveGuestFilters}
+        setShowAllCapsules={setShowAllCapsules}
+        onUpdateSetting={(val) => mutations.updateSettingsMutation.mutate(val)}
+        onWhatsAppExport={mutations.handleWhatsAppExport}
+        clearFilters={clearFilters}
+        logout={logout}
+      />
+
       <CardContent>
         {sortedData.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p>
-              {showAllCapsules 
+              {showAllCapsules
                 ? "No guests currently checked in, pending check-ins, or empty capsules found"
                 : "No guests currently checked in or pending check-ins"
               }
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto hidden md:block">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[100px]">
-                    <div className="flex items-center gap-1">
-                      {labels.singular}
-                      <SortButton field="capsuleNumber" currentSort={sortConfig} onSort={handleSort} />
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-                  {!isCondensedView && (
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nationality</th>
-                  )}
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      {isCondensedView ? 'In' : 'Check-in'}
-                      <SortButton field="checkinTime" currentSort={sortConfig} onSort={handleSort} />
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      {isCondensedView ? 'Out' : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help">Checkout</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Expected checkout date/time</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                      <SortButton field="expectedCheckoutDate" currentSort={sortConfig} onSort={handleSort} />
-                    </div>
-                  </th>
-                  {!isCondensedView && (
-                    <>
-                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
-                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </>
-                  )}
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortedData.map((item) => {
-                  if (item.type === 'guest') {
-                    const guest = item.data;
-                    const genderIcon = getGenderIcon(guest.gender || undefined);
-                    const isGuestCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === guest.id;
-                    const stayDays = calculatePlannedStayDays(guest.checkinTime, guest.expectedCheckoutDate);
-                    const statusInfo = getGuestStatusInfo(guest);
-                    return (
-                      <SwipeableGuestRow
-                        key={guest.id}
-                        guest={guest}
-                        onCheckout={handleCheckout}
-                        onGuestClick={handleGuestClick}
-                        onExtend={handleExtend}
-                        isCondensedView={isCondensedView}
-                        isMobile={isMobile}
-                        isCheckingOut={isGuestCheckingOut}
-                      >
-                        {/* Accommodation column - sticky first column */}
-                        <td className="px-3 py-3 whitespace-nowrap sticky left-0 bg-white z-10 min-w-[100px]">
-                          <CapsuleSelector guest={guest} />
-                        </td>
-                        {/* Guest column */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className={`w-6 h-6 ${genderIcon.bgColor} rounded-full flex items-center justify-center mr-2`}>
-                              {isCondensedView ? (
-                                <span className={`${genderIcon.textColor} font-bold text-xs`}>
-                                  {getFirstInitial(guest.name)}
-                                </span>
-                              ) : genderIcon.icon ? (
-                                <span className={`${genderIcon.textColor} font-bold text-sm`}>{genderIcon.icon}</span>
-                              ) : (
-                                <span className={`${genderIcon.textColor} font-medium text-xs`}>{getInitials(guest.name)}</span>
-                              )}
-                            </div>
-                              {!isCondensedView && (
-                                <>
-                                  <button
-                                    onClick={() => handleGuestClick(guest)}
-                                    className={`text-sm font-medium hover:underline cursor-pointer transition-colors ${stayDays >= 7 ? 'text-amber-800 bg-amber-50 rounded px-1' : 'text-hostel-text hover:text-orange-700'}`}
-                                  >
-                                    {isMobile ? truncateName(guest.name) : guest.name}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        {/* Nationality column - only in detailed view */}
-                        {!isCondensedView && (
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
-                            {guest.nationality ? (
-                              <span className="font-medium">{guest.nationality}</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                        )}
-                        {/* Check-in column */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {isCondensedView 
-                            ? formatShortDate(guest.checkinTime.toString())
-                            : formatShortDateTime(guest.checkinTime.toString())
-                          }
-                        </td>
-                        {/* Checkout column */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {guest.expectedCheckoutDate ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openAlertDialog(guest);
-                              }}
-                              className="group flex items-center gap-1.5 hover:bg-gray-50 rounded-md px-1 -mx-1 transition-colors"
-                              title="Set checkout reminder"
-                            >
-                              <span className="font-medium">
-                                {formatShortDate(guest.expectedCheckoutDate)}
-                              </span>
-                              <Bell className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-600 transition-colors" />
-                            </button>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        {/* Payment and Status columns - only in detailed view */}
-                        {!isCondensedView && (
-                          <>
-                            <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-600">
-                              {guest.paymentAmount ? (
-                                <div>
-                                  <div className={`font-medium ${isGuestPaid(guest) ? '' : 'text-red-600'}`}>
-                                    RM {guest.paymentAmount}
-                                  </div>
-                                  <div className="text-xs text-gray-500">{guest.paymentCollector || 'N/A'}</div>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">No payment</span>
-                              )}
-                            </td>
-                            <td className="px-2 py-3 whitespace-nowrap">
-                              {statusInfo ? (
-                                isCondensedView ? (
-                                  statusInfo.icon
-                                ) : (
-                                  <Badge 
-                                    variant={statusInfo.variant} 
-                                    className={`${statusInfo.className || ''} cursor-pointer hover:opacity-75 transition-opacity`}
-                                    onClick={() => statusInfo.label === 'Outstanding' && handleToggleOutstandingDisplay(guest.id)}
-                                    title={statusInfo.label === 'Outstanding' ? 'Click to toggle amount' : ''}
-                                  >
-                                    {statusInfo.label === 'Outstanding' && toggledOutstandingGuests.has(guest.id)
-                                      ? extractOutstandingAmount(guest) || statusInfo.label
-                                      : statusInfo.label
-                                    }
-                                  </Badge>
-                                )
-                              ) : (
-                                <span className="text-gray-400 text-xs">-</span>
-                              )}
-                            </td>
-                          </>
-                        )}
-                        {/* Actions column */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleExtend(guest)}
-                              className="text-green-700 border-green-600 hover:bg-green-50 font-medium p-1"
-                              title="Extend"
-                            >
-                              <CalendarPlus className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleCheckout(guest.id)}
-                              disabled={checkoutMutation.isPending}
-                              isLoading={checkoutMutation.isPending && checkoutMutation.variables === guest.id}
-                              className="text-hostel-error hover:text-red-700 font-medium p-1"
-                              title="Checkout"
-                            >
-                              <UserMinus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </SwipeableGuestRow>
-                    );
-                  } else if (item.type === 'pending') {
-                    // Pending check-in row
-                    const pendingData = item.data;
-                    return (
-                      <tr key={`pending-${pendingData.id}`} className="bg-orange-50">
-                        {/* Accommodation column with copy icon - sticky first column */}
-                        <td className="px-3 py-3 whitespace-nowrap sticky left-0 bg-orange-50 z-10 min-w-[100px]">
-                          <div className="flex items-center gap-1">
-                            {isAuthenticated ? (
-                              <Select
-                                value={pendingData.capsuleNumber || 'auto-assign'}
-                                onValueChange={(value) => {
-                                  if (value === 'auto-assign') {
-                                    handleTokenCapsuleChange(pendingData.id, null, true);
-                                  } else {
-                                    handleTokenCapsuleChange(pendingData.id, value);
-                                  }
-                                }}
-                                disabled={updateTokenCapsuleMutation.isPending}
-                              >
-                                <SelectTrigger className="w-24 h-7 text-xs bg-orange-500 text-white border-orange-500 hover:bg-orange-600">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="auto-assign" className="text-xs">
-                                    <span className="font-medium">Auto-assign</span>
-                                  </SelectItem>
-                                  {availableCapsules
-                                    .sort((a, b) => compareCapsuleNumbers(a.number, b.number))
-                                    .map((capsule) => (
-                                      <SelectItem key={capsule.number} value={capsule.number} className="text-xs">
-                                        <div className="flex items-center justify-between w-full">
-                                          <span>{capsule.number}</span>
-                                          {capsule.position === 'bottom' && <span title="Bottom bed">⭐</span>}
-                                        </div>
-                                      </SelectItem>
-                                    ))
-                                  }
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">
-                                {pendingData.capsuleNumber || 'Auto-assign'}
-                              </Badge>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(getCheckinLink(activeTokens.find(t => t.id === pendingData.id)?.token || ''))}
-                              className="text-blue-600 hover:text-blue-800 font-medium p-1 text-xs"
-                              title="Copy check-in link"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                        {/* Guest column */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center mr-2">
-                              <span className="text-orange-600 font-bold text-sm">P</span>
-                            </div>
-                            {!isCondensedView && (
-                              <span className="text-sm font-medium text-orange-700">
-                                {pendingData.name}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        {/* Nationality column - only in detailed view */}
-                        {!isCondensedView && (
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-orange-600">
-                            Pending
-                          </td>
-                        )}
-                        {/* Check-in column - show creation time */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-orange-600">
-                          {isCondensedView 
-                            ? formatShortDate(pendingData.createdAt)
-                            : formatShortDateTime(pendingData.createdAt)
-                          }
-                        </td>
-                        {/* Checkout column - show expiration */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-orange-600">
-                          <span className="font-medium">
-                            Expires {formatShortDate(pendingData.expiresAt)}
-                          </span>
-                        </td>
-                        {/* Payment and Status columns - only in detailed view */}
-                        {!isCondensedView && (
-                          <>
-                            <td className="px-2 py-3 whitespace-nowrap text-xs text-orange-600">
-                              Awaiting self check-in
-                            </td>
-                            <td className="px-2 py-3 whitespace-nowrap">
-                              <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
-                                <span className="text-orange-600 font-bold text-xs">P</span>
-                              </div>
-                            </td>
-                          </>
-                        )}
-                        {/* Actions column */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCancelToken(pendingData.id)}
-                            disabled={cancelTokenMutation.isPending}
-                            className="text-orange-600 hover:text-orange-800 font-medium p-1 text-xs"
-                          >
-                            {cancelTokenMutation.isPending ? 'Cancelling...' : 'Cancel'}
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  } else if (item.type === 'empty') {
-                    // Empty capsule row
-                    const emptyData = item.data;
-                    return (
-                      <tr 
-                        key={`empty-${emptyData.id}`} 
-                        className="bg-red-50 hover:bg-red-100 cursor-pointer transition-colors"
-                        onClick={() => handleEmptyCapsuleClick(emptyData.capsuleNumber)}
-                        title={`Click to check-in guest to ${emptyData.capsuleNumber}`}
-                      >
-                        {/* Accommodation column - sticky first column */}
-                        <td className="px-3 py-3 whitespace-nowrap sticky left-0 bg-red-50 z-10 min-w-[100px]">
-                          <Badge variant="outline" className="bg-red-600 text-white border-red-600">
-                            {emptyData.capsuleNumber}
-                          </Badge>
-                        </td>
-                        {/* Guest column */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center mr-2">
-                              <span className="text-red-600 font-bold text-sm">E</span>
-                            </div>
-                            {!isCondensedView && (
-                              <span className="text-sm font-medium text-red-700">
-                                Empty
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        {/* Nationality column - only in detailed view */}
-                        {!isCondensedView && (
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
-                            -
-                          </td>
-                        )}
-                        {/* Check-in column */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
-                          -
-                        </td>
-                        {/* Checkout column */}
-                        <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
-                          -
-                        </td>
-                        {/* Payment and Status columns - only in detailed view */}
-                        {!isCondensedView && (
-                          <>
-                            <td className="px-2 py-3 whitespace-nowrap text-xs text-red-600">
-                              -
-                            </td>
-                            <td className="px-2 py-3 whitespace-nowrap">
-                              <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                                <span className="text-red-600 font-bold text-xs">E</span>
-                              </div>
-                            </td>
-                          </>
-                        )}
-                        {/* Actions column */}
-                        <td className="px-2 py-3 whitespace-nowrap">
-                          <span className="text-xs text-red-600">Empty</span>
-                        </td>
-                      </tr>
-                    );
-                  }
-                })}
-              </tbody>
-
-            </table>
-          </div>
+          <GuestDesktopTable
+            sortedData={sortedData}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            isCondensedView={isCondensedView}
+            isMobile={isMobile}
+            isAuthenticated={isAuthenticated}
+            availableCapsules={availableCapsules}
+            activeTokens={activeTokens}
+            checkoutMutation={mutations.checkoutMutation}
+            cancelTokenMutation={mutations.cancelTokenMutation}
+            updateTokenCapsuleMutation={mutations.updateTokenCapsuleMutation}
+            onCheckout={mutations.handleCheckout}
+            onGuestClick={mutations.handleGuestClick}
+            onExtend={mutations.handleExtend}
+            openAlertDialog={mutations.openAlertDialog}
+            onCapsuleChange={mutations.handleCapsuleChange}
+            onCancelToken={mutations.handleCancelToken}
+            onTokenCapsuleChange={mutations.handleTokenCapsuleChange}
+            copyToClipboard={mutations.copyToClipboard}
+            getCheckinLink={mutations.getCheckinLink}
+            onEmptyCapsuleClick={mutations.handleEmptyCapsuleClick}
+          />
         )}
 
         {/* Mobile card view */}
         {sortedData.length > 0 && (
-          <div className="md:hidden space-y-3">
-            {sortedData.map((item) => {
-              if (item.type === 'guest') {
-                const guest = item.data as Guest;
-                const isGuestCheckingOut = checkoutGuest?.id === guest.id;
-                const statusInfo = getGuestStatusInfo(guest);
-                return (
-                  <Card key={`guest-${guest.id}`} className="p-0 overflow-hidden hover-card-pop">
-                    <SwipeableGuestCard
-                      guest={guest}
-                      onCheckout={handleCheckout}
-                      onExtend={handleExtend}
-                      isCheckingOut={isGuestCheckingOut}
-                    >
-                    <div className="p-3 flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CapsuleSelector guest={guest} />
-                          <button
-                            onClick={() => handleGuestClick(guest)}
-                            className={`font-medium hover:underline focus:outline-none ${!isGuestPaid(guest) ? 'text-red-600' : ''}`}
-                          >
-                            {truncateName(guest.name)}
-                          </button>
-                          {statusInfo && <span title={statusInfo.label}>{statusInfo.icon}</span>}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1 flex items-center gap-2">
-                          <span>In: {formatShortDate(guest.checkinTime.toString())}</span>
-                          {guest.expectedCheckoutDate && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openAlertDialog(guest);
-                              }}
-                              className="group flex items-center gap-1 hover:bg-gray-100 rounded px-1 -mx-1 transition-colors"
-                              title="Set checkout reminder"
-                            >
-                              <span>Out: {formatShortDate(guest.expectedCheckoutDate)}</span>
-                              <Bell className="h-3 w-3 text-gray-400 group-hover:text-blue-600 transition-colors" />
-                            </button>
-                          )}
-                        </div>
-                        {!isCondensedView && (
-                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-gray-700">
-                            <div>
-                              <span className="font-medium text-gray-800">Nationality:</span> {guest.nationality || '—'}
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-800">Phone:</span> {guest.phoneNumber || '—'}
-                            </div>
-                            <div className="col-span-2 flex flex-wrap items-center gap-2">
-                              <span className="font-medium text-gray-800">Payment:</span>
-                              <span className={isGuestPaid(guest) ? '' : 'text-red-600 font-semibold'}>RM {guest.paymentAmount}</span>
-                              {guest.paymentMethod && <span>• {guest.paymentMethod.toUpperCase()}</span>}
-                              <Badge variant={isGuestPaid(guest) ? 'default' : 'destructive'}>{isGuestPaid(guest) ? 'Paid' : 'Outstanding'}</Badge>
-                            </div>
-                            {guest.paymentCollector && (
-                              <div className="col-span-2">
-                                <span className="font-medium text-gray-800">Collected by:</span> {guest.paymentCollector}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Payment Status Display in Center */}
-                      <div className="flex flex-col items-center justify-center px-2">
-                        {isGuestPaid(guest) ? (
-                          <div className="flex items-center text-green-600">
-                            <span className="text-lg">✓</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center text-red-600">
-                            <span className="text-lg">✗</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        {guest.phoneNumber && (
-                          phoneUtils.isCallable(guest.phoneNumber) ? (
-                            <Button
-                              variant="secondary"
-                              className="h-11 w-11 rounded-full"
-                              asChild
-                              title={`Call ${guest.phoneNumber}`}
-                            >
-                              <a href={phoneUtils.getTelHref(guest.phoneNumber)!}>
-                                <Phone className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="secondary"
-                              className="h-11 w-11 rounded-full opacity-50"
-                              disabled
-                              title={guest.phoneNumber}
-                            >
-                              <Phone className="h-4 w-4" />
-                            </Button>
-                          )
-                        )}
-                        <Button
-                          variant="destructive"
-                          className="h-11 w-11 rounded-full"
-                          onClick={() => handleCheckout(guest.id)}
-                          disabled={isGuestCheckingOut}
-                          title="Checkout"
-                        >
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    </SwipeableGuestCard>
-                  </Card>
-                );
-              } else if (item.type === 'pending') {
-                const pendingData = item.data;
-                return (
-                  <Card key={`pending-${pendingData.id}`} className="p-3 bg-orange-50/60 hover-card-pop">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <button
-                          onClick={() => handlePendingCheckinClick(pendingData.id)}
-                          className="flex items-center gap-2 focus:outline-none"
-                        >
-                          {isAuthenticated ? (
-                            <Select
-                              value={pendingData.capsuleNumber || 'auto-assign'}
-                              onValueChange={(value) => {
-                                if (value === 'auto-assign') {
-                                  handleTokenCapsuleChange(pendingData.id, null, true);
-                                } else {
-                                  handleTokenCapsuleChange(pendingData.id, value);
-                                }
-                              }}
-                              disabled={updateTokenCapsuleMutation.isPending}
-                            >
-                              <SelectTrigger className="w-24 h-6 text-xs bg-orange-500 text-white border-orange-500 hover:bg-orange-600">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="auto-assign" className="text-xs">
-                                  <span className="font-medium">Auto-assign</span>
-                                </SelectItem>
-                                {availableCapsules
-                                  .sort((a, b) => compareCapsuleNumbers(a.number, b.number))
-                                  .map((capsule) => (
-                                    <SelectItem key={capsule.number} value={capsule.number} className="text-xs">
-                                      <div className="flex items-center justify-between w-full">
-                                        <span>{capsule.number}</span>
-                                        {capsule.position === 'bottom' && <span title="Bottom bed">⭐</span>}
-                                      </div>
-                                    </SelectItem>
-                                  ))
-                                }
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">
-                              {pendingData.capsuleNumber || 'Auto-assign'}
-                            </Badge>
-                          )}
-                          <span className="font-medium cursor-pointer underline-offset-2 hover:underline">{truncateName(pendingData.name)}</span>
-                        </button>
-                        <div className="text-xs text-orange-700 mt-1">
-                          In: {formatShortDate(pendingData.createdAt)}
-                          <span className="ml-2">Expires: {formatShortDate(pendingData.expiresAt)}</span>
-                        </div>
-                        {!isCondensedView && (
-                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-orange-700">
-                            <div className="col-span-2">
-                              <span className="font-medium">Status:</span> Awaiting self check-in
-                            </div>
-                            {pendingData.phoneNumber && (
-                              <div className="col-span-2">
-                                <span className="font-medium">Phone:</span> {pendingData.phoneNumber}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          className="h-11 px-4 rounded-full"
-                          onClick={() => cancelTokenMutation.mutate(pendingData.id)}
-                          disabled={cancelTokenMutation.isPending}
-                        >
-                          {cancelTokenMutation.isPending ? 'Cancelling...' : 'Cancel'}
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              } else if (item.type === 'empty') {
-                const emptyData = item.data;
-                return (
-                  <Card 
-                    key={`empty-${emptyData.id}`} 
-                    className="p-3 bg-red-50/60 hover-card-pop cursor-pointer"
-                    onClick={() => handleEmptyCapsuleClick(emptyData.capsuleNumber)}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-red-600 text-white border-red-600">{emptyData.capsuleNumber}</Badge>
-                          <span className="font-medium text-red-700">Empty</span>
-                        </div>
-                        <div className="text-xs text-red-700 mt-1">
-                          Status: Available
-                        </div>
-                        {!isCondensedView && (
-                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-red-700">
-                            <div className="col-span-2">
-                              <span className="font-medium">Section:</span> {emptyData.section}
-                            </div>
-                            <div className="col-span-2">
-                              <span className="font-medium">Cleaning:</span> {emptyData.cleaningStatus}
-                            </div>
-                            {emptyData.remark && (
-                              <div className="col-span-2">
-                                <span className="font-medium">Note:</span> {emptyData.remark}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-red-600">Empty</span>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              }
-            })}
-          </div>
+          <GuestCardView
+            sortedData={sortedData}
+            isCondensedView={isCondensedView}
+            isAuthenticated={isAuthenticated}
+            availableCapsules={availableCapsules}
+            activeTokens={activeTokens}
+            checkoutGuest={mutations.checkoutGuest}
+            cancelTokenMutation={mutations.cancelTokenMutation}
+            updateTokenCapsuleMutation={mutations.updateTokenCapsuleMutation}
+            onCheckout={mutations.handleCheckout}
+            onGuestClick={mutations.handleGuestClick}
+            onExtend={mutations.handleExtend}
+            openAlertDialog={mutations.openAlertDialog}
+            onCapsuleChange={mutations.handleCapsuleChange}
+            onTokenCapsuleChange={mutations.handleTokenCapsuleChange}
+            onPendingCheckinClick={mutations.handlePendingCheckinClick}
+            onEmptyCapsuleClick={mutations.handleEmptyCapsuleClick}
+          />
         )}
       </CardContent>
-      
-      <GuestDetailsModal 
-        guest={selectedGuest}
-        isOpen={isDetailsModalOpen}
-        onClose={handleCloseModal}
+
+      {/* Modals and Dialogs */}
+      <GuestDetailsModal
+        guest={mutations.selectedGuest}
+        isOpen={mutations.isDetailsModalOpen}
+        onClose={mutations.handleCloseModal}
       />
 
       <ExtendStayDialog
-        guest={extendGuest}
-        open={isExtendOpen}
+        guest={mutations.extendGuest}
+        open={mutations.isExtendOpen}
         onOpenChange={(open) => {
-          setIsExtendOpen(open);
-          if (!open) setExtendGuest(null);
+          mutations.setIsExtendOpen(open);
+          if (!open) mutations.setExtendGuest(null);
         }}
       />
 
-      {/* Checkout Confirmation Dialog */}
-      {checkoutGuest && (
+      {mutations.checkoutGuest && (
         <CheckoutConfirmationDialog
-          open={showCheckoutConfirmation}
-          onOpenChange={setShowCheckoutConfirmation}
-          onConfirm={confirmCheckout}
-          guestName={checkoutGuest.name}
-          capsuleNumber={checkoutGuest.capsuleNumber}
-          isLoading={checkoutMutation.isPending}
+          open={mutations.showCheckoutConfirmation}
+          onOpenChange={mutations.setShowCheckoutConfirmation}
+          onConfirm={mutations.confirmCheckout}
+          guestName={mutations.checkoutGuest.name}
+          capsuleNumber={mutations.checkoutGuest.capsuleNumber}
+          isLoading={mutations.checkoutMutation.isPending}
         />
       )}
 
-      {/* Undo Checkout Confirmation Dialog */}
-      {undoGuest && (
+      {mutations.undoGuest && (
         <ConfirmationDialog
-          open={showUndoConfirmation}
-          onOpenChange={setShowUndoConfirmation}
-          onConfirm={confirmUndo}
+          open={mutations.showUndoConfirmation}
+          onOpenChange={mutations.setShowUndoConfirmation}
+          onConfirm={mutations.confirmUndo}
           title="Undo Checkout"
-          description={`Are you sure you want to undo check-out for capsule ${undoGuest.capsuleNumber} ${undoGuest.name}?`}
+          description={`Are you sure you want to undo check-out for capsule ${mutations.undoGuest.capsuleNumber} ${mutations.undoGuest.name}?`}
           confirmText="Undo"
           cancelText="Cancel"
           variant="info"
           icon={<Undo2 className="h-6 w-6 text-blue-600" />}
-          isLoading={undoCheckoutMutation.isPending}
+          isLoading={mutations.undoCheckoutMutation.isPending}
         />
       )}
 
-      {/* Checkout Alert Dialog */}
       <CheckoutAlertDialog
-        guest={alertDialogGuest}
-        open={alertDialogOpen}
-        onOpenChange={setAlertDialogOpen}
+        guest={mutations.alertDialogGuest}
+        open={mutations.alertDialogOpen}
+        onOpenChange={mutations.setAlertDialogOpen}
       />
-
     </Card>
   );
 }

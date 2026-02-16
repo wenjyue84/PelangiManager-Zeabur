@@ -68,7 +68,17 @@ export const DesktopRow = memo(function DesktopRow({ index, style, data }: ListC
               </td>
               <td className="px-2 py-3 whitespace-nowrap">
                 <div className="flex items-center">
-                  <div className={`w-6 h-6 ${genderIcon.bgColor} rounded-full flex items-center justify-center mr-2`}>
+                  <div className={`w-6 h-6 ${genderIcon.bgColor} rounded-full flex items-center justify-center mr-2 overflow-hidden`}>
+                    {guest.phoneNumber ? (
+                      <img
+                        src={`/api/rainbow/whatsapp/avatar/${guest.phoneNumber.replace(/[^0-9]/g, '')}`}
+                        className="w-full h-full object-cover rounded-full"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling!.removeAttribute('style'); }}
+                        loading="lazy"
+                        alt=""
+                      />
+                    ) : null}
+                    <span style={guest.phoneNumber ? { display: 'none' } : undefined}>
                     {data.isCondensedView ? (
                       <span className={`${genderIcon.textColor} font-bold text-xs`}>
                         {getFirstInitial(guest.name)}
@@ -78,6 +88,7 @@ export const DesktopRow = memo(function DesktopRow({ index, style, data }: ListC
                     ) : (
                       <span className={`${genderIcon.textColor} font-medium text-xs`}>{getInitials(guest.name)}</span>
                     )}
+                    </span>
                   </div>
                   {!data.isCondensedView && (
                     <>
