@@ -235,3 +235,34 @@ Story reverted to passes: false
 FAILED quality gates: Fix live simulation display in Chat Simulator (ID: US-018)
 Story reverted to passes: false
 
+## Iteration 4 — Story: US-070 — Add category tabs to Recent Activity in Dashboard
+
+### What was implemented
+- **No code changes needed** — the feature was already fully implemented across all layers:
+  - `activity-tracker.ts`: `ActivityCategory` type, `category` field on `ActivityEvent`, `deriveCategory()` function
+  - `dashboard.html:131-137`: Tab bar with All, WhatsApp, AI, System, Errors buttons
+  - `dashboard-helpers.js:109,114-156,221-228`: `_activityCategoryFilter` state, `deriveCategoryFromType()` client-side fallback, `filterActivityByCategory()`, category-aware `renderActivityEvents()`
+  - `rainbow-base.css:15-37`: `.activity-cat-tab` styling with active state (indigo underline + bold)
+  - `module-registry.js:390`: `filterActivityByCategory` exposed on window
+
+### Verification performed
+- All 7 acceptance criteria verified against existing code
+- TypeScript: 22 errors (all pre-existing, none in activity-tracker or related files)
+- SSE stream confirmed events include `category` field; older events without it handled by client-side fallback
+- Dashboard template served correctly with 5 tabs
+- Status API responding normally
+
+### Patterns discovered
+- **Progressive migration for schema additions**: When adding new fields to persisted data, use dual approach — server-side derivation for new data + client-side fallback for legacy data without the field. Avoids data migration.
+- **Feature already implemented**: Some stories may describe features that were built as part of earlier sessions before the PRD was formalized. Always check existing code before implementing.
+
+### Gotchas
+- Pre-existing TS error count increased from 20 → 22 (2 new errors in conversations.ts and config-integration test from prior work)
+- SSE events created before the `category` field was added will be missing it — `deriveCategoryFromType()` handles this gracefully
+
+### Useful context for future iterations
+- Activity events persist to `RainbowAI/data/recent-activity.json`
+- Activity category tabs are in `dashboard.html` lines 131-137
+- Category filtering logic is in `dashboard-helpers.js` `filterActivityByCategory()`
+- The `ActivityEvent` type is defined in `activity-tracker.ts` with all category types
+
