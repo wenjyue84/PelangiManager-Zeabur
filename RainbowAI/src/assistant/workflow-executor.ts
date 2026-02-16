@@ -10,7 +10,7 @@ import type {
   PelangiApiNodeConfig, ConditionNodeConfig,
 } from './workflow-nodes.js';
 import {
-  isNodeBasedWorkflow, getNodeById, getNextNodeId, resolveTemplateVars,
+  isNodeBasedWorkflow, getNodeById, getNextNodeId, resolveTemplateVars, resolveVariableRef,
 } from './workflow-nodes.js';
 
 // Wrapper to adapt http-client callAPI to workflow-enhancer's expected signature
@@ -389,8 +389,8 @@ async function executeNodeWorkflowStep(
         const config = node.config as WhatsAppSendNodeConfig;
 
         if (sendMessageFn && phone) {
-          // Resolve receiver
-          const receiver = resolveTemplateVars(config.receiver, templateCtx);
+          // Resolve receiver (raw phone number, NOT wa.me link)
+          const receiver = resolveVariableRef(config.receiver, templateCtx);
 
           // Resolve content
           let content: string;
