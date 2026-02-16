@@ -136,9 +136,11 @@ router.post("/checkout-all", authenticateToken, asyncRouteHandler(async (_req: a
 router.get("/checked-in", asyncRouteHandler(async (req: any, res: any) => {
   // Disable caching for real-time guest checkout updates
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 20;
-  const paginatedGuests = await storage.getCheckedInGuests({ page, limit });
+  const hasPagination = req.query.page || req.query.limit;
+  const pagination = hasPagination
+    ? { page: parseInt(req.query.page as string) || 1, limit: parseInt(req.query.limit as string) || 20 }
+    : undefined;
+  const paginatedGuests = await storage.getCheckedInGuests(pagination);
   res.json(paginatedGuests);
 }));
 

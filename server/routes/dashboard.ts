@@ -41,9 +41,9 @@ router.get("/dashboard", asyncRouteHandler(async (req: any, res: any) => {
     unreadNotificationsResponse
   ] = await Promise.all([
     storage.getCapsuleOccupancy(),
-    storage.getCheckedInGuests({ page: 1, limit: 20 }),
-    storage.getActiveGuestTokens({ page: 1, limit: 20 }),
-    storage.getUnreadAdminNotifications({ page: 1, limit: 20 })
+    storage.getCheckedInGuests(),
+    storage.getActiveGuestTokens(),
+    storage.getUnreadAdminNotifications()
   ]);
 
   res.json({
