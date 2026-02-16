@@ -1,4 +1,14 @@
 import { z } from "zod";
+import {
+  EMAIL_REGEX,
+  PHONE_REGEX,
+  NAME_REGEX,
+  IC_FORMATTED_REGEX,
+  PASSPORT_REGEX,
+  PAYMENT_AMOUNT_REGEX,
+  AGE_REGEX,
+  SPECIAL_CHAR_TEST_REGEX,
+} from "@shared/validation-patterns";
 
 /**
  * Client-side validation utilities
@@ -23,8 +33,7 @@ export const clientValidation = {
       return { isValid: false, message: "Email too long" };
     }
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!EMAIL_REGEX.test(email)) {
       return { isValid: false, message: "Invalid email format" };
     }
     
@@ -48,8 +57,7 @@ export const clientValidation = {
       return { isValid: false, message: "Phone number too long" };
     }
     
-    const phoneRegex = /^[+]?[\d\s\-\(\)]{7,20}$/;
-    if (!phoneRegex.test(phone)) {
+    if (!PHONE_REGEX.test(phone)) {
       return { isValid: false, message: "Invalid phone number format" };
     }
     
@@ -70,8 +78,7 @@ export const clientValidation = {
       return { isValid: false, message: "Name too long" };
     }
     
-    const nameRegex = /^[a-zA-Z\s.'-]+$/;
-    if (!nameRegex.test(name)) {
+    if (!NAME_REGEX.test(name)) {
       return { isValid: false, message: "Name contains invalid characters" };
     }
     
@@ -101,7 +108,7 @@ export const clientValidation = {
     if (/\d/.test(password)) score += 1;
     else issues.push("One number");
 
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 1;
+    if (SPECIAL_CHAR_TEST_REGEX.test(password)) score += 1;
     else issues.push("One special character");
 
     let strength: 'weak' | 'medium' | 'strong';
@@ -122,8 +129,7 @@ export const clientValidation = {
   validateMalaysianIC: (ic: string): { isValid: boolean; message?: string } => {
     if (!ic) return { isValid: true }; // Optional field
     
-    const icRegex = /^\d{6}-\d{2}-\d{4}$/;
-    if (!icRegex.test(ic)) {
+    if (!IC_FORMATTED_REGEX.test(ic)) {
       return { isValid: false, message: "IC must be in format XXXXXX-XX-XXXX" };
     }
 
@@ -161,8 +167,7 @@ export const clientValidation = {
       return { isValid: false, message: "Passport number too long" };
     }
     
-    const passportRegex = /^[A-Z0-9]+$/;
-    if (!passportRegex.test(passport.toUpperCase())) {
+    if (!PASSPORT_REGEX.test(passport.toUpperCase())) {
       return { isValid: false, message: "Passport can only contain letters and numbers" };
     }
     
@@ -191,7 +196,7 @@ export const clientValidation = {
   validateAge: (age: string): { isValid: boolean; message?: string } => {
     if (!age) return { isValid: true }; // Optional field
     
-    if (!/^\d{1,3}$/.test(age)) {
+    if (!AGE_REGEX.test(age)) {
       return { isValid: false, message: "Age must be a number" };
     }
     
@@ -209,7 +214,7 @@ export const clientValidation = {
   validatePaymentAmount: (amount: string): { isValid: boolean; message?: string } => {
     if (!amount || amount === "0") return { isValid: true }; // Allow zero/empty
     
-    if (!/^\d*\.?\d{0,2}$/.test(amount)) {
+    if (!PAYMENT_AMOUNT_REGEX.test(amount)) {
       return { isValid: false, message: "Invalid amount format" };
     }
     
@@ -336,18 +341,15 @@ export const useFormValidation = () => {
  */
 export const quickValidation = {
   isEmail: (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return EMAIL_REGEX.test(email);
   },
-  
+
   isPhone: (phone: string): boolean => {
-    const phoneRegex = /^[+]?[\d\s\-\(\)]{7,20}$/;
-    return phoneRegex.test(phone);
+    return PHONE_REGEX.test(phone);
   },
-  
+
   isName: (name: string): boolean => {
-    const nameRegex = /^[a-zA-Z\s.'-]{2,100}$/;
-    return nameRegex.test(name);
+    return NAME_REGEX.test(name) && name.length >= 2 && name.length <= 100;
   },
   
   isCapsuleNumber: (capsule: string): boolean => {
