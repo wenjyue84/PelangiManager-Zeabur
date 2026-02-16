@@ -43,6 +43,8 @@
           "tq",
           "tqvm",
           "thx",
+          "thnks",
+          "thnk you",
           "ty",
           "tysm",
           "appreciate",
@@ -78,9 +80,14 @@
           "internet code",
           "how to connect wifi",
           "how to connect internet",
+          "connect to the internet",
+          "connect to internet",
+          "internet access",
           "whats the wifi",
           "wifi pw",
           "internet pw",
+          "wify pasword",
+          "wify",
           "password",
           "pw",
           "internet",
@@ -117,16 +124,24 @@
           "check in time",
           "when can i check in",
           "what time check in",
+          "what time can i come",
+          "when can i come",
           "check in process",
           "early check in",
-          "when can i arrive"
+          "when can i arrive",
+          "what time arrive"
         ],
         "ms": [
           "check in",
           "daftar masuk",
           "masa check in",
           "bila boleh check in",
-          "jam berapa check in"
+          "jam berapa check in",
+          "pukul berapa check in",
+          "pukul brapa check in",
+          "bole check in",
+          "bole checkin",
+          "boleh check in skrg"
         ],
         "zh": [
           "入住",
@@ -179,7 +194,11 @@
           "check-in please",
           "do check in",
           "i wanna checkin",
-          "wanna checkin"
+          "wanna checkin",
+          "i want to chekin",
+          "want to chekin",
+          "i wan chekin",
+          "chekin"
         ],
         "ms": [
           "saya nak check in",
@@ -240,7 +259,9 @@
           "what time check out",
           "when to check out",
           "what time leave",
-          "when do i leave"
+          "when do i leave",
+          "when must i leave",
+          "when must leave"
         ],
         "ms": [
           "check out",
@@ -248,7 +269,10 @@
           "masa check out",
           "bila kena check out",
           "jam berapa check out",
-          "waktu check out"
+          "waktu check out",
+          "pukul berapa checkout",
+          "pukul berapa check out",
+          "pukul brapa checkout"
         ],
         "zh": [
           "退房",
@@ -448,6 +472,8 @@
           "reserve",
           "reservation",
           "make a booking",
+          "make bokking",
+          "bokking",
           "want to book",
           "want to stay",
           "want to reserve"
@@ -999,7 +1025,10 @@
           "charged too much",
           "refund for overcharge",
           "bill wrong",
-          "invoice mistake"
+          "invoice mistake",
+          "demand refund",
+          "i want a refund",
+          "refund me"
         ],
         "ms": [
           "overcharge",
@@ -1290,8 +1319,10 @@
           "need more",
           "can i get more",
           "extra towel",
+          "extra towl",
           "more towels",
           "extra pillow",
+          "extra pilow",
           "more pillows",
           "extra blanket",
           "more blankets",
@@ -1364,6 +1395,8 @@
       "keywords": {
         "en": [
           "luggage storage",
+          "lugage storage",
+          "lugage storaj",
           "store luggage",
           "keep luggage",
           "store bags",
@@ -1476,7 +1509,13 @@
           "unexpected charge",
           "why was i charged",
           "extra charge on my bill",
-          "charge on my bill"
+          "charge on my bill",
+          "check my bill",
+          "bill question",
+          "small discrepancy",
+          "verify charge",
+          "discrepancy in my bill",
+          "small discrepancy in my bill"
         ],
         "ms": [
           "bil",

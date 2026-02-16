@@ -9,7 +9,7 @@
   { "pattern": "/\\b(dicuri|dirompak|kecurian)\\b/i", "description": "Theft or robbery", "language": "ms", "emergencyType": "theft_report" },
   { "pattern": "/\\b(被偷|被抢|失窃)\\b/i", "description": "Theft or robbery", "language": "zh", "emergencyType": "theft_report" },
   { "pattern": "/\\b(assault|attack|violen[ct]|fight)\\b/i", "description": "Assault or violence", "language": "en", "emergencyType": "complaint" },
-  { "pattern": "/\\b(serang|pukul)\\b/i", "description": "Assault or violence", "language": "ms", "emergencyType": "complaint" },
+  { "pattern": "/\\b(serang|pukul(?!\\s+berapa))\\b/i", "description": "Assault or violence (excludes 'pukul berapa' time expression)", "language": "ms", "emergencyType": "complaint" },
   { "pattern": "/\\b(袭击|打架)\\b/i", "description": "Assault or violence", "language": "zh", "emergencyType": "complaint" },
   { "pattern": "/\\b(police|polis|cops?)\\b/i", "description": "Police emergency", "language": "en", "emergencyType": "complaint" },
   { "pattern": "/\\b(polis)\\b/i", "description": "Police emergency", "language": "ms", "emergencyType": "complaint" },

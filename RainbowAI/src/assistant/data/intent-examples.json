@@ -1050,6 +1050,10 @@
           "explain my bill",
           "bill has extra fees",
           "invoice question",
+          "small discrepancy in my bill",
+          "small error on my bill",
+          "can you check my bill please",
+          "verify the charges on my invoice",
           "billing issue",
           "wrong amount charged",
           "There is an extra charge on my bill",
@@ -1097,7 +1101,7 @@
           "charged too much",
           "invoice has mistake",
           "incorrect billing",
-          "small error in bill"
+          "I demand a refund for overcharging"
         ],
         "ms": [
           "saya di overcharge",
