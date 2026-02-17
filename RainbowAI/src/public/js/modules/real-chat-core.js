@@ -527,45 +527,46 @@ export function renderChatView(log) {
       actionsHtml = '<div class="rc-bubble-actions">' + actionBtns.join('') + '</div>';
     }
 
+    // Dev mode collapsible metadata panel (US-185)
     let devMeta = '';
-    let kbFilesBadge = '';
-    if (devMode && !isGuest && !msg.manual && typeof MetadataBadges !== 'undefined') {
-      var badges = MetadataBadges.getMetadataBadges(msg, {
-        showSentiment: true,
-        kbClickHandler: 'openKBFileFromPreview'
-      });
+    if (devMode && !isGuest && !msg.manual) {
+      var panelId = 'rc-devpanel-' + i;
+      var panelRows = [];
+      var tierBadge = '';
 
-      var detailsId = 'rc-meta-details-' + i;
-      var detailRows = [];
-      if (msg.source)    detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Tier:</span><span class="rc-detail-value">' + escapeHtml(MetadataBadges.getTierLabel(msg.source)) + ' (' + escapeHtml(msg.source) + ')</span></div>');
-      if (msg.intent)    detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Intent:</span><span class="rc-detail-value">' + escapeHtml(msg.intent) + '</span></div>');
-      if (msg.routedAction) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Action:</span><span class="rc-detail-value">' + escapeHtml(msg.routedAction) + '</span></div>');
-      if (msg.messageType) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Type:</span><span class="rc-detail-value">' + escapeHtml(msg.messageType) + '</span></div>');
-      if (msg.model)     detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Model:</span><span class="rc-detail-value">' + escapeHtml(msg.model) + '</span></div>');
-      if (msg.responseTime) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Time:</span><span class="rc-detail-value">' + (msg.responseTime / 1000).toFixed(2) + 's (' + msg.responseTime + 'ms)</span></div>');
-      if (msg.confidence !== undefined) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">Confidence:</span><span class="rc-detail-value">' + (msg.confidence * 100).toFixed(1) + '%</span></div>');
-      if (msg.kbFiles && msg.kbFiles.length > 0) detailRows.push('<div class="rc-detail-row"><span class="rc-detail-label">KB Files:</span><span class="rc-detail-value">' + msg.kbFiles.map(function(f){ return escapeHtml(f); }).join(', ') + '</span></div>');
-
-      var expandBtn = detailRows.length > 0
-        ? '<button class="rc-dev-expand-btn" onclick="toggleMetaDetails(\'' + detailsId + '\')" title="Show/hide details">&#9660; Details</button>'
-        : '';
-      var detailsPanel = detailRows.length > 0
-        ? '<div id="' + detailsId + '" class="rc-dev-details" style="display:none;">' + detailRows.join('') + '</div>'
-        : '';
-
-      if (badges.inline) {
-        devMeta = '<div class="rc-dev-meta"><div class="rc-dev-badges">' + badges.inline + expandBtn + '</div>' + detailsPanel + '</div>';
+      if (typeof MetadataBadges !== 'undefined') {
+        if (msg.source) { tierBadge = MetadataBadges.getTierBadge(msg.source); panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Tier</span><span class="rc-dev-panel-value">' + tierBadge + '</span></div>'); }
+        if (msg.intent) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Intent</span><span class="rc-dev-panel-value">' + escapeHtml(msg.intent) + '</span></div>');
+        if (msg.confidence !== undefined) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Confidence</span><span class="rc-dev-panel-value">' + MetadataBadges.getConfidenceBadge(msg.confidence) + '</span></div>');
+        if (msg.model) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Provider</span><span class="rc-dev-panel-value">' + escapeHtml(msg.model) + '</span></div>');
+        if (msg.responseTime) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Time</span><span class="rc-dev-panel-value">' + MetadataBadges.getResponseTimeBadge(msg.responseTime) + '</span></div>');
+        if (msg.routedAction) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Action</span><span class="rc-dev-panel-value">' + escapeHtml(msg.routedAction) + '</span></div>');
+        if (msg.sentiment) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Sentiment</span><span class="rc-dev-panel-value">' + escapeHtml(msg.sentiment) + '</span></div>');
+        if (msg.kbFiles && msg.kbFiles.length > 0) {
+          var chips = msg.kbFiles.map(function(f) {
+            return '<span class="rc-dev-panel-kb-chip" onclick="openKBFileFromPreview(\'' + escapeHtml(f) + '\')" title="View ' + escapeHtml(f) + '">' + escapeHtml(f) + '</span>';
+          }).join('');
+          panelRows.push('<div class="rc-dev-panel-kb"><div class="rc-dev-panel-row"><span class="rc-dev-panel-label">KB Files</span><span class="rc-dev-panel-value">' + chips + '</span></div></div>');
+        }
+      } else {
+        // Fallback without MetadataBadges
+        if (msg.source) { panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Tier</span><span class="rc-dev-panel-value">' + escapeHtml(msg.source) + '</span></div>'); }
+        if (msg.intent) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Intent</span><span class="rc-dev-panel-value">' + escapeHtml(msg.intent) + '</span></div>');
+        if (msg.confidence !== undefined) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Confidence</span><span class="rc-dev-panel-value">' + (msg.confidence * 100).toFixed(1) + '%</span></div>');
+        if (msg.model) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Provider</span><span class="rc-dev-panel-value">' + escapeHtml(msg.model) + '</span></div>');
+        if (msg.responseTime) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Time</span><span class="rc-dev-panel-value">' + (msg.responseTime / 1000).toFixed(2) + 's</span></div>');
+        if (msg.routedAction) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Action</span><span class="rc-dev-panel-value">' + escapeHtml(msg.routedAction) + '</span></div>');
       }
-      kbFilesBadge = badges.kbFiles || '';
-    } else if (devMode && !isGuest && !msg.manual) {
-      var parts = [];
-      if (msg.source) { var sl = { regex: '🚨 Priority Keywords', fuzzy: '⚡ Smart Matching', semantic: '📚 Learning Examples', llm: '🤖 AI Fallback' }; parts.push('Detection: ' + (sl[msg.source] || msg.source)); }
-      if (msg.intent) parts.push('Intent: ' + escapeHtml(msg.intent));
-      if (msg.routedAction) parts.push('Routed to: ' + escapeHtml(msg.routedAction));
-      if (msg.model) parts.push('Model: ' + escapeHtml(msg.model));
-      if (msg.responseTime) parts.push('Time: ' + (msg.responseTime / 1000).toFixed(1) + 's');
-      if (msg.confidence !== undefined) parts.push('Confidence: ' + Math.round(msg.confidence * 100) + '%');
-      if (parts.length > 0) devMeta = '<div class="rc-dev-meta">' + parts.join(' | ') + '</div>';
+
+      if (panelRows.length > 0) {
+        var summary = tierBadge || '';
+        if (msg.intent) summary += (summary ? ' ' : '') + escapeHtml(msg.intent);
+        devMeta = '<div class="rc-dev-panel-toggle" onclick="toggleDevPanel(\'' + panelId + '\', this)">' +
+          '<span class="rc-dev-chevron">&#9660;</span>' +
+          '<span>' + summary + '</span>' +
+          '</div>' +
+          '<div id="' + panelId + '" class="rc-dev-panel">' + panelRows.join('') + '</div>';
+      }
     }
 
     const isSystem = hasSystemContent(msg.content);
@@ -580,7 +581,6 @@ export function renderChatView(log) {
       '<div class="rc-bubble-footer">' + footerInner + '</div>' +
       actionsHtml +
       devMeta +
-      kbFilesBadge +
       '</div>' +
       '</div>';
   }
@@ -602,6 +602,20 @@ export function toggleMetaDetails(detailsId) {
   var btn = parent ? parent.querySelector('.rc-dev-expand-btn') : null;
   if (btn) {
     btn.innerHTML = hidden ? '&#9650; Details' : '&#9660; Details';
+  }
+}
+
+// US-185: Toggle collapsible dev metadata panel
+export function toggleDevPanel(panelId, toggleEl) {
+  var panel = document.getElementById(panelId);
+  if (!panel) return;
+  var isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    if (toggleEl) toggleEl.classList.remove('open');
+  } else {
+    panel.classList.add('open');
+    if (toggleEl) toggleEl.classList.add('open');
   }
 }
 

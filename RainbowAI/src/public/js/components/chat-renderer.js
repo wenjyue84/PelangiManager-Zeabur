@@ -267,13 +267,13 @@ export function renderMessageBubble(message, options = {}) {
     displayContent = '<div class="text-sm whitespace-pre-wrap">' + displayContent + '</div>';
   }
 
-  // Generate metadata badges (dev mode)
+  // Generate metadata panel (dev mode) — US-185 collapsible panel
   let devMetaBadges = '';
   let kbFilesHtml = '';
 
   if (opts.devMode && !isGuest && meta) {
     const badges = getMetadataBadges(meta, {
-      showSentiment: false,
+      showSentiment: true,
       kbClickHandler: 'openKBFileFromPreview'
     });
     devMetaBadges = badges.inline;
@@ -310,39 +310,61 @@ export function renderMessageBubble(message, options = {}) {
     }
   }
 
-  // Hover-only action buttons (US-183)
+  // Hover-only action buttons — only in dev mode (US-185)
   let actionsHtml = '';
-  const actionBtns = [];
+  if (opts.devMode || opts.enableEdit) {
+    const actionBtns = [];
 
-  if (isGuest && opts.messageIndex !== null) {
-    actionBtns.push('<button type="button" onclick="openAddToTrainingExampleModal(' + opts.messageIndex + ')" title="Add to Training Examples">📚 Add</button>');
-  }
+    if (opts.devMode && isGuest && opts.messageIndex !== null) {
+      actionBtns.push('<button type="button" onclick="openAddToTrainingExampleModal(' + opts.messageIndex + ')" title="Add to Training Examples">📚 Add</button>');
+    }
 
-  if (opts.messageIndex !== null && !isGuest && !message.manual) {
-    const canEdit = (meta.routedAction === 'static_reply' && meta.intent) ||
-      (meta.routedAction === 'workflow' && meta.workflowId && meta.stepId);
-    if (canEdit) {
-      actionBtns.push('<button type="button" onclick="openRcEditModal(' + opts.messageIndex + ')" title="Save to Responses">✏️ Edit</button>');
+    if (opts.devMode && opts.messageIndex !== null && !isGuest && !message.manual) {
+      const canEdit = (meta.routedAction === 'static_reply' && meta.intent) ||
+        (meta.routedAction === 'workflow' && meta.workflowId && meta.stepId);
+      if (canEdit) {
+        actionBtns.push('<button type="button" onclick="openRcEditModal(' + opts.messageIndex + ')" title="Save to Responses">✏️ Edit</button>');
+      }
+    }
+
+    if (opts.enableEdit && editPanelData) {
+      actionBtns.push(editPanelData.editBtnHtml);
+      if (editPanelData.alsoTemplateHtml) {
+        actionBtns.push(editPanelData.alsoTemplateHtml);
+      }
+    }
+
+    if (actionBtns.length > 0) {
+      actionsHtml = '<div class="rc-bubble-actions">' + actionBtns.join('') + '</div>';
     }
   }
 
-  if (opts.enableEdit && editPanelData) {
-    actionBtns.push(editPanelData.editBtnHtml);
-    if (editPanelData.alsoTemplateHtml) {
-      actionBtns.push(editPanelData.alsoTemplateHtml);
-    }
-  }
-
-  if (actionBtns.length > 0) {
-    actionsHtml = '<div class="rc-bubble-actions">' + actionBtns.join('') + '</div>';
-  }
-
-  // Dev mode metadata section
+  // Dev mode collapsible metadata panel (US-185)
   let devMetaSection = '';
-  if (opts.devMode && devMetaBadges) {
-    devMetaSection = '<div class="mt-2 pt-2 border-t flex items-center gap-2 text-xs text-neutral-500 flex-wrap">' +
-      devMetaBadges +
-      '</div>';
+  if (opts.devMode && !isGuest && meta) {
+    var panelId = 'rc-devpanel-' + (opts.messageIndex || Date.now());
+    var rows = [];
+    if (meta.source) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Tier</span><span class="rc-dev-panel-value">' + getTierBadge(meta.source) + '</span></div>');
+    if (meta.intent) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Intent</span><span class="rc-dev-panel-value">' + escapeHtml(meta.intent) + '</span></div>');
+    if (meta.confidence != null) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Confidence</span><span class="rc-dev-panel-value">' + getConfidenceBadge(meta.confidence) + '</span></div>');
+    if (meta.model) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Provider</span><span class="rc-dev-panel-value">' + escapeHtml(meta.model) + '</span></div>');
+    if (meta.responseTime) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Time</span><span class="rc-dev-panel-value">' + getResponseTimeBadge(meta.responseTime) + '</span></div>');
+    if (meta.routedAction) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Action</span><span class="rc-dev-panel-value">' + escapeHtml(meta.routedAction) + '</span></div>');
+    if (meta.sentiment) rows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Sentiment</span><span class="rc-dev-panel-value">' + escapeHtml(meta.sentiment) + '</span></div>');
+    if (meta.kbFiles && meta.kbFiles.length > 0) {
+      var chips = meta.kbFiles.map(function(f) {
+        return '<span class="rc-dev-panel-kb-chip" onclick="openKBFileFromPreview(\'' + escapeHtml(f) + '\')" title="View ' + escapeHtml(f) + '">' + escapeHtml(f) + '</span>';
+      }).join('');
+      rows.push('<div class="rc-dev-panel-kb"><div class="rc-dev-panel-row"><span class="rc-dev-panel-label">KB Files</span><span class="rc-dev-panel-value">' + chips + '</span></div></div>');
+    }
+
+    if (rows.length > 0) {
+      devMetaSection = '<div class="rc-dev-panel-toggle" onclick="toggleDevPanel(\'' + panelId + '\', this)">' +
+        '<span class="rc-dev-chevron">&#9660;</span>' +
+        '<span>' + (meta.source ? getTierBadge(meta.source) : '') + (meta.intent ? ' ' + escapeHtml(meta.intent) : '') + '</span>' +
+        '</div>' +
+        '<div id="' + panelId + '" class="rc-dev-panel">' + rows.join('') + '</div>';
+    }
   }
 
   // Combine edit panels if present
@@ -351,14 +373,13 @@ export function renderMessageBubble(message, options = {}) {
     editPanelsHtml = editPanelData.editPanelHtml + editPanelData.alsoTemplatePanelHtml;
   }
 
-  // Assemble complete bubble (US-183: WhatsApp-style layout)
+  // Assemble complete bubble (US-183: WhatsApp-style layout, US-185: collapsible panel)
   const bubbleHtml = '<div class="rc-bubble-wrap ' + side + continuationClass + '">' +
     '<div class="rc-bubble ' + side + systemClass + '">' +
     displayContent +
     footerHtml +
     actionsHtml +
     devMetaSection +
-    kbFilesHtml +
     editPanelsHtml +
     '</div>' +
     '</div>';

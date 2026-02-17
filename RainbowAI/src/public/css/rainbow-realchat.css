@@ -572,6 +572,100 @@
 .rc-meta-badge.tier { color: #7c3aed; background: #ede9fe; }
 .rc-meta-badge.time { color: #ea580c; background: #fff7ed; }
 
+/* ── Collapsible Dev Metadata Panel (US-185) ──────────────────── */
+.rc-dev-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 0 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  user-select: none;
+  font-size: 10px;
+  color: #8696a0;
+  transition: color 0.15s;
+}
+
+.rc-dev-panel-toggle:hover {
+  color: #54656f;
+}
+
+.rc-dev-panel-toggle .rc-dev-chevron {
+  display: inline-block;
+  font-size: 8px;
+  transition: transform 0.2s;
+  line-height: 1;
+}
+
+.rc-dev-panel-toggle.open .rc-dev-chevron {
+  transform: rotate(180deg);
+}
+
+.rc-dev-panel {
+  display: none;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.rc-dev-panel.open {
+  display: block;
+}
+
+.rc-dev-panel-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.rc-dev-panel-label {
+  color: #8696a0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.rc-dev-panel-value {
+  color: #3b4a54;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.rc-dev-panel-value .rb-badge {
+  vertical-align: middle;
+}
+
+.rc-dev-panel-kb {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.06);
+}
+
+.rc-dev-panel-kb-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 1px 2px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: monospace;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rc-dev-panel-kb-chip:hover {
+  background: #ede9fe;
+}
+
 /* Flash animation for new messages */
 .rc-message-flash {
   animation: rc-flash 1.2s ease-out;
