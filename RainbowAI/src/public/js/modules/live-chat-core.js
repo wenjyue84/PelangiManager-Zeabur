@@ -5,7 +5,7 @@
 import { $, avatarImg } from './live-chat-state.js';
 import { handleMessageChevronClick, bindContextMenuActions, clearFile, cancelReply, loadMessageMetadata, updateMessageIndicators } from './live-chat-actions.js';
 import { hideTranslatePreview, updateTranslateIndicator, updateModeSubmenuUI } from './live-chat-features.js';
-import { loadContactDetails, updateModeUI, checkPendingApprovals, restoreWaStatusBarState, initResizableDivider, mobileShowChat } from './live-chat-panels.js';
+import { loadContactDetails, updateModeUI, checkPendingApprovals, restoreWaStatusBarState, initResizableDivider, mobileShowChat, loadContactTagsMap, loadContactUnitsMap, loadContactDatesMap, loadCapsuleUnits } from './live-chat-panels.js';
 
 var api = window.api;
 
@@ -73,6 +73,27 @@ export async function pollConnectionStatus() {
   } catch (e) { }
 }
 
+// ─── Staff Name Editing (US-011) ────────────────────────────────
+
+export function editStaffName() {
+  var el = document.getElementById('lc-staff-name');
+  if (!el) return;
+  var current = $.staffName || 'Staff';
+  var newName = prompt('Enter your display name (shown on manual messages):', current);
+  if (newName === null) return; // cancelled
+  newName = newName.trim();
+  if (!newName) newName = 'Staff';
+  $.staffName = newName;
+  el.textContent = newName;
+  // Persist to settings
+  api('/settings', {
+    method: 'PATCH',
+    body: { staffName: newName }
+  }).catch(function (err) {
+    console.warn('[US-011] Failed to save staff name:', err);
+  });
+}
+
 // ─── Date Filter Functions ──────────────────────────────────────
 
 export function initializeDateFilters() {
@@ -118,11 +139,17 @@ export function updateDateFilterFromInputs() {
 // ─── Main Load ───────────────────────────────────────────────────
 
 export async function loadLiveChat() {
-  // Fetch bot avatar setting (US-087)
+  // Fetch bot avatar + staff name settings (US-087, US-011)
   try {
     var settingsData = await api('/settings');
     if (settingsData && settingsData.botAvatar) {
       window._botAvatar = settingsData.botAvatar;
+    }
+    // US-011: Load staff name
+    if (settingsData && settingsData.staffName) {
+      $.staffName = settingsData.staffName;
+      var staffEl = document.getElementById('lc-staff-name');
+      if (staffEl) staffEl.textContent = settingsData.staffName;
     }
   } catch (e) { /* fallback to default */ }
 
@@ -173,6 +200,10 @@ export async function loadLiveChat() {
     }
     updateConnectionStatus(statusData);
     buildInstanceFilter();
+    loadContactTagsMap(); // US-009: Fetch phone→tags map for tag filtering
+    loadContactUnitsMap(); // US-012: Fetch phone→unit map for left pane prefix
+    loadContactDatesMap(); // US-014: Fetch phone→dates map for left pane date suffix
+    loadCapsuleUnits(); // US-010: Pre-fetch capsule units for dropdown
     renderList($.conversations);
 
     // WhatsApp Web style: show last active conversation when none selected
@@ -198,6 +229,7 @@ export async function loadLiveChat() {
         var fresh = await api('/conversations');
         $.conversations = fresh;
         buildInstanceFilter();
+        if ($.tagFilter && $.tagFilter.length > 0) loadContactTagsMap(); // US-009: Refresh tags map when filter active
         renderList($.conversations);
         if ($.activePhone) {
           await refreshChat();
@@ -270,6 +302,60 @@ export function buildInstanceFilter() {
   select.value = currentVal;
 }
 
+// ─── Display Name Helper (US-012) ────────────────────────────────
+
+/**
+ * Build display name for left pane: [Unit]-[Name] - [DateCode]
+ * Unit prefix and date suffix only appear in left pane conversation list.
+ * Date code format: [checkInDay][checkOutDay][checkInMonth] (all zero-padded)
+ * Example: check-in 2025-01-31, check-out 2025-02-01 → "310101"
+ * @param {string} phone - Contact phone number
+ * @param {string} name - Push name or fallback
+ * @returns {string} Formatted display name
+ */
+export function getDisplayName(phone, name) {
+  var unit = $.contactUnitsMap[phone] || '';
+  var result = unit ? unit + '-' + name : name;
+  var dates = $.contactDatesMap[phone];
+  if (dates && dates.checkIn && dates.checkOut) {
+    var dateCode = buildDateCode(dates.checkIn, dates.checkOut);
+    if (dateCode) result = result + ' - ' + dateCode;
+  }
+  return result;
+}
+
+/**
+ * Build DDDDMM date code from ISO date strings.
+ * @param {string} checkIn - ISO date string (YYYY-MM-DD)
+ * @param {string} checkOut - ISO date string (YYYY-MM-DD)
+ * @returns {string} Date code e.g. "310101" or empty string if invalid
+ */
+function buildDateCode(checkIn, checkOut) {
+  var ci = parseLocalDate(checkIn);
+  var co = parseLocalDate(checkOut);
+  if (!ci || !co) return '';
+  var ciDay = String(ci.getDate()).padStart(2, '0');
+  var coDay = String(co.getDate()).padStart(2, '0');
+  var ciMonth = String(ci.getMonth() + 1).padStart(2, '0');
+  return ciDay + coDay + ciMonth;
+}
+
+/**
+ * Parse YYYY-MM-DD as local date (not UTC).
+ * @param {string} s - ISO date string
+ * @returns {Date|null}
+ */
+function parseLocalDate(s) {
+  if (!s || typeof s !== 'string') return null;
+  var parts = s.split('-');
+  if (parts.length !== 3) return null;
+  var y = parseInt(parts[0], 10);
+  var m = parseInt(parts[1], 10) - 1;
+  var d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+  return new Date(y, m, d);
+}
+
 // ─── Conversation List ───────────────────────────────────────────
 
 export function renderList(conversations) {
@@ -305,7 +391,8 @@ export function renderList(conversations) {
   }
   if (searchVal) {
     filtered = filtered.filter(function (c) {
-      return (c.pushName || '').toLowerCase().includes(searchVal) ||
+      var displayName = getDisplayName(c.phone, c.pushName || '');
+      return displayName.toLowerCase().includes(searchVal) ||
         c.phone.toLowerCase().includes(searchVal) ||
         (c.lastMessage || '').toLowerCase().includes(searchVal);
     });
@@ -329,6 +416,27 @@ export function renderList(conversations) {
     filtered = filtered.filter(function (c) { return c.favourite; });
   } else if ($.activeFilter === 'groups') {
     filtered = filtered.filter(function (c) { return c.phone && c.phone.indexOf('@g.us') !== -1; });
+  }
+
+  // Apply tag filter (US-009)
+  if ($.tagFilter && $.tagFilter.length > 0) {
+    filtered = filtered.filter(function (c) {
+      var contactTags = $.contactTagsMap[c.phone];
+      if (!contactTags || !Array.isArray(contactTags) || contactTags.length === 0) return false;
+      var lowerTags = contactTags.map(function (t) { return t.toLowerCase(); });
+      // Match if contact has ANY of the selected tags
+      return $.tagFilter.some(function (ft) {
+        return lowerTags.indexOf(ft.toLowerCase()) !== -1;
+      });
+    });
+  }
+
+  // Apply unit filter (US-013)
+  if ($.unitFilter) {
+    filtered = filtered.filter(function (c) {
+      var contactUnit = $.contactUnitsMap[c.phone];
+      return contactUnit && contactUnit.toLowerCase() === $.unitFilter.toLowerCase();
+    });
   }
 
   // Sort: pinned first, then by most recent
@@ -366,7 +474,7 @@ export function renderList(conversations) {
       '<div class="lc-avatar">' + avatarImg(c.phone, initials) + '</div>' +
       '<div class="lc-chat-info">' +
       '<div class="lc-chat-top">' +
-      '<span class="lc-chat-name">' + escapeHtml(c.pushName || formatPhoneForDisplay(c.phone)) + '</span>' +
+      '<span class="lc-chat-name">' + escapeHtml(getDisplayName(c.phone, c.pushName || formatPhoneForDisplay(c.phone))) + '</span>' +
       '<span class="lc-chat-time">' + time + '</span>' +
       hoverActions +
       '</div>' +
@@ -583,7 +691,8 @@ export function renderChat(log) {
 
     var manualTag = '';
     if (!isGuest && msg.manual) {
-      manualTag = '<span class="lc-manual-tag">Staff</span>';
+      var staffLabel = (msg.staffName ? escapeHtml(msg.staffName) : null) || $.staffName || 'Staff';
+      manualTag = '<span class="lc-manual-tag">' + staffLabel + '</span>';
     }
 
     var isCurrentMatch = $.searchCurrent >= 0 && $.searchMatches[$.searchCurrent] === i;

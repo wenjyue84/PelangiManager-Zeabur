@@ -60,5 +60,17 @@ export var $ = {
   sidebarSearchDebounce: null,
   messageMetadata: { pinned: [], starred: [] },
   /** @type {Map<string, {log: object, cachedAt: number}>} conversation cache for instant switching (US-006) */
-  conversationCache: new Map()
+  conversationCache: new Map(),
+  /** @type {Object<string, string[]>} phone→tags[] map for tag filtering (US-009) */
+  contactTagsMap: {},
+  /** @type {string[]} Currently selected tags for filtering (US-009) */
+  tagFilter: [],
+  /** @type {Object<string, string>} phone→unit map for unit prefix display (US-012) */
+  contactUnitsMap: {},
+  /** @type {string} Currently selected unit for filtering (US-013) */
+  unitFilter: '',
+  /** @type {Object<string, {checkIn: string, checkOut: string}>} phone→dates map for date suffix display (US-014) */
+  contactDatesMap: {},
+  /** @type {string} Current staff display name for manual message attribution (US-011) */
+  staffName: 'Staff'
 };

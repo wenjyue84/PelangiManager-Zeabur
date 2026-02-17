@@ -42,7 +42,7 @@ import {
   generateAINotes, openGuestContext, closeContextModal, saveGuestContext,
   updateContextFilePath, mobileBack,
   toggleTagFilter, toggleTagSelection, clearTagFilter, loadContactTagsMap,
-  loadContactUnitsMap,
+  loadContactUnitsMap, loadContactDatesMap,
   toggleUnitFilter, selectUnitFilter, clearUnitFilter,
   unitInput, selectUnit, unitKeydown, unitBlur, loadCapsuleUnits
 } from './live-chat-panels.js';
@@ -119,6 +119,7 @@ window.lcToggleTagSelection = toggleTagSelection;
 window.lcClearTagFilter = clearTagFilter;
 window.lcLoadContactTagsMap = loadContactTagsMap;
 window.lcLoadContactUnitsMap = loadContactUnitsMap;
+window.lcLoadContactDatesMap = loadContactDatesMap;
 window.lcToggleUnitFilter = toggleUnitFilter;
 window.lcSelectUnitFilter = selectUnitFilter;
 window.lcClearUnitFilter = clearUnitFilter;

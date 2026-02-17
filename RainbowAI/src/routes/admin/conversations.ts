@@ -4,7 +4,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { listConversations, getConversation, deleteConversation, getResponseTimeStats, getContactDetails, updateContactDetails, togglePin, toggleFavourite, markConversationAsRead, updateConversationMode } from '../../assistant/conversation-logger.js';
+import { listConversations, getConversation, deleteConversation, getResponseTimeStats, getContactDetails, updateContactDetails, getAllContactTags, getAllContactUnits, getAllContactDates, togglePin, toggleFavourite, markConversationAsRead, updateConversationMode } from '../../assistant/conversation-logger.js';
 import { whatsappManager } from '../../lib/baileys-client.js';
 import { translateText } from '../../assistant/ai-client.js';
 import { ok, badRequest, notFound, serverError } from './http-utils.js';
@@ -108,6 +108,39 @@ router.get('/conversations', async (_req: Request, res: Response) => {
   try {
     const conversations = await listConversations();
     res.json(conversations);
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// ─── Contact Tags Map (US-009) ──────────────────────────────────────────
+
+router.get('/conversations/tags-map', async (_req: Request, res: Response) => {
+  try {
+    const tagsMap = await getAllContactTags();
+    res.json(tagsMap);
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// ─── Contact Units Map (US-012) ──────────────────────────────────────────
+
+router.get('/conversations/units-map', async (_req: Request, res: Response) => {
+  try {
+    const unitsMap = await getAllContactUnits();
+    res.json(unitsMap);
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// ─── Contact Dates Map (US-014) ──────────────────────────────────────────
+
+router.get('/conversations/dates-map', async (_req: Request, res: Response) => {
+  try {
+    const datesMap = await getAllContactDates();
+    res.json(datesMap);
   } catch (err: any) {
     serverError(res, err);
   }
@@ -294,7 +327,7 @@ router.post('/conversations/:phone/messages/:msgIdx/react', async (req: Request,
 router.post('/conversations/:phone/send', async (req: Request, res: Response) => {
   try {
     const phone = decodeURIComponent(req.params.phone);
-    const { message, instanceId } = req.body;
+    const { message, instanceId, staffName } = req.body;
 
     if (!message || typeof message !== 'string') {
       badRequest(res, 'message (string) required');
@@ -324,11 +357,12 @@ router.post('/conversations/:phone/send', async (req: Request, res: Response) =>
     const { sendWhatsAppMessage } = await import('../../lib/baileys-client.js');
     await sendWhatsAppMessage(phone, message, targetInstanceId);
 
+    const senderName = (typeof staffName === 'string' && staffName.trim()) ? staffName.trim() : 'Staff';
     const { logMessage } = await import('../../assistant/conversation-logger.js');
-    await logMessage(phone, pushName, 'assistant', message, { manual: true, instanceId: targetInstanceId });
+    await logMessage(phone, pushName, 'assistant', message, { manual: true, instanceId: targetInstanceId, staffName: senderName });
 
-    console.log(`[Admin] Manual message sent to ${phone} via ${targetInstanceId || 'default'}: ${message.substring(0, 50)}...`);
-    ok(res, { message: 'Message sent successfully', usedInstance: targetInstanceId });
+    console.log(`[Admin] Manual message sent by ${senderName} to ${phone} via ${targetInstanceId || 'default'}: ${message.substring(0, 50)}...`);
+    ok(res, { message: 'Message sent successfully', usedInstance: targetInstanceId, staffName: senderName });
   } catch (err: any) {
     console.error('[Admin] Failed to send manual message:', err);
     serverError(res, err);
