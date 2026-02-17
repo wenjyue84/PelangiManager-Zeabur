@@ -16,7 +16,7 @@
 import { $ } from './live-chat-state.js';
 import {
   loadLiveChat, filterConversations, openConversation, refreshChat, resetDateFilter, debouncedSearch,
-  cleanupLiveChat
+  cleanupLiveChat, editStaffName
 } from './live-chat-core.js';
 import {
   deleteChat, sendReply, toggleAttachMenu, pickFile, fileSelected, clearFile,
@@ -33,13 +33,16 @@ import {
 import {
   setFilter, togglePinChat, toggleFavouriteChat, toggleMaximize,
   toggleContactPanel, contactFieldChanged, tagKeydown, removeTag,
+  tagInput, selectTag, loadGlobalTags,
   toggleSidebarMenu, showStarredMessages, markAllAsRead,
   toggleChatDropdown, closeChatDropdown, markOneAsRead,
   setMode, toggleModeMenu, approveResponse, rejectApproval, dismissApproval, getAIHelp,
   toggleDateFilterPanel, clearChat, toggleWaStatusBar, restoreWaStatusBarState,
   initResizableDivider, toggleLanguageLock,
   generateAINotes, openGuestContext, closeContextModal, saveGuestContext,
-  updateContextFilePath, mobileBack
+  updateContextFilePath, mobileBack,
+  toggleTagFilter, toggleTagSelection, clearTagFilter, loadContactTagsMap,
+  unitInput, selectUnit, unitKeydown, unitBlur, loadCapsuleUnits
 } from './live-chat-panels.js';
 
 // ─── Window exports for template onclick handlers ────────────────
@@ -52,6 +55,7 @@ window.lcOpenConversation = openConversation;
 window.lcRefreshChat = refreshChat;
 window.lcDeleteChat = deleteChat;
 window.lcResetDateFilter = resetDateFilter;
+window.lcEditStaffName = editStaffName;
 window.lcSendReply = sendReply;
 window.lcToggleTranslate = toggleTranslate;
 window.lcHandleLangChange = handleLangChange;
@@ -80,6 +84,9 @@ window.lcToggleContactPanel = toggleContactPanel;
 window.lcContactFieldChanged = contactFieldChanged;
 window.lcTagKeydown = tagKeydown;
 window.lcRemoveTag = removeTag;
+window.lcTagInput = tagInput;
+window.lcSelectTag = selectTag;
+window.lcLoadGlobalTags = loadGlobalTags;
 window.lcCancelReply = cancelReply;
 window.lcToggleVoiceRecording = toggleVoiceRecording;
 window.lcCancelVoiceRecording = cancelVoiceRecording;
@@ -105,6 +112,15 @@ window.lcCloseContextModal = closeContextModal;
 window.lcSaveGuestContext = saveGuestContext;
 window.lcUpdateContextFilePath = updateContextFilePath;
 window.lcMobileBack = mobileBack;
+window.lcToggleTagFilter = toggleTagFilter;
+window.lcToggleTagSelection = toggleTagSelection;
+window.lcClearTagFilter = clearTagFilter;
+window.lcLoadContactTagsMap = loadContactTagsMap;
+window.lcUnitInput = unitInput;
+window.lcSelectUnit = selectUnit;
+window.lcUnitKeydown = unitKeydown;
+window.lcUnitBlur = unitBlur;
+window.lcLoadCapsuleUnits = loadCapsuleUnits;
 window.lcOnMenuTranslate = onMenuTranslate;
 window.lcOnMenuMode = onMenuMode;
 window.lcOnMenuSetMode = function (mode) {
@@ -199,6 +215,18 @@ document.addEventListener('click', function (e) {
   var submenuWrap = document.querySelector('.lc-header-dropdown-submenu-wrap');
   if (modeSubmenu && submenuWrap && !submenuWrap.contains(e.target)) {
     modeSubmenu.style.display = 'none';
+  }
+  // US-008: Close tag autocomplete dropdown when clicking outside
+  var tagDropdown = document.getElementById('lc-tag-dropdown');
+  var tagInput = document.getElementById('lc-cd-tag-input');
+  if (tagDropdown && tagDropdown.style.display !== 'none' && tagInput && !tagDropdown.contains(e.target) && !tagInput.contains(e.target)) {
+    tagDropdown.style.display = 'none';
+  }
+  // US-010: Close unit dropdown when clicking outside
+  var unitDropdown = document.getElementById('lc-unit-dropdown');
+  var unitInput = document.getElementById('lc-cd-unit');
+  if (unitDropdown && unitDropdown.style.display !== 'none' && unitInput && !unitDropdown.contains(e.target) && !unitInput.contains(e.target)) {
+    unitDropdown.style.display = 'none';
   }
 });
 

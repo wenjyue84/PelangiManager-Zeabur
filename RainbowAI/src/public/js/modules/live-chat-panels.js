@@ -261,6 +261,7 @@ export async function loadContactDetails() {
   }
 
   renderContactFields();
+  loadGlobalTags(); // US-008: Fetch global tags for autocomplete
 }
 
 // US-088: Country detection from phone prefix
@@ -456,6 +457,23 @@ function showSaveIndicator(state) {
   }
 }
 
+// ─── Global Tags System (US-008) ────────────────────────────────
+
+var _globalTags = [];       // Cached global tag list
+var _tagDropdownIdx = -1;   // Keyboard nav index in dropdown
+
+export function loadGlobalTags() {
+  api('/tags').then(function (data) {
+    _globalTags = (data && Array.isArray(data.tags)) ? data.tags : [];
+  }).catch(function () { /* silent — autocomplete degrades gracefully */ });
+}
+
+function syncTagToGlobal(tag) {
+  api('/tags', { method: 'POST', body: { tag: tag } }).then(function (data) {
+    if (data && Array.isArray(data.tags)) _globalTags = data.tags;
+  }).catch(function () { /* silent */ });
+}
+
 function renderTags(tags) {
   var container = document.getElementById('lc-cd-tags');
   if (!container) return;
@@ -469,12 +487,17 @@ function addTag(text) {
   var tag = text.trim();
   if (!tag) return;
   if (!$.contactDetails.tags) $.contactDetails.tags = [];
-  if ($.contactDetails.tags.indexOf(tag) !== -1) return;
+  // Case-insensitive duplicate check
+  var lower = tag.toLowerCase();
+  var isDup = $.contactDetails.tags.some(function (t) { return t.toLowerCase() === lower; });
+  if (isDup) return;
   $.contactDetails.tags.push(tag);
   renderTags($.contactDetails.tags);
   var data = collectContactFields();
   data.tags = $.contactDetails.tags;
   saveContactDetails(data);
+  syncTagToGlobal(tag);
+  hideTagDropdown();
 }
 
 export function removeTag(index) {
@@ -487,14 +510,86 @@ export function removeTag(index) {
 }
 
 export function tagKeydown(event) {
+  var dropdown = document.getElementById('lc-tag-dropdown');
+  var visible = dropdown && dropdown.style.display !== 'none';
+  var items = visible ? dropdown.querySelectorAll('.lc-tag-option') : [];
+
+  if (event.key === 'ArrowDown' && visible && items.length) {
+    event.preventDefault();
+    _tagDropdownIdx = Math.min(_tagDropdownIdx + 1, items.length - 1);
+    updateTagDropdownHighlight(items);
+    return;
+  }
+  if (event.key === 'ArrowUp' && visible && items.length) {
+    event.preventDefault();
+    _tagDropdownIdx = Math.max(_tagDropdownIdx - 1, 0);
+    updateTagDropdownHighlight(items);
+    return;
+  }
   if (event.key === 'Enter') {
     event.preventDefault();
+    if (visible && _tagDropdownIdx >= 0 && items[_tagDropdownIdx]) {
+      var selected = items[_tagDropdownIdx].getAttribute('data-tag');
+      if (selected) {
+        addTag(selected);
+        var input = document.getElementById('lc-cd-tag-input');
+        if (input) input.value = '';
+        return;
+      }
+    }
     var input = document.getElementById('lc-cd-tag-input');
     if (input && input.value.trim()) {
       addTag(input.value);
       input.value = '';
     }
+    return;
   }
+  if (event.key === 'Escape' && visible) {
+    event.preventDefault();
+    hideTagDropdown();
+    return;
+  }
+}
+
+export function tagInput() {
+  var input = document.getElementById('lc-cd-tag-input');
+  if (!input) return;
+  var query = input.value.trim().toLowerCase();
+  if (!query) { hideTagDropdown(); return; }
+
+  var currentTags = ($.contactDetails.tags || []).map(function (t) { return t.toLowerCase(); });
+  var matches = _globalTags.filter(function (t) {
+    return t.toLowerCase().indexOf(query) !== -1 && currentTags.indexOf(t.toLowerCase()) === -1;
+  });
+
+  if (matches.length === 0) { hideTagDropdown(); return; }
+
+  var dropdown = document.getElementById('lc-tag-dropdown');
+  if (!dropdown) return;
+  _tagDropdownIdx = -1;
+  dropdown.innerHTML = matches.slice(0, 8).map(function (t) {
+    return '<div class="lc-tag-option" data-tag="' + escapeAttr(t) + '" onclick="lcSelectTag(this)">' + escapeHtml(t) + '</div>';
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function updateTagDropdownHighlight(items) {
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.toggle('highlighted', i === _tagDropdownIdx);
+  }
+}
+
+export function selectTag(el) {
+  var tag = el.getAttribute('data-tag');
+  if (tag) addTag(tag);
+  var input = document.getElementById('lc-cd-tag-input');
+  if (input) input.value = '';
+}
+
+function hideTagDropdown() {
+  var dropdown = document.getElementById('lc-tag-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  _tagDropdownIdx = -1;
 }
 
 // ─── Response Mode Management (Autopilot/Copilot/Manual) ────────

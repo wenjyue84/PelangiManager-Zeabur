@@ -983,6 +983,35 @@
   margin-top: 4px;
 }
 
+/* US-008: Tag autocomplete dropdown */
+.lc-tag-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 50;
+  margin-top: 2px;
+}
+
+.lc-tag-option {
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #1a1a1a;
+  transition: background .1s;
+}
+
+.lc-tag-option:hover,
+.lc-tag-option.highlighted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
 /* Contact Footer & Save Indicator */
 .lc-contact-footer {
   padding: 8px 16px;

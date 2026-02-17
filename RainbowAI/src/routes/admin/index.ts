@@ -17,6 +17,7 @@ import activityRoutes from './activity.js';
 import adminNotificationsRoutes from './admin-notifications.js';
 import checkinNotifyRoutes from './checkin-notify.js';
 import prismaBotRoutes from './prisma-bot.js';
+import tagsRoutes from './tags.js';
 import latencyRoutes from '../test/latency.js';
 
 const router = Router();
@@ -89,6 +90,7 @@ router.use(activityRoutes);
 router.use('/admin-notifications', adminNotificationsRoutes);
 router.use(checkinNotifyRoutes);
 router.use(prismaBotRoutes);
+router.use(tagsRoutes);
 router.use('/test', latencyRoutes);
 
 // Ensure unmatched /api/rainbow/* returns JSON 404 (never HTML)

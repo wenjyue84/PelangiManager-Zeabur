@@ -680,12 +680,14 @@
 
       <div class="lc-field-divider"></div>
 
-      <!-- Tags -->
-      <div class="lc-field">
+      <!-- Tags (US-008: with global tag autocomplete) -->
+      <div class="lc-field" style="position: relative;">
         <label class="lc-field-label">Tags</label>
         <div class="lc-tag-container" id="lc-cd-tags"></div>
         <input type="text" class="lc-field-input lc-tag-input" id="lc-cd-tag-input" placeholder="Add tag + Enter"
-          onkeydown="lcTagKeydown(event)">
+          onkeydown="lcTagKeydown(event)" oninput="lcTagInput()" onfocus="lcTagInput()"
+          autocomplete="off">
+        <div class="lc-tag-dropdown" id="lc-tag-dropdown" style="display:none;"></div>
       </div>
 
       <!-- Notes (US-090) -->
