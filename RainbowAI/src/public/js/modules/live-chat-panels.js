@@ -397,6 +397,9 @@ function renderContactFields() {
 
   // US-088: Update language lock UI
   updateLanguageLockUI();
+
+  // US-005: Check if context file exists and show path
+  updateContextFilePath();
 }
 
 function collectContactFields() {
@@ -872,10 +875,10 @@ export async function generateAINotes() {
 
     if (result && result.notes) {
       textarea.value = result.notes;
+      // Auto-expand to show full content (no truncation)
       textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+      textarea.style.height = textarea.scrollHeight + 'px';
       showToast('AI notes generated (review before saving)', 'success');
-      // Trigger save after review delay
       contactFieldChanged();
     }
   } catch (err) {
@@ -887,6 +890,29 @@ export async function generateAINotes() {
 }
 
 // ─── US-091: Guest Context File ─────────────────────────────────
+
+// US-005: Check if context file exists for current contact and show path
+export async function updateContextFilePath() {
+  var pathEl = document.getElementById('lc-context-filepath');
+  if (!pathEl) return;
+
+  if (!$.activePhone) {
+    pathEl.style.display = 'none';
+    return;
+  }
+
+  try {
+    var result = await api('/conversations/' + encodeURIComponent($.activePhone) + '/context');
+    if (result && result.exists && result.filename) {
+      pathEl.textContent = '\u{1F4C4} ' + result.filename;
+      pathEl.style.display = '';
+    } else {
+      pathEl.style.display = 'none';
+    }
+  } catch (err) {
+    pathEl.style.display = 'none';
+  }
+}
 
 export async function openGuestContext() {
   if (!$.activePhone) return;
@@ -923,12 +949,19 @@ export async function saveGuestContext() {
   if (!editor) return;
 
   try {
-    await api('/conversations/' + encodeURIComponent($.activePhone) + '/context', {
+    var result = await api('/conversations/' + encodeURIComponent($.activePhone) + '/context', {
       method: 'PUT',
       body: { content: editor.value }
     });
     showToast('Guest context saved', 'success');
     closeContextModal();
+
+    // US-005: Show the saved file path below the button
+    var pathEl = document.getElementById('lc-context-filepath');
+    if (pathEl && result && result.filename) {
+      pathEl.textContent = '\u{1F4C4} ' + result.filename;
+      pathEl.style.display = '';
+    }
   } catch (err) {
     showToast('Failed to save context: ' + (err.message || 'Unknown error'), 'error');
   }

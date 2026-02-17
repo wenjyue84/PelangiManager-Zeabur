@@ -535,7 +535,7 @@ router.post('/conversations/:phone/generate-notes', async (req: Request, res: Re
       }
     ];
 
-    const { content } = await chatWithFallback(messages, 300, 0.5);
+    const { content } = await chatWithFallback(messages, 600, 0.5);
 
     if (!content) {
       serverError(res, 'AI generation failed');

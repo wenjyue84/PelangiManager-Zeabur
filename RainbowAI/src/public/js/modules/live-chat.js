@@ -39,7 +39,7 @@ import {
   toggleDateFilterPanel, clearChat, toggleWaStatusBar, restoreWaStatusBarState,
   initResizableDivider, toggleLanguageLock,
   generateAINotes, openGuestContext, closeContextModal, saveGuestContext,
-  mobileBack
+  updateContextFilePath, mobileBack
 } from './live-chat-panels.js';
 
 // ─── Window exports for template onclick handlers ────────────────
@@ -103,6 +103,7 @@ window.lcGenerateAINotes = generateAINotes;
 window.lcOpenGuestContext = openGuestContext;
 window.lcCloseContextModal = closeContextModal;
 window.lcSaveGuestContext = saveGuestContext;
+window.lcUpdateContextFilePath = updateContextFilePath;
 window.lcMobileBack = mobileBack;
 window.lcOnMenuTranslate = onMenuTranslate;
 window.lcOnMenuMode = onMenuMode;

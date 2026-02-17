@@ -818,6 +818,25 @@
   color: #00a884;
 }
 
+/* US-005: Context file path indicator */
+.lc-context-filepath {
+  font-size: 11px;
+  color: #00a884;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  margin: 4px 0 0;
+  padding: 3px 6px;
+  background: #f0fdf4;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background .2s;
+}
+.lc-context-filepath:hover {
+  background: #dcfce7;
+}
+
 /* US-091: Context editor modal */
 .lc-context-modal {
   max-width: 560px;
