@@ -94,11 +94,17 @@ function updateRcConnectionStatus(statusData) {
   if (!bar) return;
   const instances = (statusData && statusData.whatsappInstances) || [];
   const connected = instances.some(i => i.state === 'open');
-  bar.classList.remove('wa-connected', 'wa-disconnected');
-  bar.classList.add(connected ? 'wa-connected' : 'wa-disconnected');
+  const connecting = !connected && instances.some(i => i.state === 'connecting');
+
+  bar.classList.remove('wa-connected', 'wa-disconnected', 'wa-connecting');
+  const barClass = connected ? 'wa-connected' : connecting ? 'wa-connecting' : 'wa-disconnected';
+  bar.classList.add(barClass);
+
   const text = bar.querySelector('.wa-connection-text');
   if (text) {
-    text.textContent = connected ? 'WhatsApp Connected' : 'Disconnected';
+    text.textContent = connected ? 'WhatsApp Connected'
+      : connecting ? 'Connecting...'
+      : 'Disconnected';
   }
   if ($.waWasConnected === true && !connected) {
     $.waWasConnected = false;

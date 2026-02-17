@@ -14,27 +14,46 @@ var api = window.api;
 export function updateConnectionStatus(statusData) {
   var instances = (statusData && statusData.whatsappInstances) || [];
   var connected = instances.some(function (i) { return i.state === 'open'; });
+  var connecting = !connected && instances.some(function (i) { return i.state === 'connecting'; });
 
-  // Update the small status dot in sidebar header (US-077)
+  // Derive a 3-state status: 'connected' | 'connecting' | 'disconnected'
+  var waState = connected ? 'connected' : (connecting ? 'connecting' : 'disconnected');
+
+  // Update the small status dot in sidebar header (US-077, US-007)
   var dot = document.getElementById('lc-wa-dot');
   if (dot) {
     dot.classList.remove('lc-wa-connected', 'lc-wa-disconnected', 'lc-wa-checking');
-    dot.classList.add(connected ? 'lc-wa-connected' : 'lc-wa-disconnected');
-    dot.title = connected ? 'WhatsApp Connected' : 'WhatsApp Disconnected';
+    var dotClass = waState === 'connected' ? 'lc-wa-connected'
+      : waState === 'connecting' ? 'lc-wa-checking'
+      : 'lc-wa-disconnected';
+    dot.classList.add(dotClass);
+    var dotTitle = waState === 'connected' ? 'WhatsApp Connected'
+      : waState === 'connecting' ? 'WhatsApp Connecting...'
+      : 'WhatsApp Disconnected';
+    dot.title = dotTitle;
   }
 
   // Update tooltip content
   var tooltipStatus = document.getElementById('lc-wa-tooltip-status');
   var tooltipPhone = document.getElementById('lc-wa-tooltip-phone');
   if (tooltipStatus) {
-    tooltipStatus.textContent = connected ? 'Connected' : 'Disconnected';
-    tooltipStatus.style.color = connected ? '#25d366' : '#ea0038';
+    var statusLabel = waState === 'connected' ? 'Connected'
+      : waState === 'connecting' ? 'Connecting...'
+      : 'Disconnected';
+    var statusColor = waState === 'connected' ? '#25d366'
+      : waState === 'connecting' ? '#f59e0b'
+      : '#ea0038';
+    tooltipStatus.textContent = statusLabel;
+    tooltipStatus.style.color = statusColor;
   }
   if (tooltipPhone) {
     var phoneNumbers = instances
       .filter(function (i) { return i.state === 'open' && i.user && i.user.phone; })
       .map(function (i) { return '+' + i.user.phone; });
-    tooltipPhone.textContent = phoneNumbers.length > 0 ? phoneNumbers.join(', ') : (connected ? 'Connected' : 'No active connections');
+    var phoneText = phoneNumbers.length > 0 ? phoneNumbers.join(', ')
+      : waState === 'connecting' ? 'Reconnecting...'
+      : (connected ? 'Connected' : 'No active connections');
+    tooltipPhone.textContent = phoneText;
   }
 
   if ($.waWasConnected === true && !connected) {
