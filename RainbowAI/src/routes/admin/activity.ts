@@ -17,7 +17,9 @@ router.get('/activity', (_req: Request, res: Response) => {
 
 // ─── SSE: Real-time activity stream ───────────────────────────────────
 router.get('/activity/stream', (req: Request, res: Response) => {
-  // Set SSE headers
+  // Set SSE headers and flush immediately — compression middleware must NOT
+  // buffer this response (see index.ts filter), and flushHeaders() ensures
+  // the 200 + headers reach the browser without waiting for body data.
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -25,6 +27,7 @@ router.get('/activity/stream', (req: Request, res: Response) => {
     'Access-Control-Allow-Origin': '*',
     'X-Accel-Buffering': 'no', // Disable nginx buffering
   });
+  res.flushHeaders();
 
   // Send initial batch of recent events
   const recentEvents = activityTracker.getRecent(15);

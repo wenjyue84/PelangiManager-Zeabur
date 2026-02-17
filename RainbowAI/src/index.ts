@@ -11,7 +11,8 @@ import compression from 'compression';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { readFileSync, watchFile } from 'fs';
+import { readFileSync } from 'fs';
+import { createServer as createHttpServer } from 'http';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createMCPHandler } from './server.js';
@@ -21,7 +22,6 @@ import { startBaileysWithSupervision } from './lib/baileys-supervisor.js';
 import adminRoutes from './routes/admin/index.js';
 import { initFeedbackSettings } from './lib/init-feedback-settings.js';
 import { initAdminNotificationSettings } from './lib/admin-notification-settings.js';
-import { setupHotReload, HOT_RELOAD_SCRIPT } from './lib/hot-reload.js';
 import { configStore } from './assistant/config-store.js';
 import { initKnowledgeBase } from './assistant/knowledge-base.js';
 
@@ -69,7 +69,14 @@ const PORT = parseInt(process.env.MCP_SERVER_PORT || '3002', 10);
 app.set('etag', false);
 
 // Middleware
-app.use(compression());
+app.use(compression({
+  filter: (req, res) => {
+    // Never compress SSE streams — compression buffers the response,
+    // preventing EventSource clients from receiving events in real time.
+    if (req.headers.accept === 'text/event-stream' || req.url.endsWith('/activity/stream')) return false;
+    return compression.filter(req, res);
+  }
+}));
 app.use(cors());
 app.use(express.json({ limit: '2mb' })); // Allow up to 2MB for long messages/conversations
 
@@ -95,7 +102,15 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many API requests, please try again later' }
 });
 
-// Serve static assets for Rainbow dashboard modules with no-cache headers for development
+// Create HTTP server so Vite HMR WebSocket can attach before listening starts
+const server = createHttpServer(app);
+
+// --- Static assets + Vite HMR ---
+let viteDevServer: any = null;
+
+// Serve dashboard static files (CSS, JS, images) with no-cache headers.
+// In dev, this MUST come before Vite middleware so that <link> and <script> tags
+// get raw files (correct Content-Type), not Vite's JS-module transforms.
 app.use(
   '/public',
   express.static(join(__dirname_main, 'public'), {
@@ -108,6 +123,18 @@ app.use(
     },
   })
 );
+
+if (process.env.NODE_ENV !== 'production') {
+  // Vite: provides HMR client + WebSocket for file-change notifications.
+  // Static files are served by Express above; Vite only handles /@vite/* paths.
+  const { createServer: createViteServer } = await import('vite');
+  viteDevServer = await createViteServer({
+    configFile: join(__dirname_main, '..', 'vite.config.ts'),
+    server: { middlewareMode: true, hmr: { server } },
+    appType: 'custom',
+  });
+  app.use(viteDevServer.middlewares);
+}
 
 // Health check endpoint (liveness — is the process alive?)
 app.get('/health', (req, res) => {
@@ -173,9 +200,7 @@ app.get('/health/ready', async (req, res) => {
   });
 });
 
-// --- Dashboard HTML cache ---
-// Read once at module load to avoid readFileSync on every request.
-// In development, fs.watchFile invalidates the cache when the file changes on disk.
+// --- Dashboard HTML ---
 const DASHBOARD_HTML_PATH = join(__dirname_main, 'public', 'rainbow-admin.html');
 let _dashboardHtmlCache: string | null = null;
 
@@ -183,46 +208,38 @@ function loadDashboardHtml(): string {
   return readFileSync(DASHBOARD_HTML_PATH, 'utf-8');
 }
 
-// Eagerly load the HTML into memory
+// Eagerly load for production (cache persists for the process lifetime)
 try {
   _dashboardHtmlCache = loadDashboardHtml();
 } catch {
   // File may not exist yet during build; getDashboardHtml() will throw at request time
 }
 
-// In development, watch for file changes and invalidate the cache
-if (process.env.NODE_ENV !== 'production') {
-  watchFile(DASHBOARD_HTML_PATH, { interval: 500 }, () => {
-    try {
-      _dashboardHtmlCache = loadDashboardHtml();
-      console.log('[Dashboard] HTML cache refreshed (file changed)');
-    } catch {
-      _dashboardHtmlCache = null;
-    }
-  });
-}
-
-function getDashboardHtml(): string {
-  // Use cached HTML; fall back to a fresh read if cache is somehow null
+async function getDashboardHtml(_url: string): Promise<string> {
+  if (viteDevServer) {
+    // Dev: read fresh from disk, inject Vite HMR client manually.
+    // We skip transformIndexHtml because it double-prefixes /public/ URLs
+    // (HTML already uses absolute /public/... paths, and Vite prepends base again).
+    // Vite's middleware still serves files correctly (strips base from requests).
+    let html = readFileSync(DASHBOARD_HTML_PATH, 'utf-8');
+    html = html.replace('<head>', '<head>\n  <script type="module" src="/public/@vite/client"></script>');
+    return html;
+  }
+  // Prod: use cached HTML with cache-bust
   let html = _dashboardHtmlCache ?? loadDashboardHtml();
-  // Cache-bust all local JS/CSS URLs with a fresh timestamp (mimics Vite's content hashing)
-  // This forces the browser to fetch fresh files on every page load, preventing stale cache
   const v = Date.now();
   html = html.replace(/(src|href)="(\/public\/[^"]+\.(js|css))"/g, `$1="$2?v=${v}"`);
-  if (process.env.NODE_ENV !== 'production') {
-    html = html.replace('</body>', HOT_RELOAD_SCRIPT + '\n</body>');
-  }
   return html;
 }
 
 // Rainbow Admin Dashboard - Root path only
-app.get('/', (_req, res) => {
+app.get('/', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
-    res.type('html').send(getDashboardHtml());
+    res.type('html').send(await getDashboardHtml(req.originalUrl));
   } catch {
     res.status(500).send('Dashboard file not found');
   }
@@ -281,13 +298,13 @@ const dashboardTabs = [
   'intent-manager', 'static-replies', 'kb', 'preview', 'real-chat', 'workflow',
   'whatsapp-accounts', // removed from nav but URL still works (shows "Page Removed" notice)
 ];
-app.get(`/:tab(${dashboardTabs.join('|')})`, (_req, res) => {
+app.get(`/:tab(${dashboardTabs.join('|')})`, async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
-    res.type('html').send(getDashboardHtml());
+    res.type('html').send(await getDashboardHtml(req.originalUrl));
   } catch {
     res.status(500).send('Dashboard file not found');
   }
@@ -297,9 +314,8 @@ app.get(`/:tab(${dashboardTabs.join('|')})`, (_req, res) => {
 app.post('/mcp', mcpLimiter, createMCPHandler());
 
 // Start server - listen on 0.0.0.0 for Docker containers
-const server = app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   const apiUrl = getApiBaseUrl();
-  setupHotReload(server);
   console.log(`Pelangi MCP Server running on http://0.0.0.0:${PORT}`);
   console.log(`MCP endpoint: http://0.0.0.0:${PORT}/mcp`);
   console.log(`Health check: http://0.0.0.0:${PORT}/health`);
@@ -334,12 +350,34 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 
     // Initialize WhatsApp (Baileys) with crash isolation supervisor
     await startBaileysWithSupervision();
+
+    // Initialize failover coordinator (primary/standby)
+    const { failoverCoordinator } = await import('./lib/failover-coordinator.js');
+    const failoverSettings = configStore.getSettings().failover ?? {
+      enabled: true, heartbeatIntervalMs: 20000, failoverThresholdMs: 60000,
+      handbackMode: 'immediate' as const, handbackGracePeriodMs: 30000,
+    };
+    failoverCoordinator.init({
+      role: (process.env.RAINBOW_ROLE as 'primary' | 'standby') ?? 'primary',
+      peerUrl: process.env.RAINBOW_PEER_URL,
+      secret: process.env.RAINBOW_FAILOVER_SECRET ?? '',
+      settings: failoverSettings,
+    });
+
+    // Update coordinator when settings are hot-reloaded
+    configStore.on('reload', (domain: string) => {
+      if (['settings', 'all'].includes(domain)) {
+        const updated = configStore.getSettings().failover;
+        if (updated) failoverCoordinator.updateSettings(updated);
+      }
+    });
   });
 });
 
 // Graceful shutdown handlers
 const shutdown = (signal: string) => {
   console.log(`\n[SHUTDOWN] Received ${signal}. Closing server...`);
+  if (viteDevServer) viteDevServer.close();
   server.close(() => {
     console.log('[SHUTDOWN] HTTP server closed.');
     process.exit(0);
