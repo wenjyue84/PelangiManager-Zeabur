@@ -328,7 +328,7 @@ export function renderList(conversations) {
     var initials = (c.pushName || '?').slice(0, 2).toUpperCase();
     var time = formatRelativeTime(c.lastMessageAt);
     var preview = c.lastMessage || '';
-    if (c.lastMessageRole === 'assistant') preview = 'Rainbow: ' + preview;
+    if (c.lastMessageRole === 'assistant') preview = '\uD83E\uDD16 ' + preview;
     if (preview.length > 45) preview = preview.substring(0, 42) + '...';
     var isActive = c.phone === $.activePhone ? ' active' : '';
     var unreadCount = typeof c.unreadCount === 'number' ? c.unreadCount : 0;

@@ -250,6 +250,12 @@ export function renderMessageBubble(message, options = {}) {
       ? highlightSearchQuery(message.content, opts.searchQuery, opts.searchFocus)
       : escapeHtml(message.content);
 
+  // US-002: Robot icon prefix for AI-generated replies (not manual staff)
+  if (!isGuest && !message.manual) {
+    const avatarEmoji = (typeof window !== 'undefined' && window._botAvatar) || '\uD83E\uDD16';
+    displayContent = '<span class="lc-bot-avatar">' + avatarEmoji + ' </span>' + displayContent;
+  }
+
   // Edit panel logic (for AI messages only)
   const editMeta = meta.editMeta;
   const editId = meta.messageId || 'edit-msg-' + (opts.messageIndex || Date.now());

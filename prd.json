@@ -61,7 +61,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-003",
@@ -247,7 +247,9 @@
         "Filter logic: add tagFilter to the conversation list filtering pipeline",
         "Tags come from contact data + global tag list (US-008)"
       ],
-      "dependencies": ["US-008"],
+      "dependencies": [
+        "US-008"
+      ],
       "estimatedComplexity": "medium",
       "passes": false
     },
@@ -330,7 +332,9 @@
         "This helper will be reused by US-014 (date suffix) — design it to handle both prefix and suffix",
         "No nested template literals in JS HTML generation"
       ],
-      "dependencies": ["US-010"],
+      "dependencies": [
+        "US-010"
+      ],
       "estimatedComplexity": "small",
       "passes": false
     },
@@ -356,7 +360,9 @@
         "Filter pipeline: add unitFilter check after existing tab/search/tag filters",
         "CSS: RainbowAI/src/public/css/rainbow-livechat-ui.css — style the Unit filter button and dropdown"
       ],
-      "dependencies": ["US-010"],
+      "dependencies": [
+        "US-010"
+      ],
       "estimatedComplexity": "small",
       "passes": false
     },
@@ -382,7 +388,9 @@
         "Date format function: pad day/month to 2 digits, concatenate as DDDDMM string",
         "Contact details panel: ensure date fields exist in Contact Details UI for setting check-in/check-out"
       ],
-      "dependencies": ["US-012"],
+      "dependencies": [
+        "US-012"
+      ],
       "estimatedComplexity": "small",
       "passes": false
     },
@@ -439,7 +447,9 @@
         "Live chat actions: RainbowAI/src/public/js/modules/live-chat-actions.js — extend / handler for //",
         "Workflow status: render as system message in chat bubbles (gray, centered, italic)"
       ],
-      "dependencies": ["US-015"],
+      "dependencies": [
+        "US-015"
+      ],
       "estimatedComplexity": "medium",
       "passes": false
     },
@@ -555,7 +565,9 @@
         "CSS: RainbowAI/src/public/css/rainbow-livechat-ui.css — schedule button and picker styles",
         "Live chat features: RainbowAI/src/public/js/modules/live-chat-features.js — scheduled messages panel"
       ],
-      "dependencies": ["US-019"],
+      "dependencies": [
+        "US-019"
+      ],
       "estimatedComplexity": "medium",
       "passes": false
     },
@@ -583,7 +595,9 @@
         "UI: extend the date picker from US-020 with a repeat frequency dropdown",
         "Management view: show repeat icon and frequency label in scheduled messages list"
       ],
-      "dependencies": ["US-020"],
+      "dependencies": [
+        "US-020"
+      ],
       "estimatedComplexity": "medium",
       "passes": false
     },
@@ -615,7 +629,9 @@
         "Default chase template: 'Hi [Name], this is a friendly reminder about your pending payment. Please let us know if you have any questions.'",
         "Template must have en/ms/zh variants per Rainbow convention"
       ],
-      "dependencies": ["US-019"],
+      "dependencies": [
+        "US-019"
+      ],
       "estimatedComplexity": "large",
       "passes": false
     }

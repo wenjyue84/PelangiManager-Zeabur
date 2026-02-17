@@ -9,6 +9,13 @@ import { refreshActiveChat } from './real-chat-messaging.js';
 const api = window.api;
 const linkifyUrls = window.linkifyUrls || function(h) { return h; };
 
+// US-001: Format token count for display (1234 → '1.2K', 89 → '89')
+function fmtTokenCount(n) {
+  if (n == null) return 'N/A';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+}
+
 // ─── SSE fallback polling interval (US-159) ─────────────────────
 const SSE_FALLBACK_POLL_MS = 15000; // 15s polling when SSE is disconnected
 
@@ -542,6 +549,17 @@ export function renderChatView(log) {
         if (msg.responseTime) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Time</span><span class="rc-dev-panel-value">' + MetadataBadges.getResponseTimeBadge(msg.responseTime) + '</span></div>');
         if (msg.routedAction) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Action</span><span class="rc-dev-panel-value">' + escapeHtml(msg.routedAction) + '</span></div>');
         if (msg.sentiment) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Sentiment</span><span class="rc-dev-panel-value">' + escapeHtml(msg.sentiment) + '</span></div>');
+        // US-001: Token usage row
+        if (msg.usage && (msg.usage.prompt_tokens || msg.usage.completion_tokens)) {
+          var pt = msg.usage.prompt_tokens || 0;
+          var ct = msg.usage.completion_tokens || 0;
+          var tt = msg.usage.total_tokens || (pt + ct);
+          var tokenText = fmtTokenCount(pt) + ' in / ' + fmtTokenCount(ct) + ' out';
+          if (msg.contextCount != null) tokenText += ' | ' + msg.contextCount + ' msgs context';
+          panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Tokens</span><span class="rc-dev-panel-value"><span class="rc-dev-token-badge">' + tokenText + '</span></span></div>');
+        } else if (msg.source === 'llm') {
+          panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Tokens</span><span class="rc-dev-panel-value" style="opacity:0.5;">N/A</span></div>');
+        }
         if (msg.kbFiles && msg.kbFiles.length > 0) {
           var chips = msg.kbFiles.map(function(f) {
             return '<span class="rc-dev-panel-kb-chip" onclick="openKBFileFromPreview(\'' + escapeHtml(f) + '\')" title="View ' + escapeHtml(f) + '">' + escapeHtml(f) + '</span>';
@@ -556,6 +574,14 @@ export function renderChatView(log) {
         if (msg.model) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Provider</span><span class="rc-dev-panel-value">' + escapeHtml(msg.model) + '</span></div>');
         if (msg.responseTime) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Time</span><span class="rc-dev-panel-value">' + (msg.responseTime / 1000).toFixed(2) + 's</span></div>');
         if (msg.routedAction) panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Action</span><span class="rc-dev-panel-value">' + escapeHtml(msg.routedAction) + '</span></div>');
+        // US-001: Token usage (fallback path)
+        if (msg.usage && (msg.usage.prompt_tokens || msg.usage.completion_tokens)) {
+          var pt2 = msg.usage.prompt_tokens || 0;
+          var ct2 = msg.usage.completion_tokens || 0;
+          var tokenText2 = fmtTokenCount(pt2) + ' in / ' + fmtTokenCount(ct2) + ' out';
+          if (msg.contextCount != null) tokenText2 += ' | ' + msg.contextCount + ' msgs context';
+          panelRows.push('<div class="rc-dev-panel-row"><span class="rc-dev-panel-label">Tokens</span><span class="rc-dev-panel-value">' + tokenText2 + '</span></div>');
+        }
       }
 
       if (panelRows.length > 0) {
@@ -573,11 +599,18 @@ export function renderChatView(log) {
     const displayContent = formatMessage(msg.content);
     const systemClass = isSystem ? ' lc-system-msg' : '';
 
+    // US-002: Robot icon prefix for AI-generated replies (not manual staff)
+    let botAvatarPrefix = '';
+    if (!isGuest && !msg.manual) {
+      const avatarEmoji = window._botAvatar || '\uD83E\uDD16';
+      botAvatarPrefix = '<span class="lc-bot-avatar">' + avatarEmoji + ' </span>';
+    }
+
     const textExtra = canEdit ? ' rc-bubble-text-editable cursor-pointer hover:opacity-90' : '';
     const textOnclick = canEdit ? ' onclick="openRcEditModal(' + i + ')"' : '';
     html += '<div class="rc-bubble-wrap ' + side + continuationClass + '">' +
       '<div class="rc-bubble ' + side + systemClass + '">' +
-      '<div class="rc-bubble-text' + textExtra + '"' + textOnclick + ' title="' + (canEdit ? 'Click to edit and save to Responses' : '') + '">' + displayContent + '</div>' +
+      '<div class="rc-bubble-text' + textExtra + '"' + textOnclick + ' title="' + (canEdit ? 'Click to edit and save to Responses' : '') + '">' + botAvatarPrefix + displayContent + '</div>' +
       '<div class="rc-bubble-footer">' + footerInner + '</div>' +
       actionsHtml +
       devMeta +
