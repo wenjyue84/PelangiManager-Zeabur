@@ -696,6 +696,12 @@ body.lc-resizing * {
 /* Reuses .lc-* classes; adds .cs-* for simulator-specific parts */
 /* ═══════════════════════════════════════════════════════════════ */
 
+/* US-003: Guest Simulation — input box at top of panel */
+#quick-test-content .lc-main > .lc-chat-header { order: 0; }
+#quick-test-content .lc-main > .cs-meta-bar     { order: 1; }
+#quick-test-content .lc-main > .lc-input-area   { order: 2; border-bottom: 1px solid #e5e7eb; border-top: none; }
+#quick-test-content .lc-main > .lc-messages      { order: 3; }
+
 .cs-sidebar {
   width: 260px;
   flex: 0 0 260px;
