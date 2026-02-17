@@ -8,6 +8,8 @@ import { listConversations, getConversation, deleteConversation, getResponseTime
 import { whatsappManager } from '../../lib/baileys-client.js';
 import { translateText } from '../../assistant/ai-client.js';
 import { ok, badRequest, notFound, serverError } from './http-utils.js';
+import { activityTracker } from '../../lib/activity-tracker.js';
+import type { ActivityEvent } from '../../lib/activity-tracker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,6 +55,51 @@ router.get('/conversations/stats/response-time', async (_req: Request, res: Resp
   } catch (err: any) {
     serverError(res, err);
   }
+});
+
+// ─── SSE: Real-time conversation update stream (US-159) ──────────────
+router.get('/conversations/events', (req: Request, res: Response) => {
+  // Set SSE headers (same pattern as activity stream)
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'X-Accel-Buffering': 'no', // Disable nginx buffering
+  });
+
+  // Send initial connected event
+  res.write(`event: connected\ndata: ${JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() })}\n\n`);
+
+  // Keep-alive heartbeat every 30s
+  const heartbeat = setInterval(() => {
+    res.write(`:heartbeat\n\n`);
+  }, 30000);
+
+  // Listen for activity events that indicate conversation changes
+  const onActivity = (event: ActivityEvent) => {
+    const phone = event.metadata?.phone;
+    if (!phone) return;
+
+    // Only forward conversation-relevant events
+    if (event.type === 'message_received' || event.type === 'response_sent'
+        || event.type === 'workflow_started' || event.type === 'booking_started'
+        || event.type === 'escalation') {
+      res.write(`event: conversation_update\ndata: ${JSON.stringify({
+        phone,
+        type: event.type,
+        timestamp: event.timestamp,
+      })}\n\n`);
+    }
+  };
+
+  activityTracker.on('activity', onActivity);
+
+  // Cleanup on disconnect
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    activityTracker.removeListener('activity', onActivity);
+  });
 });
 
 // ─── Conversation History (Real Chat) ─────────────────────────────────

@@ -36,6 +36,11 @@ export function switchSimulatorTab(tabName, updateHash = true) {
     }
   });
 
+  // US-160: Clean up real-chat intervals when switching away from live-simulation
+  if (tabName !== 'live-simulation' && typeof window.cleanupRealChat === 'function') {
+    window.cleanupRealChat();
+  }
+
   // Show selected content
   const content = document.getElementById(tabName + '-content');
   if (content) {

@@ -258,3 +258,19 @@ export async function refreshPerformanceData() {
   await Promise.all([loadFeedbackStats(), loadIntentAccuracy()]);
   toast('Performance data updated', 'success');
 }
+
+/**
+ * Cleanup (US-160)
+ * Called when navigating away from the performance tab to stop background polling
+ */
+export function cleanupPerformance() {
+  if (feedbackRefreshInterval) {
+    clearInterval(feedbackRefreshInterval);
+    feedbackRefreshInterval = null;
+  }
+  if (intentAccuracyRefreshInterval) {
+    clearInterval(intentAccuracyRefreshInterval);
+    intentAccuracyRefreshInterval = null;
+  }
+  console.log('[Performance] Cleanup: cleared all intervals');
+}

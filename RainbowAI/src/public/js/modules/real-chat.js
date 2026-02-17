@@ -15,7 +15,8 @@
 import {
   toggleDevMode, toggleRcSearch, loadRealChat,
   filterConversations, openConversation,
-  toggleMetaDetails, deleteActiveChat
+  toggleMetaDetails, deleteActiveChat,
+  cleanup as cleanupRealChat
 } from './real-chat-core.js';
 import {
   toggleTranslateMode, handleLangChange,
@@ -57,3 +58,4 @@ window.toggleRcAttachMenu = toggleRcAttachMenu;
 window.pickRcFile = pickRcFile;
 window.rcFileSelected = rcFileSelected;
 window.clearRcFile = clearRcFile;
+window.cleanupRealChat = cleanupRealChat;

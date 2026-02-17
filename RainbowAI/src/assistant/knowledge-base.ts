@@ -173,10 +173,13 @@ export function listMemoryDays(): string[] {
 export function reloadKBFile(filename: string): void {
   // Handle memory/ subdirectory paths
   if (filename.startsWith('memory/') || filename.startsWith('memory\\')) {
+    const normalizedName = filename.replace(/\\/g, '/');
     const filePath = join(RAINBOW_KB_DIR, filename);
     if (existsSync(filePath)) {
-      kbCache.set(filename.replace(/\\/g, '/'), readFileSync(filePath, 'utf-8'));
+      kbCache.set(normalizedName, readFileSync(filePath, 'utf-8'));
       console.log(`[KnowledgeBase] Reloaded ${filename}`);
+      // Memory files are part of the cached base prompt — invalidate
+      invalidateSystemPromptCache();
     }
     return;
   }
@@ -184,6 +187,12 @@ export function reloadKBFile(filename: string): void {
   if (existsSync(filePath)) {
     kbCache.set(filename, readFileSync(filePath, 'utf-8'));
     console.log(`[KnowledgeBase] Reloaded ${filename}`);
+    // Core files (AGENTS.md, soul.md) and durable memory are part of the cached base prompt.
+    // Invalidate for any KB file change since topic files could also affect future caching.
+    const CORE_FILES = getCoreFiles();
+    if (CORE_FILES.includes(filename) || filename === DURABLE_MEMORY_FILE) {
+      invalidateSystemPromptCache();
+    }
   }
 }
 
@@ -208,6 +217,9 @@ export function reloadAllKB(): void {
       }
     }
   }
+
+  // Invalidate system prompt cache — KB content has changed
+  invalidateSystemPromptCache();
 
   console.log(`[KnowledgeBase] Loaded ${kbCache.size} KB files from .rainbow-kb/`);
 }
@@ -252,8 +264,14 @@ export function initKnowledgeBase(): void {
   // Also reload when admin triggers a knowledgeBase reload event
   configStore.on('reload', (domain: string) => {
     if (domain === 'knowledgeBase' || domain === 'all') {
-      reloadAllKB();
+      reloadAllKB(); // This also invalidates the system prompt cache
       console.log('[KnowledgeBase] Reloaded all KB files (config event)');
+    }
+    // Routing and settings changes affect the cached base prompt
+    // (routing rules, intent lists, and persona are baked into it)
+    if (domain === 'routing' || domain === 'settings') {
+      invalidateSystemPromptCache();
+      console.log(`[KnowledgeBase] System prompt cache invalidated (${domain} config changed)`);
     }
   });
 }
@@ -272,9 +290,63 @@ export function setKnowledgeMarkdown(content: string): void {
   console.warn('[KnowledgeBase] setKnowledgeMarkdown called — this is a legacy no-op in progressive mode');
 }
 
-// ─── System Prompt Builder ──────────────────────────────────────────
+// ─── System Prompt Cache ─────────────────────────────────────────────
+//
+// The system prompt has two parts:
+//   1. BASE PROMPT (semi-static) — persona, routing rules, core KB, memory, constraints.
+//      Changes only when config reloads, KB files change, or a new day starts.
+//   2. TOPIC CONTENT (per-message) — selected topic files based on guessTopicFiles().
+//      Varies with every incoming message.
+//
+// We cache the base prompt and only recompute it when the cache is invalidated.
+// The per-message topic content is appended fresh each time.
 
-export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []): string {
+interface SystemPromptCache {
+  /** The cached base prompt string (everything except topic content) */
+  basePrompt: string;
+  /** The basePersona value used to build this cache */
+  persona: string;
+  /** The date (YYYY-MM-DD) when this cache was built (memory changes daily) */
+  dateBuilt: string;
+  /** Version counter — incremented on any invalidating change */
+  version: number;
+}
+
+/** Current cache version — incremented by invalidateSystemPromptCache() */
+let systemPromptCacheVersion = 0;
+
+/** The cached base prompt, or null if not yet built / invalidated */
+let systemPromptCache: SystemPromptCache | null = null;
+
+/**
+ * Invalidate the system prompt cache.
+ * Called when KB files, routing, settings, or other config changes.
+ */
+export function invalidateSystemPromptCache(): void {
+  systemPromptCacheVersion++;
+  systemPromptCache = null;
+  console.log(`[KnowledgeBase] System prompt cache invalidated (v${systemPromptCacheVersion})`);
+}
+
+/**
+ * Build (or return cached) base prompt — everything except per-message topic content.
+ * The base prompt includes: persona, routing rules, core KB, memory, constraints template.
+ */
+function getOrBuildBasePrompt(basePersona: string): string {
+  const today = getTodayDate();
+
+  // Return cached version if still valid
+  if (
+    systemPromptCache &&
+    systemPromptCache.version === systemPromptCacheVersion &&
+    systemPromptCache.persona === basePersona &&
+    systemPromptCache.dateBuilt === today
+  ) {
+    return systemPromptCache.basePrompt;
+  }
+
+  // --- Rebuild the base prompt ---
+
   // Build intent list + routing rules from config
   const routing = configStore.getRouting();
   const intents = Object.keys(routing);
@@ -285,7 +357,7 @@ export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []
 
   const routingLines = intents.map(i => `  - "${i}" → ${routing[i].action}`).join('\n');
 
-  // Assemble KB content: core files always, topic files per message
+  // Assemble KB content: core files always loaded
   const CORE_FILES = getCoreFiles();
   const missingCoreFiles = CORE_FILES.filter(f => !kbCache.get(f));
   if (missingCoreFiles.length > 0) {
@@ -310,7 +382,6 @@ export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []
   if (durableMemory) {
     memoryParts.push(durableMemory);
   }
-  const today = getTodayDate();
   const yesterday = getYesterdayDate();
   const todayLog = kbCache.get(`memory/${today}.md`);
   if (todayLog) {
@@ -331,17 +402,7 @@ ${memoryParts.join('\n\n')}
 </operational_memory>`
     : '';
 
-  const missingTopicFiles = topicFiles.filter(f => !kbCache.get(f));
-  if (missingTopicFiles.length > 0) {
-    console.warn(`[KnowledgeBase] Missing topic files: ${missingTopicFiles.join(', ')} — responses may lack detail`);
-  }
-
-  const topicContent = topicFiles
-    .map(f => kbCache.get(f) || '')
-    .filter(Boolean)
-    .join('\n\n---\n\n');
-
-  return `${basePersona}
+  const basePrompt = `${basePersona}
 
 INTENT CLASSIFICATION:
 You must classify the guest's message into exactly ONE of these intents:
@@ -396,6 +457,39 @@ CONFIDENCE SCORING:
 Return JSON: { "intent": "<one of the defined intents>", "action": "<routing action>", "response": "<your response or empty for static_reply>", "confidence": 0.0-1.0 }
 
 <knowledge_base>
-${coreContent}${memoryContent}${topicContent ? `\n\n---\n\n${topicContent}` : ''}
+${coreContent}${memoryContent}`;
+
+  // Store in cache
+  systemPromptCache = {
+    basePrompt,
+    persona: basePersona,
+    dateBuilt: today,
+    version: systemPromptCacheVersion,
+  };
+
+  console.log(`[KnowledgeBase] System prompt base cached (v${systemPromptCacheVersion}, ${basePrompt.length} chars)`);
+
+  return basePrompt;
+}
+
+// ─── System Prompt Builder ──────────────────────────────────────────
+
+export function buildSystemPrompt(basePersona: string, topicFiles: string[] = []): string {
+  // Get the cached base prompt (persona + routing + core KB + memory + constraints)
+  const basePrompt = getOrBuildBasePrompt(basePersona);
+
+  // Per-message: append only the topic-specific content
+  const missingTopicFiles = topicFiles.filter(f => !kbCache.get(f));
+  if (missingTopicFiles.length > 0) {
+    console.warn(`[KnowledgeBase] Missing topic files: ${missingTopicFiles.join(', ')} — responses may lack detail`);
+  }
+
+  const topicContent = topicFiles
+    .map(f => kbCache.get(f) || '')
+    .filter(Boolean)
+    .join('\n\n---\n\n');
+
+  // Assemble final prompt: cached base + per-message topics + closing tag
+  return `${basePrompt}${topicContent ? `\n\n---\n\n${topicContent}` : ''}
 </knowledge_base>`;
 }

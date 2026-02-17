@@ -303,6 +303,9 @@ function addActivityEvent(event) {
  * Initialize the SSE stream for real-time activity
  */
 export function initActivityStream() {
+  // Ensure the relative-timestamp updater is running (US-160)
+  startActivityTimestampUpdater();
+
   // Don't reconnect if already connected
   if (_activityEventSource && _activityEventSource.readyState !== EventSource.CLOSED) {
     return;
@@ -369,10 +372,35 @@ export function disconnectActivityStream() {
   }
 }
 
-// Update relative timestamps every 30s
-setInterval(() => {
-  document.querySelectorAll('.activity-timestamp').forEach(el => {
-    const ts = el.getAttribute('data-ts');
-    if (ts) el.textContent = formatRelativeTime(ts);
-  });
-}, 30000);
+// Update relative timestamps every 30s (US-160: tracked for cleanup)
+let _activityTimestampInterval = null;
+
+export function startActivityTimestampUpdater() {
+  stopActivityTimestampUpdater();
+  _activityTimestampInterval = setInterval(() => {
+    document.querySelectorAll('.activity-timestamp').forEach(el => {
+      const ts = el.getAttribute('data-ts');
+      if (ts) el.textContent = formatRelativeTime(ts);
+    });
+  }, 30000);
+}
+
+export function stopActivityTimestampUpdater() {
+  if (_activityTimestampInterval) {
+    clearInterval(_activityTimestampInterval);
+    _activityTimestampInterval = null;
+  }
+}
+
+/**
+ * Cleanup all dashboard-helpers intervals and connections (US-160)
+ * Called when navigating away from the dashboard tab
+ */
+export function cleanupDashboardHelpers() {
+  disconnectActivityStream();
+  stopActivityTimestampUpdater();
+  console.log('[DashboardHelpers] Cleanup: closed SSE stream and cleared timestamp updater');
+}
+
+// Start the timestamp updater on initial module load (backward compatibility)
+startActivityTimestampUpdater();

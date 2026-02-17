@@ -16,8 +16,8 @@ const app = express();
 app.use(compression());
 // Increase body size limits to accommodate small images embedded as Base64 in JSON
 // Staff check-in may include a profile photo string. Keep reasonable cap.
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: false, limit: '5mb' }));
 
 // CORS configuration - allow local Rainbow AI to connect to Vercel deployment
 const corsOptions = {

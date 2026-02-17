@@ -198,6 +198,21 @@ export async function loadLiveChat() {
   }
 }
 
+// ─── Cleanup (US-160) ─────────────────────────────────────────────
+// Called when navigating away from the live-chat tab to stop background polling
+
+export function cleanupLiveChat() {
+  if ($.autoRefresh) {
+    clearInterval($.autoRefresh);
+    $.autoRefresh = null;
+  }
+  if ($.waStatusPoll) {
+    clearInterval($.waStatusPoll);
+    $.waStatusPoll = null;
+  }
+  console.log('[LiveChat] Cleanup: cleared all intervals');
+}
+
 /** Strip @s.whatsapp.net / @g.us from phone for display only. */
 export function formatPhoneForDisplay(phone) {
   if (!phone || typeof phone !== 'string') return phone || '';

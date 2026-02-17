@@ -115,7 +115,13 @@
   - Switching tabs does not leave orphan intervals
 
 ## Completed
-(Items will be moved here as they are completed)
+- [x] **US-149** Add gzip compression middleware — commit 079b24d
+- [x] **US-150** Pre-compile regexes — commit 079b24d
+- [x] **US-151** Add composite database indexes — commit 079b24d
+- [x] **US-152** Enable HTTP keep-alive — commit 079b24d
+- [x] **US-153** Cache dashboard HTML in memory — commit 079b24d
+- [x] **US-154** Parallelize dashboard stat API calls — commit 079b24d
+- [x] **US-155** Skip semantic matcher when fuzzy >= 0.85 — commit 079b24d
 
 ## Notes
 - Always read target files before editing

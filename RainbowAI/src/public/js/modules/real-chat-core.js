@@ -9,6 +9,9 @@ import { refreshActiveChat } from './real-chat-messaging.js';
 const api = window.api;
 const linkifyUrls = window.linkifyUrls || function(h) { return h; };
 
+// ─── SSE fallback polling interval (US-159) ─────────────────────
+const SSE_FALLBACK_POLL_MS = 15000; // 15s polling when SSE is disconnected
+
 // ─── Auto-refresh UI helpers ─────────────────────────────────────
 
 function updateRefreshTimestamp() {
@@ -107,6 +110,126 @@ async function pollRcConnectionStatus() {
   } catch (e) { }
 }
 
+// ─── Shared refresh logic (used by SSE handler and polling fallback) ──
+
+async function doConversationRefresh() {
+  // Skip if tab is hidden
+  if (document.getElementById('live-simulation-content')?.classList.contains('hidden')) {
+    return;
+  }
+
+  const indicator = document.getElementById('rc-refresh-indicator');
+  if (indicator) indicator.classList.add('refreshing');
+
+  try {
+    const fresh = await api('/conversations');
+    $.conversations = fresh;
+    buildInstanceFilter();
+    renderConversationList($.conversations);
+
+    if ($.activePhone) {
+      const oldCount = $.lastLog?.messages.length || 0;
+      await refreshActiveChat();
+      const newCount = $.lastLog?.messages.length || 0;
+      if (newCount > oldCount) {
+        flashNewMessages(newCount - oldCount);
+      }
+    }
+
+    updateRefreshTimestamp();
+  } catch (e) {
+    console.error('[RealChat] Refresh error:', e);
+  } finally {
+    if (indicator) indicator.classList.remove('refreshing');
+  }
+}
+
+// ─── SSE Connection (US-159) ─────────────────────────────────────
+// Connects to /api/rainbow/conversations/events for real-time push
+// notifications. Falls back to 15s polling if SSE fails.
+
+function connectConversationSSE() {
+  // Tear down any existing connection or polling
+  disconnectConversationSSE();
+
+  const baseUrl = window.location.origin;
+  const sseUrl = baseUrl + '/api/rainbow/conversations/events';
+
+  try {
+    $.eventSource = new EventSource(sseUrl);
+    console.log('[RealChat] SSE connecting to', sseUrl);
+
+    $.eventSource.addEventListener('connected', function() {
+      $.sseConnected = true;
+      console.log('[RealChat] SSE connected — real-time updates active');
+      // Clear fallback polling if it was running
+      if ($.autoRefresh) {
+        clearInterval($.autoRefresh);
+        $.autoRefresh = null;
+      }
+    });
+
+    $.eventSource.addEventListener('conversation_update', function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        console.log('[RealChat] SSE conversation_update:', data.type, data.phone);
+      } catch (err) {
+        console.warn('[RealChat] SSE parse error:', err);
+      }
+      // Trigger a full refresh (fetches data via existing REST API)
+      doConversationRefresh();
+    });
+
+    $.eventSource.onerror = function() {
+      $.sseConnected = false;
+      console.warn('[RealChat] SSE error — falling back to 15s polling');
+      // EventSource will auto-reconnect, but start fallback polling meanwhile
+      startFallbackPolling();
+    };
+
+    $.eventSource.onopen = function() {
+      $.sseConnected = true;
+      // SSE reconnected — stop fallback polling
+      if ($.autoRefresh) {
+        clearInterval($.autoRefresh);
+        $.autoRefresh = null;
+        console.log('[RealChat] SSE reconnected — stopped fallback polling');
+      }
+    };
+  } catch (err) {
+    console.error('[RealChat] SSE init failed, using 15s polling:', err);
+    startFallbackPolling();
+  }
+}
+
+function startFallbackPolling() {
+  // Don't start if already polling
+  if ($.autoRefresh) return;
+
+  $.autoRefresh = setInterval(function() {
+    if (document.getElementById('live-simulation-content')?.classList.contains('hidden')) {
+      clearInterval($.autoRefresh);
+      $.autoRefresh = null;
+      return;
+    }
+    doConversationRefresh();
+  }, SSE_FALLBACK_POLL_MS);
+
+  console.log('[RealChat] Fallback polling started (' + SSE_FALLBACK_POLL_MS / 1000 + 's interval)');
+}
+
+function disconnectConversationSSE() {
+  if ($.eventSource) {
+    $.eventSource.close();
+    $.eventSource = null;
+    $.sseConnected = false;
+  }
+  if ($.autoRefresh) {
+    clearInterval($.autoRefresh);
+    $.autoRefresh = null;
+  }
+}
+
 // ─── Main Load Function ──────────────────────────────────────────
 
 export async function loadRealChat() {
@@ -161,38 +284,8 @@ export async function loadRealChat() {
       openConversation($.conversations[0].phone);
     }
 
-    clearInterval($.autoRefresh);
-    $.autoRefresh = setInterval(async () => {
-      if (document.getElementById('live-simulation-content')?.classList.contains('hidden')) {
-        clearInterval($.autoRefresh);
-        return;
-      }
-
-      const indicator = document.getElementById('rc-refresh-indicator');
-      if (indicator) indicator.classList.add('refreshing');
-
-      try {
-        const fresh = await api('/conversations');
-        $.conversations = fresh;
-        buildInstanceFilter();
-        renderConversationList($.conversations);
-
-        if ($.activePhone) {
-          const oldCount = $.lastLog?.messages.length || 0;
-          await refreshActiveChat();
-          const newCount = $.lastLog?.messages.length || 0;
-          if (newCount > oldCount) {
-            flashNewMessages(newCount - oldCount);
-          }
-        }
-
-        updateRefreshTimestamp();
-      } catch (e) {
-        console.error('[RealChat] Refresh error:', e);
-      } finally {
-        if (indicator) indicator.classList.remove('refreshing');
-      }
-    }, 3000);
+    // US-159: Connect SSE for real-time updates (replaces 3s polling)
+    connectConversationSSE();
 
     clearInterval($.waStatusPoll);
     $.waStatusPoll = setInterval(pollRcConnectionStatus, 15000);
@@ -507,6 +600,23 @@ function formatMessage(content) {
   }
 
   return linkifyUrls(escapeHtml(content)).replace(/\n/g, '<br>');
+}
+
+// ─── Cleanup (US-160) ─────────────────────────────────────────────
+// Called when navigating away from the real-chat tab to stop background polling
+
+export function cleanup() {
+  // US-159: Disconnect SSE and stop fallback polling
+  disconnectConversationSSE();
+  if ($.waStatusPoll) {
+    clearInterval($.waStatusPoll);
+    $.waStatusPoll = null;
+  }
+  if (window._rcTimestampUpdater) {
+    clearInterval(window._rcTimestampUpdater);
+    window._rcTimestampUpdater = null;
+  }
+  console.log('[RealChat] Cleanup: closed SSE + cleared all intervals');
 }
 
 export async function deleteActiveChat() {

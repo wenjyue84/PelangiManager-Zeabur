@@ -15,7 +15,8 @@
 
 import { $ } from './live-chat-state.js';
 import {
-  loadLiveChat, filterConversations, openConversation, refreshChat, resetDateFilter, debouncedSearch
+  loadLiveChat, filterConversations, openConversation, refreshChat, resetDateFilter, debouncedSearch,
+  cleanupLiveChat
 } from './live-chat-core.js';
 import {
   deleteChat, sendReply, toggleAttachMenu, pickFile, fileSelected, clearFile,
@@ -44,6 +45,7 @@ import {
 // ─── Window exports for template onclick handlers ────────────────
 
 window.loadLiveChat = loadLiveChat;
+window.cleanupLiveChat = cleanupLiveChat;
 window.lcFilterConversations = filterConversations;
 window.lcDebouncedSearch = debouncedSearch;
 window.lcOpenConversation = openConversation;

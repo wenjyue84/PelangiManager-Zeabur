@@ -16,7 +16,11 @@ export const $ = {
   selectedFile: null,
   lastRefreshAt: Date.now(),
   searchOpen: false,
-  addExampleText: ''
+  addExampleText: '',
+  /** @type {EventSource|null} SSE connection for real-time conversation updates (US-159) */
+  eventSource: null,
+  /** @type {boolean} Whether SSE is connected (false = using polling fallback) */
+  sseConnected: false
 };
 
 // Translation helper (shared module with live-chat)

@@ -357,15 +357,10 @@
   <!-- Tab System (needs functions above to be defined) -->
   <script src="/public/js/core/tabs.js"></script>
 
-  <!-- Module Registry (imports all ES modules → exposes to global scope) -->
+  <!-- Module Registry (bootstraps lazy-loader; tab modules loaded on demand) -->
   <script type="module" src="/public/js/core/module-registry.js"></script>
-  <!-- ES6 Module Scripts (deferred - run after all regular scripts) -->
-  <script type="module" src="/public/js/modules/testing.js"></script>
-  <script type="module" src="/public/js/modules/real-chat.js"></script>
-  <script type="module" src="/public/js/modules/live-chat.js"></script>
-  <script type="module" src="/public/js/modules/kb-editor.js"></script>
-  <script type="module" src="/public/js/modules/settings.js"></script>
-  <script type="module" src="/public/js/main.js"></script>
+  <!-- US-158: Tab-specific ES6 modules are now lazy-loaded via module-chunks/*.js
+       when the user navigates to each tab. See lazy-loader.js for the mapping. -->
 
   <!-- Diagnostic Modal -->
   <div id="diagnostic-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-40">

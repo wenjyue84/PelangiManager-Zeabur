@@ -9,6 +9,7 @@ process.on('unhandledRejection', (reason) => {
 import express from 'express';
 import compression from 'compression';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { readFileSync, watchFile } from 'fs';
 import { join, dirname } from 'path';
@@ -70,15 +71,28 @@ app.set('etag', false);
 // Middleware
 app.use(compression());
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Allow up to 10MB for long messages/conversations
+app.use(express.json({ limit: '2mb' })); // Allow up to 2MB for long messages/conversations
 
 // Error handler for payload too large
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err.type === 'entity.too.large') {
-    res.status(413).json({ error: 'Message payload too large. Maximum size is 10MB.' });
+    res.status(413).json({ error: 'Message payload too large. Maximum size is 2MB.' });
     return;
   }
   next(err);
+});
+
+// Rate limiters
+const mcpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'Too many MCP requests, please try again later' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { error: 'Too many API requests, please try again later' }
 });
 
 // Serve static assets for Rainbow dashboard modules with no-cache headers for development
@@ -249,7 +263,7 @@ app.get('/admin/whatsapp-qr', async (req, res) => {
 });
 
 // Rainbow Admin API
-app.use('/api/rainbow', adminRoutes);
+app.use('/api/rainbow', apiLimiter, adminRoutes);
 
 // Dashboard tab routes (SPA client-side routing)
 const dashboardTabs = [
@@ -280,7 +294,7 @@ app.get(`/:tab(${dashboardTabs.join('|')})`, (_req, res) => {
 });
 
 // MCP protocol endpoint
-app.post('/mcp', createMCPHandler());
+app.post('/mcp', mcpLimiter, createMCPHandler());
 
 // Start server - listen on 0.0.0.0 for Docker containers
 const server = app.listen(PORT, '0.0.0.0', () => {

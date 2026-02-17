@@ -6,6 +6,9 @@
 // Track loaded templates to avoid reloading
 const loadedTemplates = new Set();
 
+// Track the currently active tab for cleanup (US-160)
+let _currentTab = null;
+
 /**
  * Map old tab names to new ones for backward compatibility
  */
@@ -103,6 +106,46 @@ async function loadTabTemplate(tabSection) {
 }
 
 /**
+ * US-160: Clean up intervals and event listeners from the previous tab
+ * before switching to a new one. Each tab module exposes a cleanup function
+ * that clears its setInterval/setTimeout/SSE handlers.
+ *
+ * @param {string|null} previousTab - The tab being deactivated
+ * @param {string} nextTab - The tab being activated
+ */
+function cleanupCurrentTab(previousTab, nextTab) {
+  if (!previousTab || previousTab === nextTab) return;
+
+  switch (previousTab) {
+    case 'dashboard':
+      // Dashboard has: status poll timer, SSE activity stream, activity timestamp updater
+      if (typeof window.stopStatusPolling === 'function') window.stopStatusPolling();
+      if (typeof window.cleanupDashboardHelpers === 'function') window.cleanupDashboardHelpers();
+      break;
+
+    case 'live-chat':
+      // Live Chat has: autoRefresh (10s), waStatusPoll (15s)
+      if (typeof window.cleanupLiveChat === 'function') window.cleanupLiveChat();
+      break;
+
+    case 'chat-simulator':
+      // Chat Simulator contains Live Simulation sub-tab with: autoRefresh (3s), waStatusPoll (15s), timestampUpdater (1s)
+      if (typeof window.cleanupRealChat === 'function') window.cleanupRealChat();
+      break;
+
+    case 'performance':
+      // Performance has: feedbackRefreshInterval (30s), intentAccuracyRefreshInterval (30s)
+      if (typeof window.cleanupPerformance === 'function') window.cleanupPerformance();
+      break;
+
+    default:
+      break;
+  }
+
+  console.log(`[Tabs] Cleanup: ${previousTab} -> ${nextTab}`);
+}
+
+/**
  * Load tab and call its loader function
  * @param {string} tabName - Tab name (e.g., 'status', 'intents')
  * @param {string|null} subTab - Optional sub-tab ID
@@ -111,10 +154,9 @@ async function loadTab(tabName, subTab = null) {
   // Normalize tab name
   const effectiveTabName = tabNameMapping[tabName] || tabName;
 
-  // Stop dashboard status polling when navigating away from dashboard
-  if (typeof window.stopStatusPolling === 'function') {
-    window.stopStatusPolling();
-  }
+  // ── US-160: Clean up intervals/listeners from the previous tab ──
+  cleanupCurrentTab(_currentTab, effectiveTabName);
+  _currentTab = effectiveTabName;
 
   // Hide Prisma Bot FAB when navigating away from responses tab
   if (typeof window.hidePrismaBotFab === 'function') {
@@ -153,6 +195,17 @@ async function loadTab(tabName, subTab = null) {
 
   // Load template if needed
   await loadTabTemplate(tabSection);
+
+  // ── US-158: Lazy-load tab modules on demand ──────────────────
+  // Ensures the tab's JS modules are imported before calling the loader.
+  // window._ensureTabModules is provided by lazy-loader.js (loaded via module-registry.js).
+  if (typeof window._ensureTabModules === 'function') {
+    try {
+      await window._ensureTabModules(effectiveTabName);
+    } catch (err) {
+      console.error(`[Tabs] Failed to lazy-load modules for ${effectiveTabName}:`, err);
+    }
+  }
 
   // Call tab-specific loader function if exists
   const loaderFunctionName = 'load' + effectiveTabName.split('-').map(word =>
@@ -194,9 +247,39 @@ async function loadTab(tabName, subTab = null) {
 }
 
 /**
+ * Wait for the lazy-loader to be bootstrapped by module-registry.js.
+ * Because module-registry.js is a `type="module"` script, it runs after
+ * DOMContentLoaded.  This helper polls briefly (max ~500ms) so the
+ * initial loadTab() can use lazy loading.  If the loader never appears
+ * (e.g. script error), we proceed anyway — the tab will just show the
+ * template without its JS module.
+ *
+ * @returns {Promise<void>}
+ */
+function waitForLazyLoader() {
+  if (typeof window._ensureTabModules === 'function') {
+    return Promise.resolve();
+  }
+  return new Promise(resolve => {
+    let attempts = 0;
+    const maxAttempts = 50; // 50 * 10ms = 500ms max wait
+    const interval = setInterval(() => {
+      attempts++;
+      if (typeof window._ensureTabModules === 'function' || attempts >= maxAttempts) {
+        clearInterval(interval);
+        if (attempts >= maxAttempts) {
+          console.warn('[Tabs] Lazy loader not available after 500ms, proceeding without it');
+        }
+        resolve();
+      }
+    }, 10);
+  });
+}
+
+/**
  * Initialize tabs on page load
  */
-function initTabs() {
+async function initTabs() {
   // Convert path-based URLs (e.g., /understanding) to hash-based URLs (/#understanding)
   const path = window.location.pathname || '/';
   if (path !== '/') {
@@ -206,6 +289,9 @@ function initTabs() {
     const hash = existingHash || '#' + pathTab;
     window.history.replaceState(null, '', window.location.origin + '/' + hash);
   }
+
+  // US-158: Wait for lazy-loader bootstrap before first loadTab
+  await waitForLazyLoader();
 
   // Initial load
   const { main, sub } = getTabInfoFromUrl();
@@ -229,7 +315,7 @@ function initTabs() {
     });
   });
 
-  console.log('[Tabs] Initialized with sub-tab support');
+  console.log('[Tabs] Initialized with lazy-loading support');
 }
 
 // Initialize on DOM ready
