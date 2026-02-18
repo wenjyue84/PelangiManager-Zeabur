@@ -1,642 +1,655 @@
-﻿{
-    "productName":  "Rainbow AI Testing, Bug Fixes \u0026 Enhancements Phase 5",
-    "branchName":  "ralph/live-chat-enhancements",
-    "overview":  "Phase 5: 18 user stories across 5 phases Ã¢â‚¬â€ fix broken features (test history, image attachments, tags/unit filters, contact details, AI notes), improve UI (KB tester, AI model consolidation, staff name menu), strengthen testing infrastructure (check-in suite, multi-turn workflow tests, programmatic runner), add capsule conflict resolution workflow, and update documentation. All changes within RainbowAI/ module only. Cross-cutting: regression tests for every change, agent-browser verification for UI changes.",
-    "goals":  [
-                  "Fix all 8 broken UI features (test history, pipeline test, image attachments, scenario count, button overlap, tags/unit filters, Set button, AI notes)",
-                  "Consolidate AI model settings into one location with OCR model support",
-                  "Build check-in process test suite with 10+ edge cases and multi-turn workflow tests",
-                  "Add capsule conflict detection and LLM-powered resolution workflow with operator approval",
-                  "Ensure zero regressions with comprehensive regression tests for every change"
-              ],
-    "userStories":  [
-                        {
-                            "id":  "US-001",
-                            "title":  "Fix Quick Test History showing nothing",
-                            "priority":  1,
-                            "description":  "As a tester, I want the Test History in #chat-simulator/quick-test to display previous test results so I can track my testing progress. History is managed by autotest-history.js module (localStorage keys: rainbow-autotest-history, rainbow-imported-reports). The modular refactor likely broke the save-after-test or render logic.",
-                            "acceptanceCriteria":  [
-                                                       "Quick Test History modal shows previous test results when opened",
-                                                       "Test results persisted to localStorage keys \u0027rainbow-autotest-history\u0027 and \u0027rainbow-imported-reports\u0027",
-                                                       "Each test run saved with: date, pass/fail/warning counts, pass rate",
-                                                       "History survives page refresh; auto-purge keeps max 20 entries",
-                                                       "Import mechanism loads reports from /api/rainbow/autotest/reports endpoint",
-                                                       "Regression test verifies history persistence across page loads",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "History module: RainbowAI/src/public/js/modules/autotest-history.js (state: autotestHistory array, importedReports array)",
-                                                   "UI rendering: RainbowAI/src/public/js/modules/autotest-ui.js (showAutotestHistory() renders list, loadHistoricalReport(id) restores)",
-                                                   "Also in: RainbowAI/src/public/js/modules/chat-send.js (line 17: QT_HISTORY_KEY, line 42: showQuickTestHistory())",
-                                                   "HTML: RainbowAI/src/public/templates/tabs/chat-simulator.html (line 241: button, line 287: modal)",
-                                                   "Auto-import: loadImportedReports() scans /api/rainbow/autotest/reports on page load",
-                                                   "Check if showAutotestHistory() in autotest-ui.js properly reads from autotest-history.js state"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "small",
-                            "passes":  true
-                        },
-                        {
-                            "id":  "US-002",
-                            "title":  "Fix 5 issues in message-pipeline.test.ts",
-                            "priority":  2,
-                            "description":  "As a developer, I want message-pipeline.test.ts to pass all assertions correctly. The file EXISTS at RainbowAI/src/assistant/__tests__/message-pipeline.test.ts but has 5 identified issues: (1) incomplete error handling test, (2) truncation logic mismatch, (3) missing mock return values, (4) no prompt injection coverage, (5) static mock values making tests non-representative.",
-                            "acceptanceCriteria":  [
-                                                       "message-pipeline.test.ts runs successfully via Vitest with all assertions passing",
-                                                       "Error handling test (line ~418) correctly tests whether processAndSend throws or catches",
-                                                       "Truncation test (line ~431) matches actual input-validator.ts behavior (verify if \u0027...\u0027 is appended)",
-                                                       "callAPI mock returns realistic response objects instead of empty objects",
-                                                       "Prompt injection sanitization test added (verify testing-preview.ts lines 36-71 logic)",
-                                                       "classifyAndRespond mock uses varied intents per scenario instead of always \u0027pricing\u0027",
-                                                       "Regression test verifies test runner execution works",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Test file: RainbowAI/src/assistant/__tests__/message-pipeline.test.ts (EXISTS Ã¢â‚¬â€ uses Vitest)",
-                                                   "Also exists: RainbowAI/src/assistant/__tests__/language-resolution.test.ts (unit tests for language detection)",
-                                                   "Issue 1 (line ~418): Test expects rejects.toThrow() but comment says caller catches Ã¢â‚¬â€ verify actual behavior",
-                                                   "Issue 2 (line ~431): Expects \u0027a\u0027.repeat(2000) + \u0027...\u0027 Ã¢â‚¬â€ check if input-validator.ts appends ellipsis or just truncates",
-                                                   "Issue 3: callAPI mock returns {} as any Ã¢â‚¬â€ should return { content, usage: { prompt_tokens, completion_tokens } }",
-                                                   "Issue 4 (line ~436): XSS test sends \u003cscript\u003e but expects .continue = true Ã¢â‚¬â€ need to verify sanitization in testing-preview.ts",
-                                                   "Issue 5: classifyAndRespond always returns \u0027pricing\u0027 Ã¢â‚¬â€ make mock return different intents based on input message",
-                                                   "Testing UI: RainbowAI/src/public/templates/tabs/testing.html + RainbowAI/src/public/js/modules/testing.js"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  true
-                        },
-                        {
-                            "id":  "US-003",
-                            "title":  "Fix image attachment \u0027not found\u0027 in Quick Replies",
-                            "priority":  3,
-                            "description":  "As a staff member, I want to attach images to quick replies in #responses/quick-replies without getting a \u0027not found\u0027 error so I can include visual content (maps, menus, room photos) in predefined responses.",
-                            "acceptanceCriteria":  [
-                                                       "Attaching an image in #responses/quick-replies works without \u0027not found\u0027 error",
-                                                       "Image uploads successfully to server storage directory",
-                                                       "Image preview displays in the quick reply editor after upload",
-                                                       "Saved image URL is valid and accessible via HTTP GET",
-                                                       "Regression test for image upload endpoint (POST and GET)",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Quick replies CRUD: RainbowAI/src/public/js/modules/responses-crud.js (line 412: fetch(\u0027/api/rainbow/knowledge/upload-image\u0027, { method: \u0027POST\u0027, body: formData }))",
-                                                   "ROOT CAUSE: Backend endpoint /api/rainbow/knowledge/upload-image returns 404 Ã¢â‚¬â€ not implemented",
-                                                   "Backend route file: RainbowAI/src/routes/admin/knowledge-base.ts Ã¢â‚¬â€ needs upload-image handler",
-                                                   "FIX: Add POST /knowledge/upload-image with multer middleware for multipart file upload",
-                                                   "Endpoint should: accept file, store to uploads/ directory, return { imageUrl: \u0027/path/to/image\u0027 }",
-                                                   "Also need: create RainbowAI/uploads/ directory, add Express static middleware for /uploads/ prefix"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-004",
-                            "title":  "Fix autotest suite scenario count (hardcoded 58, actual 121)",
-                            "priority":  4,
-                            "description":  "As a tester, I want the autotest suite count to dynamically reflect the actual number of test scenarios. Currently hardcoded as \u002758 scenarios across 6 guest journey phases\u0027 but actual count is 121 scenarios (100 single-turn + 21 workflow) across 9 categories.",
-                            "acceptanceCriteria":  [
-                                                       "Scenario count in #chat-simulator updates dynamically from AUTOTEST_SCENARIOS.length (currently 121)",
-                                                       "Count updates automatically when scenarios are added or removed",
-                                                       "Hardcoded \u002758 scenarios\u0027 replaced with dynamic span in all HTML templates",
-                                                       "Category count also updates dynamically (currently 9: general, pre-arrival, arrival, during-stay, checkout, post-checkout, workflow-complete, conversation, sentiment)",
-                                                       "Regression test verifies count matches actual scenario array length",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Hardcoded: RainbowAI/src/public/templates/tabs/chat-simulator.html (line 37: \u002758 scenarios across 6 guest journey phases\u0027)",
-                                                   "Also hardcoded: RainbowAI/src/public/templates/tabs/preview.html (line 15)",
-                                                   "Scenario sources: autotest-scenarios-single.js (100) + autotest-scenarios-workflow.js (21) = 121 total",
-                                                   "Aggregator: RainbowAI/src/public/js/data/autotest-scenarios.js (combines SINGLE_TURN_SCENARIOS + WORKFLOW_SCENARIOS)",
-                                                   "Dynamic counting exists: RainbowAI/src/public/js/modules/autotest-ui.js (lines 353-355) but HTML overrides it",
-                                                   "Fix: Replace hardcoded text with \u003cspan id=\u0027scenario-count\u0027\u003e--\u003c/span\u003e and \u003cspan id=\u0027phase-count\u0027\u003e--\u003c/span\u003e, populate on load"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "small",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-005",
-                            "title":  "Fix button overlap (delete/fullscreen)",
-                            "priority":  5,
-                            "description":  "As a staff member, I want all buttons in the dashboard to be properly positioned without overlapping so I can click them reliably. Delete and fullscreen buttons currently overlap in some panels.",
-                            "acceptanceCriteria":  [
-                                                       "Delete and fullscreen buttons do not overlap in any view",
-                                                       "All action buttons have minimum 8px gap between them",
-                                                       "Buttons are clickable without triggering adjacent buttons",
-                                                       "Fix applies across all tabs where overlap occurs (test results, KB editor, etc.)",
-                                                       "Regression test for button layout spacing",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Likely in autotest result cards or KB editor panels",
-                                                   "Check CSS: RainbowAI/src/public/css/rainbow-livechat-core.css",
-                                                   "Check CSS: RainbowAI/src/public/css/rainbow-livechat-ui.css",
-                                                   "May need gap, margin, or z-index fixes on absolute-positioned button groups",
-                                                   "Use agent-browser screenshots to identify exact overlapping elements"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "small",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-006",
-                            "title":  "Fix Tags and Unit filter buttons in Live Chat",
-                            "priority":  6,
-                            "description":  "As a staff member, I want the Tags and Unit filter buttons in #live-chat left pane to work Ã¢â‚¬â€ clicking Unit should show all existing units, clicking Tags should show all existing tags, and selecting one should filter conversations.",
-                            "acceptanceCriteria":  [
-                                                       "Clicking \u0027Unit\u0027 button shows dropdown of all existing units from capsule cache",
-                                                       "Clicking \u0027Tags\u0027 button shows dropdown of all existing tags from tags API",
-                                                       "Selecting a unit/tag filters conversation list correctly",
-                                                       "Dropdown closes when clicking outside",
-                                                       "Clear filter restores full conversation list",
-                                                       "Multiple tags can be selected simultaneously",
-                                                       "Regression test for filter dropdown rendering and filtering logic",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Filter code exists: RainbowAI/src/public/js/modules/live-chat-panels.js (lines 773-883: _renderTagFilterDropdown, _renderUnitFilterDropdown)",
-                                                   "Core filtering: RainbowAI/src/public/js/modules/live-chat-core.js (lines 433-449)",
-                                                   "HTML: RainbowAI/src/public/templates/tabs/live-chat.html (lines 111-125: tag/unit filter buttons with onclick handlers)",
-                                                   "Dropdown elements: lc-tag-filter-dropdown, lc-unit-filter-dropdown",
-                                                   "Button elements: lc-tag-filter-btn, lc-unit-filter-btn (onclick=lcToggleTagFilter/lcToggleUnitFilter)",
-                                                   "Tags API: GET /api/rainbow/tags (RainbowAI/src/routes/admin/tags.ts)",
-                                                   "Capsules API: GET /api/rainbow/capsules (RainbowAI/src/routes/admin/capsules.ts)",
-                                                   "Click outside: RainbowAI/src/public/js/modules/live-chat.js (lines 265-276)",
-                                                   "ROOT CAUSE: $.contactTagsMap and $.contactUnitsMap not populated Ã¢â‚¬â€ loadContactTagsMap() and loadContactUnitsMap() not called early enough in initialization",
-                                                   "FIX: Ensure loadContactTagsMap(), loadContactUnitsMap(), loadCapsuleUnits() are called in loadLiveChat() before displaying chat list"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-007",
-                            "title":  "Fix Payment Reminder \u0027Set\u0027 button (Failed Not found)",
-                            "priority":  7,
-                            "description":  "As a staff member, I want the \u0027Set\u0027 button for payment reminders in #live-chat contact details to work without showing \u0027Failed Not found\u0027 so I can schedule payment reminders for guests. The frontend calls POST /payment-reminders but this endpoint is missing from the backend routes.",
-                            "acceptanceCriteria":  [
-                                                       "Clicking \u0027Set\u0027 in payment reminder section saves without \u0027Failed Not found\u0027 error",
-                                                       "POST /api/rainbow/payment-reminders endpoint exists and accepts { phone, dueDate, autoSend }",
-                                                       "Payment reminder data persisted to storage (JSON file with atomic write)",
-                                                       "Auto-send checkbox controls whether chase message is sent automatically on due date",
-                                                       "Success toast shown after saving reminder",
-                                                       "Regression test for payment reminder endpoint (POST and GET)",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Frontend call: RainbowAI/src/public/js/modules/live-chat-panels.js (lines 1500-1526: lcSetPaymentReminder())",
-                                                   "Frontend calls: fetch(\u0027/api/rainbow/payment-reminders\u0027, { method: \u0027POST\u0027, body: { phone, dueDate, autoSend } })",
-                                                   "HTML: RainbowAI/src/public/templates/tabs/live-chat.html (lines 764-775: payment reminder form)",
-                                                   "Backend route file: RainbowAI/src/routes/admin/payment-reminders.ts Ã¢â‚¬â€ check if it exists and is mounted in index.ts",
-                                                   "Root cause: POST /payment-reminders endpoint is NOT implemented or NOT mounted in routes/admin/index.ts",
-                                                   "Fix: Create or mount payment-reminders.ts route with POST handler that stores reminder data",
-                                                   "Storage: Use atomic JSON write pattern (config-store.ts) to persist reminders"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-008",
-                            "title":  "Fix AI Notes truncation in Contact Details",
-                            "priority":  8,
-                            "description":  "As a staff member, I want \u0027Generate by AI\u0027 notes in #live-chat contact details to show complete output without truncation so I can see the full AI-generated summary of the conversation.",
-                            "acceptanceCriteria":  [
-                                                       "\u0027Generate by AI\u0027 produces complete, untruncated output",
-                                                       "Notes textarea auto-expands to show full generated text",
-                                                       "No max-height or overflow:hidden cutting off content in CSS",
-                                                       "AI provider max_tokens is sufficient for full summary (check \u003e= 500)",
-                                                       "Regression test for notes generation completeness",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "AI notes function: RainbowAI/src/public/js/modules/live-chat-panels.js (lines 1322-1353: generateAINotes())",
-                                                   "Frontend auto-expand code at lines 1341-1343: textarea.style.height = \u0027auto\u0027; textarea.style.height = textarea.scrollHeight + \u0027px\u0027;",
-                                                   "API: POST /conversations/:phone/generate-notes in RainbowAI/src/routes/admin/conversations.ts (line 668: chatWithFallback(messages, 600, 0.5) Ã¢â‚¬â€ 600 tokens is sufficient)",
-                                                   "ROOT CAUSE: CSS .lc-field-textarea has max-height: 120px which overrides the JS auto-expand",
-                                                   "CSS location: RainbowAI/src/public/css/rainbow-livechat-ui.css (line ~511: .lc-field-textarea { max-height: 120px })",
-                                                   "FIX: Remove or significantly increase max-height on .lc-field-textarea, or add specific override for notes textarea"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "small",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-009",
-                            "title":  "Build KB Accuracy Tester at top of Knowledge Base page",
-                            "priority":  9,
-                            "description":  "As a staff member, I want a KB Accuracy Tester at the top of #responses/knowledge-base so I can test how well the KB retrieves relevant content for guest questions. Layout should be similar to #chat-simulator/quick-test. NOTE: This tester does NOT exist yet Ã¢â‚¬â€ the Understanding tab has an intent classification test console, but there is no KB retrieval accuracy tester. It must be built from scratch.",
-                            "acceptanceCriteria":  [
-                                                       "New KB Accuracy Tester section built at the top of Knowledge Base page",
-                                                       "Input field to type a guest question + Test button",
-                                                       "Results show: which KB files were loaded, relevance score, AI response using KB content",
-                                                       "Layout similar to quick-test: input + results above KB file management content",
-                                                       "Existing KB management content (file list, editor) below the tester",
-                                                       "No functionality regression in KB file editing",
-                                                       "Regression test for KB tester endpoint and UI",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "KB Accuracy Tester does NOT exist yet Ã¢â‚¬â€ must be built from scratch",
-                                                   "KB template: RainbowAI/src/public/templates/tabs/responses.html (Knowledge Base sub-tab)",
-                                                   "KB modules: RainbowAI/src/public/js/modules/knowledge.js and kb-editor.js",
-                                                   "KB route: RainbowAI/src/routes/admin/knowledge-base.ts",
-                                                   "New endpoint needed: POST /api/rainbow/knowledge-base/test Ã¢â‚¬â€ accepts question, returns loaded KB files + AI response",
-                                                   "Backend: Use knowledge-base.ts guessTopicFiles() to find relevant files, then ai-client.ts to generate response",
-                                                   "The Understanding tab has an intent test console Ã¢â‚¬â€ use similar UI pattern but for KB retrieval"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "small",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-010",
-                            "title":  "Token usage details in KB Accuracy Tester",
-                            "priority":  10,
-                            "description":  "As a staff member, I want detailed token usage breakdown in the KB Accuracy Tester (built in US-009) so I can understand which parts consume the most tokens and optimize accordingly. This helps me figure out how to reduce token cost per question.",
-                            "acceptanceCriteria":  [
-                                                       "KB test results show: input tokens, output tokens, total tokens",
-                                                       "Show KB context tokens separately (how many tokens the loaded KB content consumes)",
-                                                       "Show system prompt token count",
-                                                       "Show user message token count",
-                                                       "Breakdown table: system_prompt + kb_context + user_message = total input tokens",
-                                                       "Show which KB files were loaded and their individual token sizes",
-                                                       "Regression test for token data in test response",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Depends on US-009 (KB Accuracy Tester must exist first)",
-                                                   "AI client: RainbowAI/src/assistant/ai-client.ts Ã¢â‚¬â€ returns usage data from provider response",
-                                                   "KB test endpoint: POST /api/rainbow/knowledge-base/test (created in US-009)",
-                                                   "Token estimation: Use tiktoken or simple char/4 approximation for pre-send estimates",
-                                                   "For each loaded KB file: calculate approximate token count before sending to AI",
-                                                   "Display format: collapsible details panel below test result showing token breakdown table",
-                                                   "Provider usage field varies: OpenAI-compatible returns { prompt_tokens, completion_tokens, total_tokens }"
-                                               ],
-                            "dependencies":  [
-                                                 "US-009"
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-011",
-                            "title":  "Consolidate AI Model Settings with OCR model",
-                            "priority":  11,
-                            "description":  "As a staff member, I want all AI model settings combined at #settings/ai-models (merging settings from #understanding/t4), with a read-only link in T4, and a new OCR LLM model setting (default: Google Gemini 2.5 Flash) for passport/IC image extraction.",
-                            "acceptanceCriteria":  [
-                                                       "All AI model settings from #settings/ai-models and #understanding/t4 combined at #settings/ai-models",
-                                                       "#understanding/t4 shows read-only display of current T4 model with \u0027Edit in Settings Ã¢â€ â€™ AI Models\u0027 link",
-                                                       "New OCR LLM model setting added with default Google Gemini 2.5 Flash",
-                                                       "OCR model selectable from existing provider dropdown list",
-                                                       "Settings saved to settings.json atomically via config-store",
-                                                       "Regression test for settings save/load with new OCR field",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Settings AI models module: RainbowAI/src/public/js/modules/settings-ai-models.js (546 lines Ã¢â‚¬â€ drag-drop reorder, speed testing)",
-                                                   "Settings template: RainbowAI/src/public/templates/tabs/settings.html",
-                                                   "Understanding template: RainbowAI/src/public/templates/tabs/understanding.html (756 lines Ã¢â‚¬â€ T4 section has LLM model selector, fallback list, max_tokens, temperature, system prompt)",
-                                                   "Understanding module: RainbowAI/src/public/js/modules/understanding.js",
-                                                   "Settings data: RainbowAI/src/assistant/data/settings.json (17 providers, routing_mode.classifyProvider is the T4 model config key)",
-                                                   "T4 model structure in understanding.html: select dropdown for LLM model, fallback model list, max_tokens slider, temperature slider, system prompt editor",
-                                                   "Add ocr_provider field to settings.json: { id: \u0027google-gemini-flash\u0027, model: \u0027gemini-2.5-flash\u0027 }",
-                                                   "Consolidation: Move T4 model selector + fallback + max_tokens + temperature from understanding.html into settings-ai-models.js",
-                                                   "Replace T4 section with read-only display showing current model name + link to #settings/ai-models"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-012",
-                            "title":  "Move Staff name to 3-dot vertical menu",
-                            "priority":  12,
-                            "description":  "As a staff member, I want the Staff name moved from the header area into the 3-dot vertical menu in #live-chat to reduce header clutter. The edit-to-change-name functionality should remain.",
-                            "acceptanceCriteria":  [
-                                                       "Staff name no longer shows directly in the header beside connection status",
-                                                       "Staff name accessible via the 3-dot menu (vertical ellipsis icon)",
-                                                       "3-dot menu shows \u0027Staff: [name]\u0027 with click-to-edit option",
-                                                       "Staff name persists after editing (saved to settings.json)",
-                                                       "Regression test for staff name save/load from menu",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Staff name in header: RainbowAI/src/public/js/modules/live-chat-core.js",
-                                                   "Settings: RainbowAI/src/assistant/data/settings.json (field: staffName, default: \u0027Staff\u0027)",
-                                                   "Live chat template: RainbowAI/src/public/templates/tabs/live-chat.html",
-                                                   "3-dot menu: existing vertical ellipsis icon in the header area near \u0027New chat\u0027 button",
-                                                   "Move the staff name element from header into the 3-dot dropdown menu items"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "small",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-013",
-                            "title":  "Add Check-in Process test suite",
-                            "priority":  13,
-                            "description":  "As a tester, I want a dedicated \u0027Check-in Process\u0027 test suite in the Run All dropdown that tests the complete check-in workflow with 10+ edge cases from easy to hard, including different languages and error scenarios.",
-                            "acceptanceCriteria":  [
-                                                       "New \u0027Check-in Process\u0027 option in Run All test suite dropdown",
-                                                       "10+ scenarios ordered easy to hard: basic inquiry, specific date, multiple guests, capsule preference, special requests, late arrival, early arrival, fully booked, wrong date format, multilingual (en/ms/zh)",
-                                                       "Tests run programmatically and report pass/fail per scenario",
-                                                       "Results include: matched intent, confidence, response quality assessment",
-                                                       "Failed tests logged with details for user story generation",
-                                                       "Regression test for test suite runner functionality",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Autotest scenarios: RainbowAI/src/public/js/modules/autotest-scenarios.js",
-                                                   "Autotest execution: RainbowAI/src/public/js/modules/autotest-execution.js",
-                                                   "Autotest UI: RainbowAI/src/public/js/modules/autotest-ui.js",
-                                                   "Add scenarios to autotest-scenarios.js with category \u0027check-in-process\u0027",
-                                                   "Run All dropdown: extend with new test suite filter option",
-                                                   "Check-in intent keywords: RainbowAI/src/assistant/data/intent-keywords.json"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-014",
-                            "title":  "Run All tests programmatically and generate user stories",
-                            "priority":  14,
-                            "description":  "As a developer, I want to run all autotest scenarios programmatically via API and get structured results so failed tests can be auto-converted to user stories for the next iteration.",
-                            "acceptanceCriteria":  [
-                                                       "API endpoint POST /api/rainbow/testing/run-all triggers all tests",
-                                                       "Returns JSON: { total, passed, failed, results: [{ scenario, expected, actual, confidence, error }] }",
-                                                       "API endpoint GET /api/rainbow/testing/generate-stories converts failures to prd.json format",
-                                                       "Generated stories include: title from failure, acceptance criteria from expected behavior",
-                                                       "Can filter by test suite: ?suite=check-in-process or ?suite=workflow",
-                                                       "Regression test for programmatic test runner",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Testing route: RainbowAI/src/routes/admin/testing.ts",
-                                                   "Autotest execution: RainbowAI/src/public/js/modules/autotest-execution.js",
-                                                   "Need backend version of test execution (frontend runs in browser, backend needs to call pipeline directly)",
-                                                   "Use message-router.ts processMessage() to simulate each test scenario",
-                                                   "Save results to RainbowAI/reports/autotest/ directory"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-015",
-                            "title":  "Enhance multi-turn workflow autotest to cover ALL turns",
-                            "priority":  15,
-                            "description":  "As a tester, I want workflow autotests to simulate complete multi-turn conversations where the test answers ALL questions in a workflow (not just the first one). 21 workflow scenarios already exist in autotest-scenarios-workflow.js but some only test 1 turn. Enhance all scenarios to cover the full guest journey through every workflow step.",
-                            "acceptanceCriteria":  [
-                                                       "All 21 existing workflow scenarios enhanced to include ALL turns (not just first message)",
-                                                       "Each turn sends realistic guest response to the workflow question",
-                                                       "Test verifies AI asks correct next question after each answer",
-                                                       "Tests cover: check-in workflow (all steps), complaint workflow, booking workflow",
-                                                       "Test validates workflow completion (final confirmation message)",
-                                                       "Results show per-turn pass/fail, not just per-scenario",
-                                                       "Regression test for multi-turn execution engine",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "21 workflow scenarios ALREADY EXIST: RainbowAI/src/public/js/modules/autotest-scenarios-workflow.js",
-                                                   "Existing format: { id, name, category, messages: [{text}], validate: [{turn, rules}] }",
-                                                   "Example: \u0027workflow-booking-payment-full\u0027 has 6 turns with per-turn validation rules",
-                                                   "Execution engine: autotest-execution.js sends each message sequentially to /preview/chat with accumulated history",
-                                                   "Workflow state tracking: testing-preview.ts uses previewWorkflowStates Map (key = firstMessage::history.length)",
-                                                   "Issue: Some scenarios only define 1 message/turn but workflows need 3-6 turns to complete",
-                                                   "Fix: Add full turn sequences (messages + validate arrays) to scenarios that currently only test first turn",
-                                                   "Optimal concurrency: 2 workers (69.6% pass rate); 4+ causes rate limiting"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "large",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-016",
-                            "title":  "Create user stories from autotest errors",
-                            "priority":  16,
-                            "description":  "As a developer, after implementing multi-turn workflow tests and check-in suite, I want to run the full test suite and auto-generate user stories from any failures to feed the next development iteration.",
-                            "acceptanceCriteria":  [
-                                                       "Full autotest suite runs including multi-turn workflow tests and check-in suite",
-                                                       "All failures collected with: scenario name, expected vs actual, confidence, error details",
-                                                       "User stories auto-generated in prd.json format from each failure category",
-                                                       "Generated stories appended to prd.json or output as separate JSON file",
-                                                       "At least 5 meaningful user stories generated from real test failures",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "Depends on US-014 (programmatic runner) and US-015 (multi-turn tests)",
-                                                   "Use POST /api/rainbow/testing/run-all from US-014",
-                                                   "Use GET /api/rainbow/testing/generate-stories from US-014 to convert",
-                                                   "Output to: RainbowAI/reports/autotest/generated-stories.json",
-                                                   "May also add generated stories directly to prd.json using a merge script"
-                                               ],
-                            "dependencies":  [
-                                                 "US-014",
-                                                 "US-015"
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-017",
-                            "title":  "Capsule Conflict Detection and Resolution Workflow",
-                            "priority":  17,
-                            "description":  "As a capsule operator, I want Rainbow AI to detect capsule occupancy conflicts (guest finds someone in their assigned capsule), notify the operator via WhatsApp, use LLM to suggest resolution, and execute approved changes. Covers: wrong updates, unauthorized capsule switches, and unknown occupants.",
-                            "acceptanceCriteria":  [
-                                                       "Rainbow AI detects capsule conflict from guest messages (e.g. \u0027someone is in my capsule\u0027)",
-                                                       "New intent \u0027capsule_conflict\u0027 added with keywords and examples in en/ms/zh",
-                                                       "AI checks capsule assignment data via dashboard API (port 5000 /api/capsules)",
-                                                       "AI sends WhatsApp notification to capsule operator with conflict details",
-                                                       "AI uses LLM to analyze situation and suggest resolution actions",
-                                                       "For capsule switch: AI suggests updating both capsule assignments with operator approval",
-                                                       "For unknown person: AI suggests physical inspection and waits for operator decision",
-                                                       "Operator can approve/reject via WhatsApp reply (simple \u0027yes\u0027/\u0027no\u0027 or \u00271\u0027/\u00272\u0027 options)",
-                                                       "After approval: AI updates capsule assignment in system and confirms to guest",
-                                                       "All conflict events logged to conversation history for audit",
-                                                       "Regression tests for: intent detection, operator notification, approval flow",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "New intent: Add capsule_conflict to intent-keywords.json and intent-examples.json",
-                                                   "Routing: Add capsule_conflict to routing.json with action escalate_capsule_conflict",
-                                                   "Capsule data: RainbowAI/src/lib/capsule-cache.ts for checking assignments via HTTP to port 5000",
-                                                   "Staff notification: RainbowAI/src/lib/whatsapp/instance.ts sendMessage to operator phone",
-                                                   "LLM analysis: RainbowAI/src/assistant/ai-client.ts with capsule conflict analysis prompt",
-                                                   "Approval flow: Store pending approvals in RainbowAI/data/pending-approvals.json (atomic write)",
-                                                   "Operator reply detection: Listen for staff phone messages in message-router.ts, match pending approval ID",
-                                                   "Staff phones: settings.json Ã¢â€ â€™ staff.phones array",
-                                                   "Multi-language: All messages to guest and operator need en/ms/zh variants",
-                                                   "New pipeline stage or action handler needed in action-dispatch.ts for escalate_capsule_conflict"
-                                               ],
-                            "dependencies":  [
-
-                                             ],
-                            "estimatedComplexity":  "large",
-                            "passes":  false
-                        },
-                        {
-                            "id":  "US-018",
-                            "title":  "Update User Guide and Developer Guide",
-                            "priority":  18,
-                            "description":  "As a staff member or developer, I want the guides at #help to reflect all Phase 5 changes Ã¢â‚¬â€ bug fixes, new features, consolidated settings, test infrastructure improvements, and capsule conflict workflow.",
-                            "acceptanceCriteria":  [
-                                                       "User guide updated: KB Accuracy Tester location, consolidated AI settings, OCR model, capsule conflict handling",
-                                                       "Developer guide updated: new test suites, programmatic testing API, multi-turn test format, new intents/routes",
-                                                       "Bug fixes mentioned in a changelog or \u0027Recent Changes\u0027 section",
-                                                       "Staff name moved to menu documented in user guide",
-                                                       "Capsule conflict workflow documented with operator instructions",
-                                                       "TypeScript compiles with zero errors",
-                                                       "Server starts and dashboard loads without errors",
-                                                       "Verify in browser using agent-browser"
-                                                   ],
-                            "technicalNotes":  [
-                                                   "User guide: RainbowAI/src/public/templates/tabs/help-user-guide.html",
-                                                   "Developer guide: RainbowAI/src/public/templates/tabs/help-developer-guide.html",
-                                                   "Help module: RainbowAI/src/public/js/modules/help.js",
-                                                   "Depends on all other stories being complete",
-                                                   "Include links to relevant settings pages and test tools"
-                                               ],
-                            "dependencies":  [
-                                                 "US-001",
-                                                 "US-002",
-                                                 "US-003",
-                                                 "US-004",
-                                                 "US-005",
-                                                 "US-006",
-                                                 "US-007",
-                                                 "US-008",
-                                                 "US-009",
-                                                 "US-010",
-                                                 "US-011",
-                                                 "US-012",
-                                                 "US-013",
-                                                 "US-014",
-                                                 "US-015",
-                                                 "US-016",
-                                                 "US-017"
-                                             ],
-                            "estimatedComplexity":  "medium",
-                            "passes":  false
-                        }
-                    ],
-    "technicalContext":  {
-                             "affectedAreas":  [
-                                                   "RainbowAI/src/public/js/modules/chat-send.js",
-                                                   "RainbowAI/src/public/js/modules/autotest-scenarios.js",
-                                                   "RainbowAI/src/public/js/modules/autotest-scenarios-workflow.js",
-                                                   "RainbowAI/src/public/js/modules/autotest-execution.js",
-                                                   "RainbowAI/src/public/js/modules/autotest-ui.js",
-                                                   "RainbowAI/src/public/js/modules/autotest-history.js",
-                                                   "RainbowAI/src/public/js/modules/workflow-testing.js",
-                                                   "RainbowAI/src/public/js/modules/testing.js",
-                                                   "RainbowAI/src/public/js/modules/responses-crud.js",
-                                                   "RainbowAI/src/public/js/modules/live-chat-panels.js",
-                                                   "RainbowAI/src/public/js/modules/live-chat-core.js",
-                                                   "RainbowAI/src/public/js/modules/live-chat-actions.js",
-                                                   "RainbowAI/src/public/js/modules/live-chat.js",
-                                                   "RainbowAI/src/public/js/modules/settings-ai-models.js",
-                                                   "RainbowAI/src/public/js/modules/llm-settings.js",
-                                                   "RainbowAI/src/public/js/modules/understanding.js",
-                                                   "RainbowAI/src/public/js/modules/knowledge.js",
-                                                   "RainbowAI/src/public/js/modules/kb-editor.js",
-                                                   "RainbowAI/src/public/js/modules/help.js",
-                                                   "RainbowAI/src/public/js/features/workflow-tester.js",
-                                                   "RainbowAI/src/public/js/module-chunks/chat-simulator-chunk.js",
-                                                   "RainbowAI/src/public/templates/tabs/chat-simulator.html",
-                                                   "RainbowAI/src/public/templates/tabs/preview.html",
-                                                   "RainbowAI/src/public/templates/tabs/settings.html",
-                                                   "RainbowAI/src/public/templates/tabs/live-chat.html",
-                                                   "RainbowAI/src/public/templates/tabs/testing.html",
-                                                   "RainbowAI/src/public/templates/tabs/help-user-guide.html",
-                                                   "RainbowAI/src/public/templates/tabs/help-developer-guide.html",
-                                                   "RainbowAI/src/public/css/rainbow-livechat-core.css",
-                                                   "RainbowAI/src/public/css/rainbow-livechat-ui.css",
-                                                   "RainbowAI/src/routes/admin/testing.ts",
-                                                   "RainbowAI/src/routes/admin/testing-preview.ts",
-                                                   "RainbowAI/src/routes/admin/templates.ts",
-                                                   "RainbowAI/src/routes/admin/tags.ts",
-                                                   "RainbowAI/src/routes/admin/capsules.ts",
-                                                   "RainbowAI/src/routes/admin/conversations.ts",
-                                                   "RainbowAI/src/routes/admin/knowledge-base.ts",
-                                                   "RainbowAI/src/routes/admin/index.ts",
-                                                   "RainbowAI/src/assistant/data/settings.json",
-                                                   "RainbowAI/src/assistant/data/intent-keywords.json",
-                                                   "RainbowAI/src/assistant/data/intent-examples.json",
-                                                   "RainbowAI/src/assistant/message-router.ts",
-                                                   "RainbowAI/src/assistant/ai-client.ts",
-                                                   "RainbowAI/src/assistant/config-store.ts",
-                                                   "RainbowAI/src/lib/capsule-cache.ts",
-                                                   "RainbowAI/src/lib/whatsapp/instance.ts"
-                                               ],
-                             "newFiles":  [
-                                              "RainbowAI/data/pending-approvals.json"
-                                          ],
-                             "testingStrategy":  "Regression tests for every change + programmatic autotest runner (US-014) + multi-turn workflow tests (US-015) + agent-browser visual verification for UI changes",
-                             "rollbackPlan":  "git checkout HEAD -- RainbowAI/src/public/ RainbowAI/src/routes/ RainbowAI/src/assistant/ RainbowAI/src/lib/",
-                             "crossCuttingConcerns":  {
-                                                          "regressionTests":  "Every user story must include regression tests that verify the fix/feature works and existing features are not broken",
-                                                          "agentBrowserVerification":  "All UI-affecting stories must be verified using agent-browser skill before marking complete",
-                                                          "importBoundaries":  "RainbowAI/ must have ZERO imports from server/, client/, or shared/ Ã¢â‚¬â€ HTTP fetch only for cross-module data",
-                                                          "atomicWrites":  "All new JSON data files use config-store.ts atomic write pattern (.tmp then renameSync)"
-                                                      }
-                         }
+{
+  "productName": "Rainbow AI Live Chat Phase 3 — WhatsApp UX, Prisma AI & Bug Fixes",
+  "branchName": "ralph/live-chat-enhancements",
+  "overview": "Phase 3: 22 user stories across 7 areas — fix infrastructure bugs (CORS login, self-check-in URL), fix live-chat bugs (translate toggle, staff-review prediction), improve Rainbow AI content and config (greeting hint, workflow dead ends, Malay naturalness, auto-approve expansion), add WhatsApp UX parity (pill-chip filters, message menu positioning, avatar initials, schedule datetime, date-jump search), build Prisma AI in-chat assistant for new staff, and mirror all features in chat-simulator/live-simulation. All changes within RainbowAI/ and server/ modules only.",
+  "goals": [
+    "Fix production infrastructure: CORS login error and broken guest self-check-in link URL",
+    "Fix live-chat bugs: translate toggle, staff-review prediction marking, Ollama UX",
+    "Improve Rainbow AI guest experience: first-contact greeting, workflow cancel escape, natural Malay",
+    "Expand copilot auto-approve from 3 to 11 informational intents to reduce 30-minute wait times",
+    "Match WhatsApp Web UX conventions: filter chips, context menu anchoring, colored avatars, full datetime scheduling, date-jump search",
+    "Build Prisma AI floating assistant for new staff to answer questions using KB, MCP, history, and internet",
+    "Keep #live-chat and #chat-simulator/live-simulation in full feature parity"
+  ],
+  "userStories": [
+    {
+      "id": "US-018",
+      "title": "Fix CORS policy violation on production login",
+      "priority": 1,
+      "description": "As a staff member logging in at http://18.142.14.142/login, I want the sign-in to succeed without a CORS error so I can access the dashboard. The browser reports 'CORS policy violation' on login form submission. In production, nginx serves both frontend and API from port 80 — requests should be same-origin. Root cause is likely a hardcoded localhost URL in the login form action or API call that bypasses nginx and hits port 5000 directly.",
+      "acceptanceCriteria": [
+        "Identify the CORS root cause: check server/index.ts cors() middleware config AND scan client-side login code for any hardcoded localhost:5000 or port 5000 references",
+        "If hardcoded URL found: replace with relative path (e.g. /api/login instead of http://localhost:5000/api/login)",
+        "If CORS config is the root cause: add http://18.142.14.142 to allowed origins via CORS_ORIGIN env var",
+        "Login at http://18.142.14.142/login completes without CORS errors in browser console",
+        "Local dev login at http://localhost:3000 is not broken",
+        "CORS_ORIGIN env var documented in root .env.example if used",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: navigate to http://18.142.14.142/login, submit credentials, confirm no CORS error"
+      ],
+      "technicalNotes": [
+        "CORS config: server/index.ts — check cors() middleware origin setting",
+        "Login API call: client/src/ — search for fetch('/api/auth/login') or similar; check if any hardcoded http://localhost:5000 exists",
+        "In production: nginx at port 80 proxies /api/* to port 5000. Frontend at port 80 + API at port 80 = same origin = no CORS needed",
+        "If login JS calls http://localhost:5000/api directly (not relative path), browser blocks it as cross-origin",
+        "Fix priority: relative path fix >> CORS header fix (simpler, no env var needed)",
+        "Check Vite config (vite.config.ts) for proxy settings that may be misapplied in production builds"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": true
+    },
+    {
+      "id": "US-017",
+      "title": "Fix self-check-in link URL to use public Lightsail IP",
+      "priority": 2,
+      "description": "As a guest receiving a self-check-in WhatsApp message, I want the check-in link to work from my phone. The current generated link uses http://localhost:5000/guest-checkin?token=... which guests cannot open. Fix: read PUBLIC_URL env var as the base URL when generating the link.",
+      "acceptanceCriteria": [
+        "Search server/ codebase for all occurrences of 'localhost:5000' in string templates, URL construction, and link generation code",
+        "Add PUBLIC_URL env var support: when set, use it as the base URL for all guest-facing links",
+        "Generated self-check-in URL uses PUBLIC_URL as base: http://18.142.14.142/guest-checkin?token=...",
+        "If PUBLIC_URL is not set, fall back to req.protocol + '://' + req.get('host') (preserves local dev at localhost:5000)",
+        "Same fix applied to any other guest-facing links with hardcoded localhost (payment links, QR links, etc.)",
+        "Root .env.example updated with: PUBLIC_URL=http://18.142.14.142",
+        "On local dev (PUBLIC_URL not set), the link still resolves to localhost (from request host header)",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors"
+      ],
+      "technicalNotes": [
+        "Grep server/ for 'localhost:5000' string literals to find all hardcoded URLs",
+        "Self-check-in link is likely generated in server/routes/ when creating a guest token",
+        "Pattern to use: const baseUrl = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;",
+        "Also check RainbowAI/ for any guest-facing URL generation that might use localhost",
+        "The guest-checkin page is served by the server at port 5000 (proxied by nginx in production)"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-016",
+      "title": "Fix 'Failed to mark prediction' error in staff-review",
+      "priority": 3,
+      "description": "As an admin reviewing predictions in #staff-review, I want marking a prediction to succeed without errors. Every row shows 'Error' status (Image #6). Root cause unknown — investigate the mark-prediction API endpoint, request payload, and response.",
+      "acceptanceCriteria": [
+        "Identify the failing API call: check RainbowAI/src/routes/admin/intent-analytics.ts for the mark-prediction endpoint",
+        "Verify the frontend request payload matches what the backend expects (field names, types, content-type header)",
+        "Fix the root cause: missing field, wrong content-type, auth issue, or schema mismatch",
+        "Marking a prediction as correct or incorrect succeeds and the row updates its status visually (no 'Error' label)",
+        "No console errors in browser when marking predictions",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: load #staff-review, click mark on any row, confirm success state"
+      ],
+      "technicalNotes": [
+        "Staff review route: RainbowAI/src/routes/admin/intent-analytics.ts — look for PATCH or POST endpoint for marking predictions",
+        "Frontend call: search RainbowAI/src/public/js/modules/ for 'mark' or 'prediction' to find the fetch() call",
+        "Common causes: body not JSON.stringify'd, missing Content-Type: application/json header, wrong HTTP method, endpoint path mismatch",
+        "The 'Error' shown in Image #6 appears in every row — suggests a systematic issue (wrong URL or auth), not a data issue"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-006",
+      "title": "Fix translate toggle in live-chat",
+      "priority": 4,
+      "description": "As a staff member, I want the Translate toggle in #live-chat to actually enable translation of incoming messages. The toggle currently cannot be turned ON (reverts immediately or has no effect). This feature was previously working — check git log for the regression.",
+      "acceptanceCriteria": [
+        "Check git log for recent changes to translate-related code in live-chat-actions.js, live-chat-core.js, or the translate API route",
+        "Translate toggle can be toggled ON without reverting back to OFF",
+        "When ON, incoming messages are translated using the active AI provider and translation appears below the original text",
+        "When OFF, no translation is shown",
+        "Toggle state persists across conversation switches within the same browser session",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: toggle ON, send a non-English message via chat simulator, confirm translation appears"
+      ],
+      "technicalNotes": [
+        "Translate toggle: RainbowAI/src/public/js/modules/live-chat-actions.js — look for toggleTranslate() or similar",
+        "State management: RainbowAI/src/public/js/modules/live-chat-core.js — check if translate state is being persisted",
+        "Translate API: check RainbowAI/src/routes/admin/conversations.ts for a translate endpoint",
+        "git log -- RainbowAI/src/public/js/modules/live-chat-actions.js to find the regression commit",
+        "Common regression: event listener removed during modular refactor, or state variable renamed"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-001",
+      "title": "Ollama troubleshooting guide on speed test error",
+      "priority": 5,
+      "description": "As a staff member, I want to see a troubleshooting guide when an Ollama model fails the speed test in #settings/ai-models, so I know it's a local software issue and how to fix it. The guide must explain that Ollama must be running locally, with steps to install, start, and retry.",
+      "acceptanceCriteria": [
+        "When 'Test Speed' is clicked on an Ollama model and it returns an error, a collapsible troubleshooting panel appears below that model card (not a toast — must persist)",
+        "The panel contains: (1) explanation 'Ollama runs locally on your computer and must be started before use', (2) steps: install Ollama → run ollama serve → pull the model → retry, (3) a Retry button that re-runs the speed test inline",
+        "The panel does NOT appear for non-Ollama providers (OpenAI, Anthropic, NVIDIA, etc.)",
+        "If the retry succeeds, the panel collapses and the speed result is shown normally",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open #settings/ai-models, test an Ollama model, confirm guide appears on error"
+      ],
+      "technicalNotes": [
+        "Speed test UI: RainbowAI/src/public/js/modules/settings-ai-models.js — find the testSpeed() function",
+        "Template: RainbowAI/src/public/templates/tabs/settings.html — Ollama provider cards",
+        "Detection: check provider.id or provider.type for 'ollama' string before showing the guide",
+        "The guide should be injected into the DOM after the model card, not shown as a modal/toast"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-002",
+      "title": "Cloud environment Ollama unavailability warning",
+      "priority": 6,
+      "description": "As a cloud server admin viewing #settings/ai-models on the Lightsail instance, I want a persistent notice that Ollama is not available in the cloud environment, so I don't waste time enabling it. Detect cloud context via RAINBOW_ROLE=primary env var.",
+      "acceptanceCriteria": [
+        "Detect cloud context server-side: if RAINBOW_ROLE === 'primary', expose isCloud: true in GET /api/rainbow/status response",
+        "In #settings/ai-models, when isCloud is true, Ollama model cards show a yellow warning badge: 'Not available on cloud server — Ollama requires local installation'",
+        "The Activate toggle for Ollama models is disabled (greyed out) in cloud context with tooltip explaining why",
+        "Test Speed button for Ollama is also disabled in cloud context",
+        "In local/standby mode (RAINBOW_ROLE=standby or unset), the warning does NOT appear",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open #settings/ai-models and confirm Ollama UI state matches environment"
+      ],
+      "technicalNotes": [
+        "Status endpoint: RainbowAI/src/routes/admin/index.ts or whatsapp.ts — GET /api/rainbow/status",
+        "Add isCloud: process.env.RAINBOW_ROLE === 'primary' to the status response",
+        "Frontend reads isCloud from status API on page load and applies warning state to Ollama provider cards",
+        "settings-ai-models.js: add cloud check when rendering provider cards",
+        "CSS: add .lc-disabled and yellow badge styles if not already present"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-019",
+      "title": "Add capability menu hint to first-contact greeting",
+      "priority": 7,
+      "description": "As a first-time guest messaging Rainbow on WhatsApp, I want to receive a brief menu of what Rainbow can help with so I know how to interact. The current greeting is a plain welcome with no hints. Add a capability list to the greeting for new contacts (conversation history length = 0).",
+      "acceptanceCriteria": [
+        "Locate the greeting intent's static reply in RainbowAI/src/assistant/data/ (settings.json or static-replies config)",
+        "Update the en variant to include the capability menu: 'Hi! I'm Rainbow 🌈 I can help with:\\n• 🏨 Check-in / Check-out\\n• 💰 Pricing & availability\\n• 📍 Location & directions\\n• 🛁 Facilities & WiFi\\n• 🙋 Or just ask me anything!'",
+        "Add ms (Malay) variant: 'Hai! Saya Rainbow 🌈 Boleh bantu dengan:\\n• 🏨 Check-in / Check-out\\n• 💰 Harga & ketersediaan\\n• 📍 Lokasi & arah\\n• 🛁 Kemudahan & WiFi\\n• 🙋 Atau tanya apa sahaja!'",
+        "Add zh (Chinese) variant with equivalent content",
+        "The hint is shown only when conversation history length is 0 (true first contact) — verify the message router checks this condition",
+        "For returning guests (history exists), the greeting remains the original shorter version",
+        "50-scenario accuracy test maintains 100% pass rate after this change",
+        "TypeScript compiles with zero errors",
+        "Verify in Chat Simulator: send 'hi' from a fresh conversation, confirm capability hint appears"
+      ],
+      "technicalNotes": [
+        "Greeting reply config: likely in RainbowAI/src/assistant/data/settings.json under staticReplies.greeting",
+        "First-contact detection: RainbowAI/src/assistant/message-router.ts — check if conversationHistory.length === 0 before routing greeting",
+        "If first-contact detection doesn't exist: add check in the greeting action handler to select between full hint vs short reply",
+        "The greeting response may be in routing.json as a static_reply action — trace the full flow from greeting intent → routing → reply"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-021",
+      "title": "Improve booking workflow naturalness and Malay translations",
+      "priority": 9,
+      "description": "As a guest going through the booking process, I want Rainbow to ask questions directly without a preamble filler message, and in natural conversational Malay. Current booking_payment_handler sends a preamble step ('I'll help you with your booking...') before asking the actual question, adding an unnecessary round-trip.",
+      "acceptanceCriteria": [
+        "Locate booking_payment_handler workflow in RainbowAI/src/assistant/data/workflows.json",
+        "Collapse the preamble step: merge Step 1 (preamble) and Step 2 (first question) into a single opening message",
+        "en opening: 'Happy to help with your booking! How many guests will be staying?'",
+        "ms opening: 'Boleh bantu! Berapa orang tetamu nak check in?'",
+        "zh opening: '好的，我来帮您办理！请问几位客人入住？'",
+        "Review all other ms variants in this workflow for literal translations and rewrite unnatural ones (payment method, confirmation messages)",
+        "Only ONE message is sent before the guest can respond (verified in Chat Simulator)",
+        "50-scenario accuracy test maintains 100% pass rate after this change",
+        "TypeScript compiles with zero errors",
+        "Verify in Chat Simulator: trigger booking workflow, confirm only one opening message before guest response"
+      ],
+      "technicalNotes": [
+        "Workflow definitions: RainbowAI/src/assistant/data/workflows.json",
+        "Find booking_payment_handler workflow, look at steps array",
+        "Natural Malaysian Malay markers: 'nak' (want to), 'lah' (particle), 'boleh' (can), 'dah' (already), 'berapa' (how many)",
+        "Avoid literal translation of 'guests will be staying' → 'tetamu nak check in' is more natural",
+        "This is a JSON-only change — no TypeScript files need modification"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-022",
+      "title": "Expand copilot auto-approve intent list from 3 to 11 intents",
+      "priority": 8,
+      "description": "As a hostel manager using copilot mode, I want Rainbow to auto-approve replies for all low-risk informational intents so guests don't wait 30 minutes for staff manual approval. Currently only greeting, thanks, and wifi are auto-approved. All 11 informational intents are safe to auto-approve.",
+      "acceptanceCriteria": [
+        "Locate auto_approve_intents config in RainbowAI/src/assistant/data/settings.json (under copilot key)",
+        "Update the list to: ['greeting', 'thanks', 'wifi', 'directions', 'checkin_info', 'checkout_info', 'facilities_info', 'rules_policy', 'payment_info', 'luggage_storage', 'extra_amenity_request']",
+        "Verify all 11 intent names exist in intent-keywords.json and routing.json (no typos, no missing intents)",
+        "In copilot mode, a message classified as checkin_info is auto-approved and sent without staff action",
+        "50-scenario accuracy test maintains 100% pass rate after this change",
+        "TypeScript compiles with zero errors",
+        "Verify in Chat Simulator: enable copilot mode, ask 'what time is check in?', confirm Rainbow replies without staff approval step"
+      ],
+      "technicalNotes": [
+        "Settings file: RainbowAI/src/assistant/data/settings.json — look for copilot.auto_approve_intents array",
+        "Cross-check intent names: grep intent-keywords.json for each of the 11 intent names to confirm they exist",
+        "Cross-check routing: grep routing.json for each intent name",
+        "This is a JSON-only change — no TypeScript modification needed",
+        "The copilot mode logic that reads this list is in message-router.ts or response-processor.ts"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-020",
+      "title": "Fix workflow dead ends — cancel intent and routing gaps",
+      "priority": 10,
+      "description": "As a guest mid-workflow, I want to say 'cancel' or 'nevermind' and have Rainbow gracefully exit, so I don't get confused responses. Three gaps: (1) no cancel_workflow intent, (2) climate_control_complaint routes to static_reply instead of complaint_handling workflow, (3) billing_dispute routes to static_reply instead of escalate workflow.",
+      "acceptanceCriteria": [
+        "Add cancel_workflow intent to intent-keywords.json with keywords: 'cancel', 'nevermind', 'stop', 'forget it', 'batal', 'tak nak', '算了' (and common variations)",
+        "The workflow executor (workflow-executor.ts or action-dispatch.ts) checks for cancel_workflow intent at each step and exits gracefully",
+        "Graceful exit message (en): 'No problem! Is there anything else I can help you with?' with ms and zh variants",
+        "Update routing.json: climate_control_complaint action changed from static_reply to workflow with workflow_id: complaint_handling",
+        "Update routing.json: billing_dispute action changed from static_reply to workflow with workflow_id: escalate",
+        "Verify complaint_handling and escalate workflows exist in workflows.json (create minimal 2-step versions if missing)",
+        "50-scenario accuracy test maintains 100% pass rate after routing changes",
+        "TypeScript compiles with zero errors",
+        "Verify in Chat Simulator: send 'cancel' mid-booking-workflow, confirm graceful exit message"
+      ],
+      "technicalNotes": [
+        "Intent keywords: RainbowAI/src/assistant/data/intent-keywords.json",
+        "Routing: RainbowAI/src/assistant/data/routing.json — find climate_control_complaint and billing_dispute entries",
+        "Workflow executor: RainbowAI/src/assistant/pipeline/stages/action-dispatch.ts or a workflow-executor.ts file",
+        "Cancel check location: add at the top of the workflow step handler — if classified intent === 'cancel_workflow', call exitWorkflow()",
+        "Workflows file: RainbowAI/src/assistant/data/workflows.json — verify complaint_handling and escalate exist"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-007",
+      "title": "Colored initials avatar for contacts without profile picture",
+      "priority": 11,
+      "description": "As a staff member, I want contacts without a profile picture to show a colored circle with their initials (e.g. 'AF' for Alston Foo) instead of a blank grey circle, making conversations visually distinguishable at a glance.",
+      "acceptanceCriteria": [
+        "When a contact has no profile picture, avatar is a filled circle with a deterministic background color derived from contact's phone number (same number = same color always)",
+        "Initials: first letter(s) of display name (e.g. 'Alston Foo' → 'AF', 'Jay' → 'J')",
+        "Color palette uses at least 8 distinct, readable colors — not red or green (avoid confusion with status indicators)",
+        "White or near-white text on dark backgrounds for legibility",
+        "Applied in: conversation list avatars, chat header avatar, and message thread avatars",
+        "Contacts with actual profile pictures are unaffected",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open #live-chat, confirm contacts without photos show colored initials"
+      ],
+      "technicalNotes": [
+        "Avatar rendering: RainbowAI/src/public/js/modules/live-chat-panels.js and live-chat-core.js — find where avatar img tags are created",
+        "Color hash: sum = name.split('').reduce((a,c) => a + c.charCodeAt(0), 0); color = palette[sum % palette.length]",
+        "Palette suggestion: ['#1abc9c','#3498db','#9b59b6','#e67e22','#e91e63','#00bcd4','#ff5722','#607d8b']",
+        "If profile picture 404s or src is empty/null, show initials div instead of broken img",
+        "Add CSS class .avatar-initials with display:flex, align-items:center, justify-content:center, border-radius:50%",
+        "CSS target file: RainbowAI/src/public/css/rainbow-livechat-core.css or rainbow-livechat-ui.css"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-003",
+      "title": "Redesign chat filter bar to WhatsApp-style pill chips",
+      "priority": 12,
+      "description": "As a staff member, I want the Tags and Unit filter icons in #live-chat to look like WhatsApp's horizontal pill chip row (All | Unread | Favourites | Groups | Tags ▾ | Unit ▾) instead of icon-based buttons, making the interface familiar and visually consistent.",
+      "acceptanceCriteria": [
+        "Filter row shows: All | Unread | Favourites | Groups | Tags ▾ | Unit ▾ as horizontal scrollable pill chips",
+        "All chip has a filled/active style (green background matching Image #1) when no filter is active",
+        "Tags and Unit chips show a downward chevron (▾) indicating they open a dropdown",
+        "Active filter chip has a distinct active style (filled background, different from inactive)",
+        "Chips are scrollable horizontally on narrow viewports without wrapping to a second line",
+        "Existing icon-based Tags/Unit buttons are replaced (not kept alongside new chips)",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open #live-chat, confirm pill chip row matches WhatsApp style"
+      ],
+      "technicalNotes": [
+        "Current filter HTML: RainbowAI/src/public/templates/tabs/live-chat.html (lines 111-125 — tag/unit filter buttons)",
+        "Replace icon buttons with a <div class='lc-filter-chips'> containing <button class='lc-chip'> elements",
+        "CSS: RainbowAI/src/public/css/rainbow-livechat-core.css or rainbow-livechat-ui.css",
+        "Chip active state: .lc-chip.active { background: #25d366; color: #fff; }",
+        "Horizontal scroll: .lc-filter-chips { display:flex; overflow-x:auto; gap:8px; padding:8px; scrollbar-width:none; }",
+        "This story is visual only — dropdown wiring is in US-004"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-004",
+      "title": "Wire Tags and Unit filter chips to backend conversation filtering",
+      "priority": 13,
+      "description": "As a staff member, I want clicking a Tags or Unit chip to actually filter the conversation list, showing only conversations with that tag or unit assignment. Dropdowns fetch data from backend APIs.",
+      "acceptanceCriteria": [
+        "Clicking Tags ▾ opens a dropdown listing all available tags fetched from GET /api/rainbow/tags",
+        "Selecting a tag filters the conversation list to show only conversations with that tag",
+        "Clicking Unit ▾ opens a dropdown listing all capsule units fetched from GET /api/rainbow/capsules or contacts",
+        "Selecting a unit filters the conversation list to show only conversations with that unit assignment",
+        "Multiple filters can be active simultaneously (Tags AND Unit combined)",
+        "A clear/reset option appears when any filter is active, restoring full conversation list",
+        "Filter state persists during the browser session (not wiped on tab switch)",
+        "Dropdown closes when clicking anywhere outside it",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: select a tag filter, confirm conversation list updates"
+      ],
+      "technicalNotes": [
+        "Existing filter code: RainbowAI/src/public/js/modules/live-chat-panels.js (lines 773-883: _renderTagFilterDropdown, _renderUnitFilterDropdown)",
+        "Core filtering: RainbowAI/src/public/js/modules/live-chat-core.js (lines 433-449)",
+        "Tags API: GET /api/rainbow/tags (RainbowAI/src/routes/admin/tags.ts)",
+        "Capsules API: GET /api/rainbow/capsules (RainbowAI/src/routes/admin/capsules.ts)",
+        "Root cause from Phase 5: $.contactTagsMap and $.contactUnitsMap not populated — ensure loadContactTagsMap() and loadContactUnitsMap() are called in initialization",
+        "Wire the new chip click events (US-003) to the existing dropdown render functions"
+      ],
+      "dependencies": ["US-003"],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-005",
+      "title": "Reposition message action menu near message bubble (WhatsApp style)",
+      "priority": 14,
+      "description": "As a staff member, I want the message action menu (Like, Love, Haha, Wow, Sad, Thanks, Reply, Copy, Forward) to appear adjacent to the clicked message bubble, not in a fixed or off-position location, matching WhatsApp Web's context menu behaviour.",
+      "acceptanceCriteria": [
+        "When the downward chevron on a message is clicked, the action menu appears immediately adjacent to that message bubble",
+        "Right-aligned for outgoing messages, left-aligned for incoming messages",
+        "Emoji reactions (Like, Love, Haha, Wow, Sad, Thanks) appear in a horizontal icon row at the top of the menu",
+        "Text actions (Reply, Copy, Forward) appear below the emoji row",
+        "If the menu would overflow the bottom of the viewport, it opens upward from the chevron instead",
+        "Clicking anywhere outside the menu closes it",
+        "Works correctly for both incoming and outgoing message bubbles",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: click message chevron, confirm menu appears near that bubble"
+      ],
+      "technicalNotes": [
+        "Message action menu: RainbowAI/src/public/js/modules/live-chat-actions.js — find the menu render/position code",
+        "Current issue: menu likely uses position:fixed or a detached absolute div not anchored to the message",
+        "Fix: use getBoundingClientRect() on the chevron element to get absolute position, then set menu top/left accordingly",
+        "Overflow check: if (menuTop + menuHeight > window.innerHeight) { menuTop = chevronRect.top - menuHeight; }",
+        "CSS: menu should be position:absolute inside a relative-positioned container, or position:fixed with calculated coordinates",
+        "WhatsApp Web reference: renders menu as absolute-positioned div with emoji row + text row, flips vertically on overflow"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-008",
+      "title": "Improve schedule message picker with full date-time editing",
+      "priority": 15,
+      "description": "As a staff member, I want to edit the exact hour, minute, and second when scheduling a message, so I can schedule precisely (e.g., exactly at check-in time 14:00:00). The current modal only allows date editing via a datetime-local input.",
+      "acceptanceCriteria": [
+        "Schedule Message modal shows separate editable fields for: Date, Hour (00-23), Minute (00-59), Second (00-59)",
+        "Users can type directly into each field or use up/down arrows to increment/decrement values",
+        "A human-readable preview shows the composed datetime: 'Will send: 19 Mar 2026 at 02:30:45'",
+        "Validation prevents scheduling in the past — inline error shown if datetime < now",
+        "The existing datetime-local input is replaced or augmented with the separate fields",
+        "Repeat (None / Daily / Weekly) dropdown remains unchanged",
+        "Schedule button submits the full datetime including seconds to the backend",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open Schedule Message modal, edit hour/minute/second fields, confirm they work"
+      ],
+      "technicalNotes": [
+        "Schedule modal: RainbowAI/src/public/templates/tabs/live-chat.html — search for 'Schedule Message' modal",
+        "Frontend scheduling logic: RainbowAI/src/public/js/modules/live-chat-panels.js — find lcScheduleMessage() or similar",
+        "Replace <input type='datetime-local'> with three <input type='number'> fields for HH, MM, SS plus a <input type='date'>",
+        "Combine into ISO string: new Date(`${date}T${hh}:${mm}:${ss}`).toISOString()",
+        "Scheduled messages route: RainbowAI/src/routes/admin/scheduled-messages.ts — verify it accepts seconds in the datetime"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-014",
+      "title": "Add date-jump to in-conversation message search",
+      "priority": 16,
+      "description": "As a staff member searching messages, I want a 'Jump to date' calendar button beside the search bar so I can navigate to messages from a specific date without scrolling, matching WhatsApp Web's date-jump behaviour.",
+      "acceptanceCriteria": [
+        "The in-conversation search bar has a calendar icon button beside it",
+        "Clicking the calendar icon opens a date picker (date only, not datetime)",
+        "Selecting a date scrolls the message thread to the nearest message on or after that date",
+        "A date separator is highlighted to indicate the jump destination",
+        "If no messages exist for the selected date, a toast shows: 'No messages found for [date]'",
+        "The existing ▲ / ▼ navigation arrows for keyword search results are not affected",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open a conversation, use date-jump to navigate to an older date"
+      ],
+      "technicalNotes": [
+        "Search bar: RainbowAI/src/public/templates/tabs/live-chat.html — find the search messages input",
+        "Search logic: RainbowAI/src/public/js/modules/live-chat-core.js — find message search and navigation",
+        "Date jump: find the message element closest to the target date (messages should have data-timestamp attributes or similar)",
+        "Use element.scrollIntoView({ behavior: 'smooth', block: 'start' }) to scroll to the date",
+        "Date separator: messages are grouped by date — find or create the date separator element and highlight it temporarily",
+        "Use <input type='date'> in a small popover triggered by the calendar icon button"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-009",
+      "title": "Add 'Ask AI — Prisma' entry to conversation 3-dot menu",
+      "priority": 17,
+      "description": "As a staff member, I want an 'Ask AI' option in the conversation's 3-dot (⋮) menu so I can launch the Prisma AI assistant without leaving the chat. This is the entry point for the Prisma floating window (built in US-010).",
+      "acceptanceCriteria": [
+        "The 3-dot (⋮) menu in the conversation header includes a new item: 'Ask AI — Prisma' with a sparkle icon (✦ or similar)",
+        "Clicking it opens/focuses the Prisma floating chat window (to be implemented in US-010 — create empty placeholder div for now)",
+        "If Prisma window is already open, clicking again focuses it (does not open duplicate)",
+        "The menu item is clearly distinguishable from other menu items (icon + label)",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open a conversation, click 3-dot menu, confirm 'Ask AI — Prisma' item is visible"
+      ],
+      "technicalNotes": [
+        "3-dot menu: RainbowAI/src/public/templates/tabs/live-chat.html — find the vertical ellipsis menu in the chat header",
+        "Menu JS: RainbowAI/src/public/js/modules/live-chat-actions.js or live-chat-panels.js",
+        "Add menu item that calls window.openPrismaWindow() (to be implemented in US-010)",
+        "For now: show an alert or empty div if Prisma window doesn't exist yet"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-010",
+      "title": "Build Prisma AI floating chat window UI",
+      "priority": 18,
+      "description": "As a staff member, I want a draggable Prisma AI floating chat panel with a source selector and conversation history so I can ask questions without leaving the live chat. The panel is launched from the Ask AI menu entry (US-009).",
+      "acceptanceCriteria": [
+        "A floating panel appears with: title 'Prisma AI ✦', close (✕) button, source selector chips, message input, send button, scrollable response history",
+        "Source selector shows 4 chip options: Knowledge Base | MCP Server | All History | Internet (default: Knowledge Base)",
+        "Conversation history within the panel persists for the current browser session (JS in-memory state)",
+        "User messages appear right-aligned; Prisma responses appear left-aligned with avatar",
+        "A loading indicator (typing dots) appears while waiting for a response",
+        "Panel can be minimised to a floating 'Ask Prisma ✦' button at bottom-right corner",
+        "Panel does NOT interfere with the main guest message input area",
+        "Responses use mock/placeholder text until US-011 wires up the backend",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: launch Prisma panel, select source, type a question, confirm UI renders"
+      ],
+      "technicalNotes": [
+        "Create new JS module: RainbowAI/src/public/js/modules/prisma-ai.js (or add to live-chat-actions.js)",
+        "CSS: Add floating panel styles to rainbow-livechat-ui.css — position:fixed, bottom:80px, right:20px, z-index:1000",
+        "Draggable: use mousedown/mousemove/mouseup events on the panel header to implement drag",
+        "Minimise: toggle between full panel and compact button using CSS class toggle",
+        "window.openPrismaWindow() / window.closePrismaWindow() global functions for US-009 integration",
+        "Session history: module-level array var prismaHistory = [] that resets when panel is closed"
+      ],
+      "dependencies": ["US-009"],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-011",
+      "title": "Wire Prisma AI to Knowledge Base and AI provider",
+      "priority": 19,
+      "description": "As a staff member using Prisma with 'Knowledge Base' source, I want Prisma to answer from the Rainbow KB files so I get accurate hostel-specific answers. This story adds the backend endpoint and wires it to the UI.",
+      "acceptanceCriteria": [
+        "New admin API endpoint POST /api/rainbow/prisma/ask added and mounted in RainbowAI/src/routes/admin/index.ts",
+        "Endpoint accepts { question, source, conversationHistory } and returns { answer, sourceUsed }",
+        "When source = 'knowledge_base', endpoint queries existing KB (knowledge-base.ts / .rainbow-kb/) and passes relevant chunks to active AI provider",
+        "Response includes which KB topic files were consulted (for transparency in the UI)",
+        "Errors return graceful fallback: 'I couldn't find an answer in the knowledge base. Try asking differently or choose a different source.'",
+        "Prisma UI (US-010) calls this endpoint and renders the response in the chat panel",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: ask Prisma a hostel question with KB source, confirm a real answer appears"
+      ],
+      "technicalNotes": [
+        "New route file: RainbowAI/src/routes/admin/prisma.ts (or add to conversations.ts)",
+        "KB access: import { loadRelevantKBContent } from '../../../assistant/knowledge-base' or equivalent",
+        "AI call: use existing chatWithFallback() or callAI() from ai-client.ts",
+        "Endpoint must be authenticated: check X-Admin-Key header in production (RAINBOW_ROLE=primary)",
+        "Mount in: RainbowAI/src/routes/admin/index.ts — app.use('/prisma', prismaRouter)"
+      ],
+      "dependencies": ["US-010"],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-012",
+      "title": "Add MCP Server, All History, and Internet sources to Prisma AI",
+      "priority": 20,
+      "description": "As a staff member, I want to select MCP Server, All History, or Internet as Prisma's source to get context-aware answers beyond the knowledge base. Each source adds different context to the AI prompt.",
+      "acceptanceCriteria": [
+        "When source = 'mcp_server': Prisma calls available MCP tools (booking lookup, capsule availability) and includes tool results in the answer",
+        "When source = 'all_history': Prisma receives the full conversation history of the currently open conversation as context",
+        "When source = 'internet': Prisma uses an internet-capable AI provider or performs a web search if configured — cites sources in answer",
+        "Source label appears in each Prisma response bubble so staff know what was consulted",
+        "If a source is unavailable (no internet provider configured), the chip is greyed out with tooltip explaining why",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser: test each source type, confirm responses reference the correct context"
+      ],
+      "technicalNotes": [
+        "Extend POST /api/rainbow/prisma/ask endpoint (US-011) to handle source: 'mcp_server' | 'all_history' | 'internet'",
+        "MCP tools: check RainbowAI/src/tools/ for available tool definitions to call for mcp_server source",
+        "All history: the frontend sends the currently loaded conversation messages along with the question",
+        "Internet: if the active AI provider supports web search (e.g. Perplexity, or a provider with search), use it; otherwise return unavailable message",
+        "The frontend prisma-ai.js should include currentConversationMessages when source = all_history"
+      ],
+      "dependencies": ["US-011"],
+      "estimatedComplexity": "medium",
+      "passes": false
+    },
+    {
+      "id": "US-013",
+      "title": "Prisma AI session conversation memory",
+      "priority": 21,
+      "description": "As a staff member having a multi-turn conversation with Prisma, I want Prisma to remember earlier messages in the session so follow-up questions work naturally (e.g. 'what about weekends?' after 'what is the check-in time?').",
+      "acceptanceCriteria": [
+        "POST /api/rainbow/prisma/ask accepts a conversationHistory array (role/content pairs) and includes it in the AI prompt",
+        "Frontend sends the full session history on each new message (prismaHistory array from US-010)",
+        "After 20 exchanges, history is trimmed to the last 20 messages (client-side) to avoid token overflow",
+        "Closing Prisma window (✕) and re-opening resets the session history to empty",
+        "Follow-up questions in the same session demonstrate context awareness in responses",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser: ask Prisma a question, then ask a follow-up referencing the first answer, confirm it responds correctly"
+      ],
+      "technicalNotes": [
+        "Client-side: prisma-ai.js already has prismaHistory array (US-010) — pass it as conversationHistory in each POST request",
+        "Trim: if (prismaHistory.length > 40) prismaHistory = prismaHistory.slice(-40); // 40 role/content items = 20 exchanges",
+        "Server-side: prepend conversationHistory to the AI messages array before calling the provider",
+        "Reset on close: prismaHistory = [] when the panel close (✕) button is clicked",
+        "No server-side storage needed — purely stateless endpoint that receives history each time"
+      ],
+      "dependencies": ["US-011"],
+      "estimatedComplexity": "small",
+      "passes": false
+    },
+    {
+      "id": "US-015",
+      "title": "Mirror all Phase 3 features in chat-simulator/live-simulation",
+      "priority": 22,
+      "description": "As a staff member testing via Chat Simulator live-simulation mode, I want all new live-chat features to also work in that tab so I can test the full experience without switching tabs. All features from US-003 through US-014 must be mirrored.",
+      "acceptanceCriteria": [
+        "WhatsApp-style filter chips (US-003/US-004) appear and function in the simulator's conversation list panel",
+        "Message action menu (US-005) appears correctly positioned in the simulator's message thread",
+        "Translate toggle (US-006) works in the simulator",
+        "Colored initials avatars (US-007) render in the simulator's contact list",
+        "Schedule message with full datetime editing (US-008) works in the simulator",
+        "'Ask AI — Prisma' menu entry (US-009) and full Prisma window (US-010 to US-013) are accessible from the simulator",
+        "Date-jump search (US-014) works in the simulator",
+        "All features reuse the same JS modules as live-chat (no code duplication)",
+        "TypeScript compiles with zero errors",
+        "Server starts and dashboard loads without errors",
+        "Verify in browser using agent-browser: open #chat-simulator/live-simulation, confirm each feature is present and functional"
+      ],
+      "technicalNotes": [
+        "Chat simulator template: RainbowAI/src/public/templates/tabs/chat-simulator.html",
+        "Live simulation sub-tab: find the live-simulation section within chat-simulator.html",
+        "Shared modules: all features built in US-003 to US-014 use JS modules that should already be loaded in chat-simulator context",
+        "Verify module-chunks: RainbowAI/src/public/js/module-chunks/ — check if live-chat modules are bundled into chat-simulator chunk",
+        "If any feature is chat-simulator-specific HTML missing, add the required DOM elements (filter bar, search bar, action menus)",
+        "CSS: all styles are global in rainbow-livechat-core.css and rainbow-livechat-ui.css — no extra CSS needed"
+      ],
+      "dependencies": ["US-003", "US-004", "US-005", "US-006", "US-007", "US-008", "US-009", "US-010", "US-011", "US-012", "US-013", "US-014"],
+      "estimatedComplexity": "large",
+      "passes": false
+    }
+  ],
+  "technicalContext": {
+    "affectedAreas": [
+      "RainbowAI/src/public/js/modules/live-chat-actions.js",
+      "RainbowAI/src/public/js/modules/live-chat-core.js",
+      "RainbowAI/src/public/js/modules/live-chat-panels.js",
+      "RainbowAI/src/public/js/modules/live-chat.js",
+      "RainbowAI/src/public/js/modules/settings-ai-models.js",
+      "RainbowAI/src/public/js/modules/prisma-ai.js",
+      "RainbowAI/src/public/templates/tabs/live-chat.html",
+      "RainbowAI/src/public/templates/tabs/settings.html",
+      "RainbowAI/src/public/templates/tabs/chat-simulator.html",
+      "RainbowAI/src/public/css/rainbow-livechat-core.css",
+      "RainbowAI/src/public/css/rainbow-livechat-ui.css",
+      "RainbowAI/src/routes/admin/index.ts",
+      "RainbowAI/src/routes/admin/intent-analytics.ts",
+      "RainbowAI/src/routes/admin/conversations.ts",
+      "RainbowAI/src/routes/admin/tags.ts",
+      "RainbowAI/src/routes/admin/capsules.ts",
+      "RainbowAI/src/routes/admin/prisma.ts",
+      "RainbowAI/src/assistant/data/settings.json",
+      "RainbowAI/src/assistant/data/routing.json",
+      "RainbowAI/src/assistant/data/workflows.json",
+      "RainbowAI/src/assistant/data/intent-keywords.json",
+      "RainbowAI/src/assistant/message-router.ts",
+      "RainbowAI/src/assistant/knowledge-base.ts",
+      "RainbowAI/src/assistant/pipeline/stages/action-dispatch.ts",
+      "server/index.ts",
+      "server/routes/"
+    ],
+    "newFiles": [
+      "RainbowAI/src/routes/admin/prisma.ts",
+      "RainbowAI/src/public/js/modules/prisma-ai.js"
+    ],
+    "testingStrategy": "Bug fixes verified via agent-browser before marking complete. Intent/workflow changes run 50-scenario accuracy test. UI changes verified in both #live-chat and #chat-simulator/live-simulation. TypeScript compilation check after every story.",
+    "rollbackPlan": "git checkout HEAD -- RainbowAI/src/public/ RainbowAI/src/routes/ RainbowAI/src/assistant/data/ server/index.ts",
+    "crossCuttingConcerns": {
+      "agentBrowserVerification": "All UI stories must be verified using agent-browser before marking complete",
+      "accuracyTest": "All intent and workflow changes must maintain 100% on 50-scenario accuracy test",
+      "importBoundaries": "RainbowAI/ must have ZERO imports from server/, client/, or shared/ — HTTP fetch only for cross-module data",
+      "atomicWrites": "All new JSON data files use config-store.ts atomic write pattern (.tmp then renameSync)",
+      "cssConvention": "All new UI components use existing CSS files — no inline styles, no new stylesheet files"
+    }
+  }
 }

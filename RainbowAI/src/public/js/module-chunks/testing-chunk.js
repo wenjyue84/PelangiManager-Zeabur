@@ -50,7 +50,8 @@ import {
   exportHistoricalReport,
   clearAutotestHistoryUI,
   toggleExportDropdown,
-  exportAutotestReport
+  exportAutotestReport,
+  updateScenarioCount
 } from '/public/js/modules/autotest-ui.js';
 
 // ─── Window globals ──────────────────────────────────────────────
@@ -96,6 +97,7 @@ window.testIntentClassifier = testIntentClassifier;
 
 // Phase 32: Autotest Scenarios Data
 window.AUTOTEST_SCENARIOS = AUTOTEST_SCENARIOS;
+updateScenarioCount();
 
 // Phase 33: Autotest UI (clearAutotestHistory overrides Phase 30's version)
 window.renderScenarioCard = renderScenarioCard;

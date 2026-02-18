@@ -19,28 +19,28 @@ app.use(compression());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false, limit: '5mb' }));
 
-// CORS configuration - allow local Rainbow AI to connect to Vercel deployment
+// CORS configuration
+// In production, nginx proxies both frontend and API on port 80 (same-origin),
+// but browsers may still send Origin headers for credentialed requests.
+// CORS_ORIGIN env var allows comma-separated additional origins (e.g. "http://18.142.14.142,https://example.com")
+const extraOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (mobile apps, curl, Postman, same-origin)
     if (!origin) return callback(null, true);
 
-    // Allow localhost (local Rainbow AI)
+    // Allow localhost (local dev + Rainbow AI)
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true);
     }
 
-    // Allow production Vercel URL (same origin for frontend)
     const allowedOrigins = [
       'https://pelangi-manager.vercel.app',
       process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
-      process.env.PRODUCTION_URL || ''
+      process.env.PRODUCTION_URL || '',
+      ...extraOrigins,
     ].filter(Boolean);
-
-    // Log for debugging (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('CORS check:', { origin, allowedOrigins });
-    }
 
     if (allowedOrigins.some(allowed => origin.startsWith(allowed) || origin.includes(allowed))) {
       return callback(null, true);

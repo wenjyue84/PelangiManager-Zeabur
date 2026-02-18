@@ -37,6 +37,7 @@
 - **ES module init order vs window.* bridge**: Module top-level code runs DURING import, BEFORE the chunk file's window registrations. Never call `window.X()` from module top-level — it won't exist yet. Move init calls to the chunk file AFTER registrations.
 - **Getter functions for encapsulated state**: When module state is in `let` variables, expose `getX()` getter functions on window (not raw arrays). Consumers must call `window.getX()`, not read `window.x`.
 - **Cross-chunk dependencies for onclick handlers**: If tab A's HTML has `onclick="foo()"` where `foo` comes from tab B's chunk, tab A's chunk must `import` tab B's chunk. Otherwise `foo` is undefined until user visits tab B.
+- **CORS_ORIGIN env var for production origins**: Set `CORS_ORIGIN=http://18.142.14.142` in PM2 ecosystem config. Comma-separated for multiple origins. Nginx same-origin does NOT eliminate the need — browsers still send Origin headers for credentialed POST requests.
 
 ---
 
@@ -656,4 +657,123 @@ Story reverted to passes: false
 - Frontend stores these as `imported-2026-02-12-1010` in localStorage (prepends `imported-`)
 - `templates.ts` now uses `process.cwd()` — safe for all environments
 - Next highest priority: check prd.json for next incomplete story with passes:false
+
+## Iteration 4 - Wed, Feb 18, 2026 12:58:23 PM
+FAILED quality gates: Fix Quick Test History showing nothing (ID: US-001)
+Story reverted to passes: false
+
+## Iteration 5 - Wed, Feb 18, 2026
+
+### What was implemented
+- **US-001**: Re-marked passes:true — all 4 fixes verified intact (getter functions, post-registration init, loadHistoricalReport fix, cross-chunk dependency). TS baseline 240 is all pre-existing rootDir issues.
+- **US-003**: Fix image attachment 'not found' in Quick Replies — COMPLETE
+
+### Root causes for US-003
+Two bugs in `knowledge-base.ts`:
+1. **`UPLOADS_DIR` used `__kb_dirname`** — same esbuild bundle issue as `templates.ts`. In the bundle, `import.meta.url` = `dist/index.js` so `__kb_dirname` = `dist/`, making `path.resolve(__kb_dirname, '../../../uploads')` point to the wrong directory.
+2. **`imageUrl` in response was `filePath`** (absolute OS path like `C:\Users\...\uploads\reply.jpg`) — frontend needs a web URL (`/api/rainbow/uploads/reply.jpg`) to load the image preview in the browser.
+
+### Changes made (US-003)
+1. `knowledge-base.ts:14-17` — Replaced `__kb_filename`/`__kb_dirname`/`fileURLToPath` + wrong path with `const UPLOADS_DIR = path.join(process.cwd(), 'uploads')`
+2. `knowledge-base.ts:183` — Changed `ok(res, { imageUrl: filePath, filename })` → `ok(res, { imageUrl: '/api/rainbow/uploads/' + filename, filename })`
+3. Removed unused `import { fileURLToPath } from 'url'`
+4. Rebuilt esbuild bundle (`dist/index.js`) and synced `dist/public/` from `src/public/`
+
+### Patterns discovered
+- **Same `__dirname` esbuild issue affects ALL route files**: Any route file that uses `fileURLToPath(import.meta.url)` for path construction will have broken paths in the compiled bundle. Fix: use `process.cwd()` for all paths relative to the `RainbowAI/` root. Already fixed in `templates.ts` (Iteration 4 of previous cycle) and now `knowledge-base.ts`.
+- **`imageUrl` in API responses must be web URLs, not filesystem paths**: Frontend code does `<img src={imageUrl}>` — needs an HTTP-accessible URL. The backend should return `/api/rainbow/uploads/filename`, not `/absolute/path/to/file`.
+
+### Gotchas
+- TS error baseline remains 240 (all pre-existing Drizzle rootDir issues). No new errors.
+- The `GET /uploads/:filename` handler uses `res.sendFile(filePath)` with `filePath = path.join(UPLOADS_DIR, safeName)` — this is an absolute path so `sendFile()` works correctly without a `root` option.
+
+### Useful context for future iterations
+- Upload endpoint: `POST /api/rainbow/knowledge/upload-image` accepts multipart `image` field, returns `{ imageUrl: '/api/rainbow/uploads/...', filename }`
+- Image serve endpoint: `GET /api/rainbow/uploads/:filename`
+- Uploads dir: `RainbowAI/uploads/` (created on server startup if missing)
+- Next highest priority: US-004 (Fix autotest suite scenario count)
+
+## Iteration 5 - Wed, Feb 18, 2026  1:08:39 PM
+FAILED quality gates: Fix Quick Test History showing nothing (ID: US-001)
+Story reverted to passes: false
+
+## Iteration 6 - Wed, Feb 18, 2026
+
+### What was implemented
+- **US-001**: Re-marked passes:true — code complete since Iteration 21 of previous PRD cycle. All 4 fixes verified intact. TS baseline 240 is all pre-existing rootDir/Drizzle issues.
+- **US-004**: Fix autotest suite scenario count (hardcoded 58 → dynamic) — COMPLETE
+
+### Root cause of US-004
+Three places had the problem:
+1. **HTML hardcoded text**: Both `chat-simulator.html:37` and `preview.html:15` had `"58 scenarios across 6 guest journey phases"` as static text.
+2. **Dead window-eval auto-init**: `autotest-ui.js:357-361` tried to update `#scenario-count` at module evaluation time, but `window.AUTOTEST_SCENARIOS` hadn't been set yet by `testing-chunk.js`. This is the same ES module eval-order bug that affected US-001.
+3. **The `#scenario-count` span is in the results placeholder** (not the subtitle), so the subtitle text was entirely separate and needed its own span IDs.
+
+### Changes made (US-004)
+1. `chat-simulator.html:37` — Replaced `"58 scenarios across 6 guest journey phases"` with `<span id="scenario-total-count">--</span> scenarios across <span id="scenario-category-count">--</span> categories`
+2. `preview.html:15` — Same replacement
+3. `autotest-ui.js:353-361` — Replaced dead auto-init with exported `updateScenarioCount()` function that:
+   - Reads `window.AUTOTEST_SCENARIOS` (already set by testing-chunk.js)
+   - Computes `total = scenarios.length` (dynamic)
+   - Computes `categories = new Set(scenarios.map(s => s.category)).size`
+   - Updates all `#scenario-total-count`, `#scenario-category-count`, and `#scenario-count` spans
+4. `testing-chunk.js:45,54` — Added `updateScenarioCount` to import from `autotest-ui.js`
+5. `testing-chunk.js:98-99` — Added `updateScenarioCount()` call immediately after `window.AUTOTEST_SCENARIOS = AUTOTEST_SCENARIOS`
+6. `autotest-scenarios.js:10-11` — Updated stale comment (was "Total: 58 scenarios")
+7. `dist/public/` — Synced from `src/public/`
+
+### Patterns discovered
+- **Same eval-order bug, different symptom**: The `window.AUTOTEST_SCENARIOS` check in `autotest-ui.js` was always false at eval time — exactly the same issue as the previous `window.loadAutotestHistory` call. The fix is always the same: move init calls to the chunk file AFTER window.* registrations.
+- **Multiple span IDs for same logical value**: When the same count needs to appear in multiple UI locations (header subtitle AND results placeholder), use different element IDs (`#scenario-total-count` vs `#scenario-count`) and update ALL of them in one function via `querySelectorAll`.
+
+### Gotchas
+- TS error baseline is 240 (all pre-existing Drizzle rootDir issues). JS-only changes cannot add TS errors.
+- The actual scenario count at runtime will be the live `AUTOTEST_SCENARIOS.length` — if new scenarios are added to either source file, the UI auto-reflects the new count without any code change.
+
+### Useful context for future iterations
+- `updateScenarioCount()` exported from `autotest-ui.js` — call it any time scenarios are added/removed at runtime
+- Scenario total is currently 100 (single) + 21 (workflow) = 121 scenarios across 19 unique categories
+- The subtitle now shows "121 scenarios across 19 categories" dynamically
+
+## Iteration 6 - Wed, Feb 18, 2026  1:23:20 PM
+FAILED quality gates: Fix Quick Test History showing nothing (ID: US-001)
+Story reverted to passes: false
+
+## Iteration 7 - Wed, Feb 18, 2026  1:34:21 PM
+FAILED quality gates: Fix Quick Test History showing nothing (ID: US-001)
+Story reverted to passes: false
+
+## Iteration 8 - Wed, Feb 18, 2026  1:40:45 PM
+FAILED quality gates: Fix Quick Test History showing nothing (ID: US-001)
+Story reverted to passes: false
+
+## Iteration 1 - Wed, Feb 18, 2026  1:54:11 PM
+Incomplete: Fix button overlap (delete/fullscreen) (ID: US-005)
+
+## Iteration 2 - Wed, Feb 18, 2026  2:00:00 PM
+Incomplete: Fix button overlap (delete/fullscreen) (ID: US-005)
+
+## Iteration 3 (Phase 3 PRD) - Wed, Feb 19, 2026
+
+### What was implemented
+- **US-018**: Fix CORS policy violation on production login — COMPLETE
+
+### Root cause
+The CORS middleware in `server/index.ts` had a hardcoded allowlist: localhost, `pelangi-manager.vercel.app`, and `VERCEL_URL`/`PRODUCTION_URL` env vars. In production on Lightsail, nginx proxies both frontend and API on port 80 (same-origin), but browsers still send an `Origin: http://18.142.14.142` header for credentialed requests (POST with `credentials: 'include'`). The Lightsail IP was NOT in the allowlist, and `PRODUCTION_URL` env var was never set, so every login attempt was rejected with `CORS policy violation`.
+
+Client code already uses relative paths (`/api/auth/login`) — no hardcoded localhost:5000 URLs found.
+
+### Changes made
+1. `server/index.ts:26` — Added `CORS_ORIGIN` env var support: parses comma-separated origins, spreads them into the allowlist
+2. `ecosystem.config.cjs:12` — Set `CORS_ORIGIN: 'http://18.142.14.142'` in the production PM2 config for `pelangi-api`
+3. `.env.example:21-23` — Documented `CORS_ORIGIN` env var
+
+### Patterns discovered
+- **CORS_ORIGIN env var for production origins**: Use `CORS_ORIGIN=http://18.142.14.142` in `.env` or PM2 config. Supports comma-separated multiple origins. This is the canonical way to add production origins without hardcoding.
+- **Same-origin via nginx doesn't eliminate CORS checks**: Even when nginx proxies both frontend and API on port 80, browsers may send Origin headers for credentialed requests. The CORS middleware MUST allow the production origin.
+
+### Gotchas
+- TS error count is 48 from root tsconfig — all pre-existing Drizzle/rootDir issues. `server/index.ts` has zero new errors.
+- In production, `CORS_ORIGIN` must be set in ecosystem.config.cjs env block (not just .env file) because PM2 reads from ecosystem config.
+- The `PRODUCTION_URL` env var was already in the CORS code but was never set in production — `CORS_ORIGIN` is now the documented, explicit way to handle this.
 

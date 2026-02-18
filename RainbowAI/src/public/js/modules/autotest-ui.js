@@ -111,11 +111,16 @@ export function showAutotestHistory() {
   } else {
     listEl.innerHTML = allReports.map((report) => {
       const date = new Date(report.timestamp);
-      const total = report.source === 'local' ? report.results.length : report.total;
-      const passRate = ((report.passed / total) * 100).toFixed(1);
+      // total: use report.total (summary key) or results.length (in-memory) or report.results?.length
+      const total = report.source === 'imported'
+        ? (report.total || 0)
+        : (report.total || (Array.isArray(report.results) ? report.results.length : 0));
+      const passRate = total > 0 ? ((report.passed / total) * 100).toFixed(1) : '0.0';
       const isImported = report.source === 'imported';
+      // Local reports only allow restore if full results are still in memory
+      const hasResults = !isImported && Array.isArray(report.results) && report.results.length > 0;
 
-      return '<div class="bg-white border border-neutral-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-sm transition cursor-pointer" onclick="' + (isImported ? "openImportedReport('" + report.filename + "')" : 'loadHistoricalReport(' + report.id + ')') + '">'
+      return '<div class="bg-white border border-neutral-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-sm transition' + (isImported || hasResults ? ' cursor-pointer' : ' cursor-default opacity-75') + '" onclick="' + (isImported ? "openImportedReport('" + report.filename + "')" : hasResults ? 'loadHistoricalReport(' + report.id + ')' : 'void(0)') + '">'
         + '<div class="flex items-start justify-between mb-2">'
         + '<div class="flex-1">'
         + '<div class="flex items-center gap-2 mb-1">'
@@ -132,7 +137,9 @@ export function showAutotestHistory() {
         + '<span class="text-sm font-semibold ' + (passRate >= 75 ? 'text-green-600' : passRate >= 50 ? 'text-yellow-600' : 'text-red-600') + '">' + passRate + '% pass</span>'
         + (isImported
           ? '<span class="text-xs text-indigo-500">View Report →</span>'
-          : '<button onclick="event.stopPropagation(); exportHistoricalReport(' + report.id + ')" class="text-xs text-indigo-500 hover:text-indigo-600 transition">Export →</button>')
+          : hasResults
+            ? '<button onclick="event.stopPropagation(); exportHistoricalReport(' + report.id + ')" class="text-xs text-indigo-500 hover:text-indigo-600 transition">Export →</button>'
+            : '<span class="text-xs text-neutral-400">Summary only</span>')
         + '</div></div></div>';
     }).join('');
   }
@@ -347,8 +354,20 @@ document.addEventListener('click', function (event) {
 // Note: loadAutotestHistory() is called in testing-chunk.js AFTER window registrations.
 // The previous auto-init here ran before window.* was set, so it was a dead call.
 
-// Update dynamic scenario count
-const scenarioCountEl = document.getElementById('scenario-count');
-if (scenarioCountEl && window.AUTOTEST_SCENARIOS) {
-  scenarioCountEl.textContent = window.AUTOTEST_SCENARIOS.length;
+// ─── Scenario Count ──────────────────────────────────────────────────────
+
+/**
+ * Update scenario count spans from window.AUTOTEST_SCENARIOS.
+ * Must be called AFTER testing-chunk.js sets window.AUTOTEST_SCENARIOS.
+ */
+export function updateScenarioCount() {
+  const scenarios = window.AUTOTEST_SCENARIOS;
+  if (!scenarios || !scenarios.length) return;
+  const total = scenarios.length;
+  const categories = new Set(scenarios.map(s => s.category)).size;
+  // Update all matching spans on the page (chat-simulator and preview tabs both have these)
+  document.querySelectorAll('#scenario-total-count').forEach(el => { el.textContent = total; });
+  document.querySelectorAll('#scenario-category-count').forEach(el => { el.textContent = categories; });
+  // Also update the run-all placeholder (#scenario-count is in the results area)
+  document.querySelectorAll('#scenario-count').forEach(el => { el.textContent = total; });
 }
