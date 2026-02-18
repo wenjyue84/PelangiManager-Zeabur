@@ -1,4 +1,8 @@
 ## Codebase Patterns
+- **esbuild bundle path resolution**: In bundled production builds, `__dirname` via `fileURLToPath(import.meta.url)` resolves to `dist/`, NOT the source layout. Use `process.cwd()` for paths to files in `src/public/` (templates, assets). Process CWD is set at launch time = `RainbowAI/`. Example: `join(process.cwd(), 'src/public/templates/tabs', name)`.
+- **dist/public must be synced after src/public changes**: The esbuild bundle only rebuilds TS → `dist/index.js`. Static files (`src/public/js/**`) must be manually copied: `node -e "require('fs').cpSync('src/public','dist/public',{recursive:true,force:true})"`. Otherwise old compiled JS runs in production.
+- **Route naming convention for new endpoints**: Backend `GET /autotest/reports` (not `/tests/scan-reports`) matches the frontend fetch call in `autotest-history.js`. Always verify URL alignment between frontend fetch and backend router registration before implementing.
+
 
 - **3-server architecture**: Port 3000 (Vite), 5000 (Express API), 3002 (Rainbow MCP). All 3 must run for dashboard.
 - **Import boundaries**: RainbowAI/ has ZERO imports from server/, client/, or shared/. They communicate via HTTP.
@@ -610,4 +614,46 @@ The `knowledge.js` mock in `message-pipeline.test.ts` was missing the `getStatic
 - `knowledge.ts` now exports: `getStaticReply`, `getStaticReplyImageUrl`, `setDynamicKnowledge`, `deleteDynamicKnowledge`, `listDynamicKnowledge`
 - If more exports are added to `knowledge.js`, update the mock in `message-pipeline.test.ts` too
 - US-003 (image upload endpoint) is next priority
+
+## Iteration 3 - Wed, Feb 18, 2026 11:45:54 AM
+FAILED quality gates: Fix Quick Test History showing nothing (ID: US-001)
+Story reverted to passes: false
+
+## Iteration 4 - Wed, Feb 18, 2026 12:52:31 PM
+
+### What was implemented
+- **US-001 (Phase 5 PRD)**: Fix Quick Test History (Autotest History) showing nothing — COMPLETE
+
+### Root causes found (3 bugs, 1 pre-existing)
+1. **Missing `/autotest/reports` route**: Frontend `autotest-history.js` calls `GET /api/rainbow/autotest/reports` but no such route existed. The backend had `GET /tests/scan-reports` returning `{ reports: [...] }` (wrong shape) with IDs already prefixed `imported-` (frontend adds prefix again → double prefix). The `catch()` in `loadImportedReports()` silently swallowed the 404.
+2. **`templates.ts` `__dirname` bug**: In the esbuild bundle, `fileURLToPath(import.meta.url)` = `dist/index.js` so `__dirname` = `RainbowAI/dist/`. Path `join(__dirname, '../../public/templates/tabs')` resolved to `RainbowAI/public/templates/tabs/` (nonexistent). Every tab template returned `{"error":"Template not found"}`.
+3. **Stale `dist/public/` static files**: `dist/public/js/modules/autotest-ui.js` still had old code reading `window.importedReports` directly (pre-getter-function pattern) instead of calling `window.getImportedReports()`. The esbuild step only builds `src/*.ts` → `dist/index.js`; it does NOT update `dist/public/` static JS files.
+
+### Changes made
+1. `testing.ts` — Added `GET /autotest/reports` route returning a direct array (not wrapped object). IDs are bare (no `imported-` prefix; frontend adds it). Moved `import fs`, `import { promisify }` to top of file (ES modules require top-level imports).
+2. `templates.ts` — Changed `join(__dirname, '../../public/templates/tabs', name)` → `join(process.cwd(), 'src/public/templates/tabs', name)`. Removed unused `dirname`, `fileURLToPath`, `url` imports.
+3. `dist/public/` — Synced from `src/public/` via `fs.cpSync`. `autotest-ui.js` now has current getter-function code.
+4. Rebuilt: `esbuild src/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js`
+5. Restarted server with correct WorkingDirectory (`RainbowAI/`) so `process.cwd()` resolves correctly.
+6. `prd.json` — US-001 marked `passes: true`
+
+### Verification
+- `GET /api/rainbow/autotest/reports` → returns 17 report objects (direct array)
+- Autotest History modal shows 17 reports with stats (passed/warned/failed/total)
+
+### Patterns discovered
+- **`process.cwd()` not `__dirname` in esbuild bundles**: esbuild bundles all files into `dist/index.js`. In that bundle, `import.meta.url` = `file:///path/to/dist/index.js`, so `__dirname` = `dist/`. Use `process.cwd()` for paths relative to the project root; it equals the working directory at process launch (the `RainbowAI/` root). This is stable for both tsx dev mode and the compiled bundle.
+- **`dist/public/` must be manually synced after `src/public/` changes**: The esbuild step only handles TypeScript files → `dist/index.js`. Static JS, CSS, HTML in `src/public/` need a separate `fs.cpSync` step. Always run sync before restarting.
+- **Route URL alignment check**: Before adding a new backend route, grep for the fetch URL in frontend code (`/api/rainbow/autotest/reports`) and verify both the URL AND response shape match. Frontend may catch 404s silently.
+
+### Gotchas
+- TS error baseline is 240 (all pre-existing Drizzle rootDir issues). `testing.ts` and `templates.ts` have 0 new errors.
+- Server CWD matters: `Start-Process` for the server must include `-WorkingDirectory "RainbowAI/"` or `process.cwd()` will be wrong.
+- The `readdir`/`readFile`/`stat` promisify calls must be at module scope (not inside a function) because they depend on the `import fs` at the top — cannot import inside a route handler.
+
+### Useful context for future iterations
+- `GET /api/rainbow/autotest/reports` returns: `[{ id: "2026-02-12-1010", filename: "rainbow-autotest-2026-02-12-1010.html", timestamp: "ISO", total: N, passed: N, warnings: N, failed: N }]`
+- Frontend stores these as `imported-2026-02-12-1010` in localStorage (prepends `imported-`)
+- `templates.ts` now uses `process.cwd()` — safe for all environments
+- Next highest priority: check prd.json for next incomplete story with passes:false
 

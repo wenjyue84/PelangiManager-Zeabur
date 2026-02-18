@@ -2,6 +2,8 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
+import { promisify } from 'util';
 import axios from 'axios';
 import { configStore } from '../../assistant/config-store.js';
 import { isAIAvailable, classifyAndRespond, testProvider } from '../../assistant/ai-client.js';
@@ -387,14 +389,72 @@ router.post('/tests/register-result', async (req: Request, res: Response) => {
   }
 });
 
-// ─── Scan Reports Directory ──────────────────────────────────────────
-
-import fs from 'fs';
-import { promisify } from 'util';
+// ─── Autotest Reports (for auto-import in dashboard) ─────────────────
 
 const readdir = promisify(fs.readdir);
 const readFile = promisify(fs.readFile);
 const stat = promisify(fs.stat);
+
+/**
+ * GET /autotest/reports
+ * Returns array of available HTML report files for auto-import in the dashboard.
+ * Each item id is the bare identifier (frontend prepends 'imported-').
+ */
+router.get('/autotest/reports', async (_req: Request, res: Response) => {
+  try {
+    const reportsDir = path.join(process.cwd(), 'src/public/reports/autotest');
+
+    if (!fs.existsSync(reportsDir)) {
+      res.json([]);
+      return;
+    }
+
+    const files = await readdir(reportsDir);
+    const htmlFiles = files.filter(f => f.endsWith('.html'));
+
+    const reports = await Promise.all(
+      htmlFiles.map(async (filename) => {
+        try {
+          const filePath = path.join(reportsDir, filename);
+          const fileStat = await stat(filePath);
+          const content = await readFile(filePath, 'utf-8');
+
+          // Parse report metadata from HTML summary cards
+          const passedMatch = content.match(/<div class="num" style="color:#16a34a">(\d+)<\/div><div class="label">Passed<\/div>/);
+          const warnedMatch = content.match(/<div class="num" style="color:#ca8a04">(\d+)<\/div><div class="label">Warnings<\/div>/);
+          const failedMatch = content.match(/<div class="num" style="color:#dc2626">(\d+)<\/div><div class="label">Failed<\/div>/);
+          const totalMatch = content.match(/<div class="num" style="color:#333">(\d+)<\/div><div class="label">Total<\/div>/);
+
+          // Derive bare id from filename: rainbow-autotest-2026-02-12-1010.html → 2026-02-12-1010
+          const idMatch = filename.match(/rainbow-autotest-(.+)\.html$/);
+          const bareId = idMatch ? idMatch[1] : fileStat.mtimeMs.toString();
+
+          return {
+            id: bareId,
+            filename,
+            timestamp: fileStat.mtime.toISOString(),
+            total: totalMatch ? parseInt(totalMatch[1]) : 0,
+            passed: passedMatch ? parseInt(passedMatch[1]) : 0,
+            warnings: warnedMatch ? parseInt(warnedMatch[1]) : 0,
+            failed: failedMatch ? parseInt(failedMatch[1]) : 0
+          };
+        } catch (err) {
+          console.error(`[autotest/reports] Error parsing ${filename}:`, err);
+          return null;
+        }
+      })
+    );
+
+    const validReports = (reports.filter(r => r !== null) as NonNullable<(typeof reports)[number]>[])
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    res.json(validReports);
+  } catch (err: any) {
+    serverError(res, err);
+  }
+});
+
+// ─── Scan Reports Directory ──────────────────────────────────────────
 
 router.get('/tests/scan-reports', async (_req: Request, res: Response) => {
   try {

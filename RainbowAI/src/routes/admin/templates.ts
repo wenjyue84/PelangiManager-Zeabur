@@ -5,25 +5,23 @@
 
 import { Router } from 'express';
 import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { notFound, serverError } from './http-utils.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const router = Router();
 
 /**
  * GET /api/rainbow/templates/:name
- * Serve HTML template by name
+ * Serve HTML template by name.
+ * Uses process.cwd() so path resolution works in both tsx dev mode and
+ * esbuild-bundled production builds (where __dirname resolves to dist/).
  */
 router.get('/:name', (req, res) => {
   const { name } = req.params;
 
   // Sanitize template name (prevent directory traversal)
   const safeName = name.replace(/[^a-z0-9_-]/gi, '');
-  const templatePath = join(__dirname, '../../public/templates/tabs', `${safeName}.html`);
+  const templatePath = join(process.cwd(), 'src/public/templates/tabs', `${safeName}.html`);
 
   if (!existsSync(templatePath)) {
     return notFound(res, 'Template');
