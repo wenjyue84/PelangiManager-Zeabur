@@ -104,7 +104,6 @@ export function CheckoutConfirmationDialog({
   onConfirm,
   guestName,
   unitNumber,
-  unitNumber,
   isLoading,
 }: {
   open: boolean;
@@ -112,10 +111,9 @@ export function CheckoutConfirmationDialog({
   onConfirm: () => void;
   guestName: string;
   unitNumber?: string;
-  unitNumber?: string;
   isLoading?: boolean;
 }) {
-  const accommodationNumber = unitNumber ?? unitNumber ?? "N/A";
+  const accommodationNumber = unitNumber ?? "N/A";
   return (
     <ConfirmationDialog
       open={open}

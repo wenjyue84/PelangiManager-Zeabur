@@ -161,7 +161,7 @@ class PushNotificationManager {
         throw new Error('Invalid VAPID key response');
       }
       this.vapidPublicKey = data.publicKey;
-      return this.vapidPublicKey;
+      return this.vapidPublicKey!;
     } catch (error) {
       console.error('Error getting VAPID public key:', error);
       throw error;

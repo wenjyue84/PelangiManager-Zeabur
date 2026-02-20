@@ -49,7 +49,7 @@ const EnhancedGuestSuccessPage: React.FC<{
     const shareText = `🏨 Pelangi Capsule Hostel - My Stay Information
 
 Name: ${guestName}
-Capsule: ${capsule}
+Unit: ${capsule}
 Arrival: ${checkinTime}
 Departure: ${checkoutTime}
 Door Password: ${doorPassword}
@@ -97,7 +97,7 @@ Welcome to Pelangi Capsule Hostel! 🌈`;
           expectedCheckoutDate: guestInfo.expectedCheckoutDate,
         }}
         assignedunitNumber={guestInfo.unitNumber}
-        capsuleIssues={[]}
+        unitIssues={[]}
         // Use the SAME approach as preview: pass settings=null when using context
         settings={useContextSettings ? null : settings}
         // Pass content and visibility directly from context (same as preview)
@@ -140,7 +140,7 @@ export default function GuestSuccessPage() {
     guideAddress?: string;
     guideWifiName?: string;
     guideWifiPassword?: string;
-    guideShowCapsuleIssues?: boolean;
+    guideShowunitIssues?: boolean;
   }>({
     queryKey: ["/api/settings"],
     enabled: isValidAccess,

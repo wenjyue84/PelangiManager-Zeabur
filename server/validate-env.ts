@@ -18,7 +18,7 @@ const rules: EnvRule[] = [
   { key: 'BUSINESS_NAME', required: 'optional', description: 'Business display name (default: Pelangi Capsule Hostel)' },
   { key: 'BUSINESS_SHORT_NAME', required: 'optional', description: 'Short name for receipts and UI (default: Pelangi)' },
   { key: 'BUSINESS_TAGLINE', required: 'optional', description: 'Tagline shown in header (default: Your Cozy Home in JB)' },
-  { key: 'ACCOMMODATION_TYPE', required: 'optional', description: 'Type: capsule | room | house (default: capsule)' },
+  { key: 'ACCOMMODATION_TYPE', required: 'optional', description: 'Type: unit | room | house (default: unit)' },
   { key: 'BUSINESS_ADDRESS', required: 'optional', description: 'Full business address for receipts' },
   { key: 'BUSINESS_PHONE', required: 'optional', description: 'Contact phone number' },
   { key: 'BUSINESS_EMAIL', required: 'optional', description: 'Contact email address' },

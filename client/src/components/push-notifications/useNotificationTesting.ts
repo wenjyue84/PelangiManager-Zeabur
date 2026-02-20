@@ -20,7 +20,7 @@ function buildTestPayload(type: keyof NotificationPreferences): Record<string, a
     case 'guestCheckIn':
       return {
         title: 'Test: Guest Check-in',
-        body: 'John Doe has checked into Capsule A1 (Test Notification)',
+        body: 'John Doe has checked into Unit A1 (Test Notification)',
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: 'test-guest-checkin',
@@ -39,7 +39,7 @@ function buildTestPayload(type: keyof NotificationPreferences): Record<string, a
     case 'checkoutReminders':
       return {
         title: 'Test: Checkout Reminder',
-        body: 'Jane Smith in Capsule B2 is due for checkout today (Test Notification)',
+        body: 'Jane Smith in Unit B2 is due for checkout today (Test Notification)',
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: 'test-checkout-reminder',
@@ -61,7 +61,7 @@ function buildTestPayload(type: keyof NotificationPreferences): Record<string, a
     case 'overdueCheckouts':
       return {
         title: 'Test: Overdue Checkout',
-        body: 'Mike Johnson in Capsule C3 is 2 day(s) overdue (Test Notification)',
+        body: 'Mike Johnson in Unit C3 is 2 day(s) overdue (Test Notification)',
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: 'test-overdue-checkout',
@@ -81,7 +81,7 @@ function buildTestPayload(type: keyof NotificationPreferences): Record<string, a
     case 'maintenanceRequests':
       return {
         title: 'Test: Maintenance Request',
-        body: 'Capsule D4: Air conditioning not working (Test Notification)',
+        body: 'Unit D4: Air conditioning not working (Test Notification)',
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: 'test-maintenance',

@@ -153,7 +153,8 @@ export class ConfigService {
     const config: Partial<UpdateSettings> = {};
     
     for (const key of Object.keys(DEFAULT_CONFIG) as (keyof UpdateSettings)[]) {
-      config[key] = await this.get(key);
+      const value = await this.get(key);
+      (config as any)[key] = value;
     }
 
     return config as UpdateSettings;
@@ -184,7 +185,11 @@ export class ConfigService {
     key: K,
     updatedBy?: string
   ): Promise<void> {
-    await this.set(key, DEFAULT_CONFIG[key], updatedBy);
+    const defaultValue = DEFAULT_CONFIG[key];
+    if (defaultValue === undefined) {
+      throw new Error(`No default configuration value for ${String(key)}`);
+    }
+    await this.set(key, defaultValue as UpdateSettings[K], updatedBy);
   }
 
   /**
@@ -192,7 +197,9 @@ export class ConfigService {
    */
   async resetAll(updatedBy?: string): Promise<void> {
     for (const [key, value] of Object.entries(DEFAULT_CONFIG)) {
-      await this.set(key as keyof UpdateSettings, value, updatedBy);
+      if (value !== undefined) {
+        await this.set(key as keyof UpdateSettings, value as any, updatedBy);
+      }
     }
   }
 

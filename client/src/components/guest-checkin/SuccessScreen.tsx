@@ -19,8 +19,8 @@ interface SuccessScreenProps {
     position: string;
   } | null;
   settings: any;
-  assignedunitNumber: string | null;
-  capsuleIssues: any[];
+  assignedUnitNumber: string | null;
+  unitIssues: any[];
   canEdit: boolean;
   editExpiresAt: Date | null;
   editToken: string;
@@ -46,8 +46,8 @@ interface SuccessScreenProps {
 export default function SuccessScreen({
   guestInfo,
   settings,
-  assignedunitNumber,
-  capsuleIssues,
+  assignedUnitNumber,
+  unitIssues,
   canEdit,
   editExpiresAt,
   editToken,
@@ -58,15 +58,15 @@ export default function SuccessScreen({
   handlePrint,
   handleSaveAsPdf,
   handleSendEmail,
-  guestData,
+  guestData = null,
   onRefresh,
 }: SuccessScreenProps) {
   const { t } = useI18n();
   const [showExtendDialog, setShowExtendDialog] = useState(false);
   
-  // Derive a reliable capsule number
-  const storedunitNumber = (typeof window !== 'undefined') ? localStorage.getItem('lastAssignedUnit') : null;
-  const displayunitNumber = assignedunitNumber || guestInfo?.unitNumber || storedunitNumber || "";
+  // Derive a reliable unit number
+  const storedUnitNumber = (typeof window !== 'undefined') ? localStorage.getItem('lastAssignedUnit') : null;
+  const displayUnitNumber = assignedUnitNumber || guestInfo?.unitNumber || storedUnitNumber || "";
   
   // Get current token for extend functionality
   const getCurrentToken = () => {
@@ -74,19 +74,19 @@ export default function SuccessScreen({
     return urlParams.get('token') || '';
   };
   if (process.env.NODE_ENV !== 'production') {
-    // Lightweight debug to help diagnose missing capsule numbers during development
-    console.log('[SuccessScreen] capsule numbers', {
-      assignedunitNumber,
-      guestInfoCapsule: guestInfo?.unitNumber,
-      storedunitNumber,
-      displayunitNumber,
+    // Lightweight debug to help diagnose missing unit numbers during development
+    console.log('[SuccessScreen] unit numbers', {
+      assignedUnitNumber,
+      guestInfoUnit: guestInfo?.unitNumber,
+      storedUnitNumber,
+      displayUnitNumber,
     });
   }
 
   // Handle share action
   const handleShare = () => {
     const guestName = guestInfo?.guestName || 'Guest';
-    const capsule = displayunitNumber || '';
+    const unit = displayUnitNumber || '';
     const checkinTime = settings?.guideCheckinTime || "3:00 PM";
     const checkoutTime = settings?.guideCheckoutTime || "12:00 PM";
     const doorPassword = settings?.guideDoorPassword || "1270#";
@@ -94,7 +94,7 @@ export default function SuccessScreen({
     const shareText = `🏨 Pelangi Capsule Hostel - My Stay Information
 
 Name: ${guestName}
-Capsule: ${capsule}
+Unit: ${unit}
 Arrival: ${checkinTime}
 Departure: ${checkoutTime}
 Door Password: ${doorPassword}
@@ -143,8 +143,8 @@ Welcome to Pelangi Capsule Hostel! 🌈`;
         viewMode="desktop"
         isPreview={false}
         guestInfo={guestInfo}
-        assignedunitNumber={assignedunitNumber}
-        capsuleIssues={capsuleIssues}
+        assignedUnitNumber={assignedUnitNumber}
+        unitIssues={unitIssues}
         settings={settings}
         actions={{
           onPrint: handlePrint,

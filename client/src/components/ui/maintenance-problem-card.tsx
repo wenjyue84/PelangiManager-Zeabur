@@ -15,10 +15,10 @@ import {
   Wrench,
   MessageSquare
 } from 'lucide-react';
-import type { CapsuleProblem } from '@shared/schema';
+import type { UnitProblem } from '@shared/schema';
 
 interface MaintenanceProblemCardProps {
-  problem: CapsuleProblem;
+  problem: UnitProblem;
   onResolve: (problemId: string, notes?: string) => void;
   isResolving?: boolean;
   className?: string;

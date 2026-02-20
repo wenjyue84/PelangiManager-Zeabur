@@ -28,7 +28,7 @@ export function useCheckInWizard() {
   const [editToken, setEditToken] = useState<string>("");
   const [editExpiresAt, setEditExpiresAt] = useState<Date | null>(null);
   const [canEdit, setCanEdit] = useState(false);
-  const [capsuleIssues, setCapsuleIssues] = useState<any[]>([]);
+  const [unitIssues, setunitIssues] = useState<any[]>([]);
   const [assignedunitNumber, setAssignedunitNumber] = useState<string | null>(null);
   const [tokenExpiresAt, setTokenExpiresAt] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
@@ -246,7 +246,7 @@ export function useCheckInWizard() {
         setEditToken(result.editToken);
         setEditExpiresAt(new Date(result.editExpiresAt));
         setCanEdit(true);
-        setCapsuleIssues(result.capsuleIssues || []);
+        setunitIssues(result.unitIssues || []);
         setAssignedunitNumber(result.unitNumber);
         toast({
           title: t.checkInSuccess,
@@ -284,7 +284,7 @@ export function useCheckInWizard() {
     editToken,
     editExpiresAt,
     canEdit,
-    capsuleIssues,
+    unitIssues,
     assignedunitNumber,
     tokenExpiresAt,
     timeRemaining,

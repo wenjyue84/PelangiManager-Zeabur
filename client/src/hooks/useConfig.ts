@@ -186,7 +186,7 @@ export function useCapsuleConfig() {
     totalUnits,
     sections,
     numberFormat,
-    // Validates capsule numbers against configured format pattern
+    // Validates unit numbers against configured format pattern
     isValidunitNumber: (number: string) => {
       const pattern = numberFormat.replace(/[A-Z]/g, '[A-Z]').replace(/\d/g, '\\d');
       return new RegExp(`^${pattern}$`).test(number);

@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
-import type { Capsule } from "@shared/schema";
+import type { Unit } from "@shared/schema";
 
 interface TokenGeneratorProps {
   onTokenCreated?: () => void;
@@ -136,7 +136,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
     }
   };
 
-  const { data: availableCapsules = [], isLoading: capsulesLoading } = useQuery<Capsule[]>({
+  const { data: availableUnits = [], isLoading: unitsLoading } = useQuery<Unit[]>({
     queryKey: ["/api/units/available"],
   });
 
@@ -178,12 +178,12 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
         await navigator.clipboard.writeText(finalLink);
         toast({
           title: "Check-in Link Created & Copied!",
-          description: `Generated self-check-in link for capsule ${data.unitNumber}`,
+          description: `Generated self-check-in link for unit ${data.unitNumber}`,
         });
       } catch (error) {
         toast({
           title: "Check-in Link Created",
-          description: `Generated self-check-in link for capsule ${data.unitNumber}. Manual copy needed.`,
+          description: `Generated self-check-in link for unit ${data.unitNumber}. Manual copy needed.`,
         });
       }
       onTokenCreated?.();
@@ -343,7 +343,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Quickly create a check-in link with auto-assigned capsule</p>
+            <p>Quickly create a check-in link with auto-assigned unit</p>
           </TooltipContent>
         </Tooltip>
 
@@ -502,7 +502,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
             </div>
             
             <div>
-              <Label htmlFor="capsule" className="flex items-center gap-2">
+              <Label htmlFor="unit" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 Select {labels.singular}
               </Label>
@@ -511,10 +511,10 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                   <SelectValue placeholder={`Choose ${labels.lowerSingular} assignment`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {capsulesLoading ? (
+                  {unitsLoading ? (
                     <SelectItem value="loading" disabled>Loading {labels.lowerPlural}...</SelectItem>
-                  ) : availableCapsules.length === 0 ? (
-                    <SelectItem value="no-capsules" disabled>No {labels.lowerPlural} available</SelectItem>
+                  ) : availableUnits.length === 0 ? (
+                    <SelectItem value="no-units" disabled>No {labels.lowerPlural} available</SelectItem>
                   ) : (
                     <>
                       <SelectItem value="auto-assign">
@@ -523,7 +523,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                           <span>Auto Assign (Based on Gender)</span>
                         </div>
                       </SelectItem>
-                      {availableCapsules
+                      {availableUnits
                         .sort((a, b) => {
                           const aNum = parseInt(a.number.replace('C', ''));
                           const bNum = parseInt(b.number.replace('C', ''));
@@ -534,14 +534,14 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
                           if (!aIsBottom && bIsBottom) return 1;
                           return aNum - bNum;
                         })
-                        .map((capsule) => {
-                          const capsuleNum = parseInt(capsule.number.replace('C', ''));
-                          const isBottom = capsuleNum % 2 === 0;
+                        .map((unit) => {
+                          const unitNum = parseInt(unit.number.replace('C', ''));
+                          const isBottom = unitNum % 2 === 0;
                           const position = isBottom ? "Bottom ⭐" : "Top";
-                          
+
                           return (
-                            <SelectItem key={capsule.number} value={capsule.number}>
-                              {capsule.number} - {position} ({capsule.section})
+                            <SelectItem key={unit.number} value={unit.number}>
+                              {unit.number} - {position} ({unit.section})
                             </SelectItem>
                           );
                         })}
@@ -552,7 +552,7 @@ export default function GuestTokenGenerator({ onTokenCreated }: TokenGeneratorPr
               {selectedUnit === "auto-assign" && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                   <p className="text-sm text-blue-700">
-                    <span className="font-medium">Auto Assignment:</span> The system will automatically assign the best available capsule based on the guest's gender preference:
+                    <span className="font-medium">Auto Assignment:</span> The system will automatically assign the best available unit based on the guest's gender preference:
                   </p>
                   <ul className="text-xs text-blue-600 mt-1 space-y-1">
                     <li>• Females: Back section, bottom bunks preferred</li>

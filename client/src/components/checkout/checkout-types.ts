@@ -44,7 +44,7 @@ export interface AccommodationLabels {
   lowerPlural: string;
   numberLabel: string;
   maintenanceTitle: string;
-  capsule?: string;
+  unit?: string;
 }
 
 export interface CheckoutViewProps {

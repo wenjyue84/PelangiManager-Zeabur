@@ -207,7 +207,7 @@ export default function GuestEdit() {
                   <div className="bg-orange-50 rounded-lg p-3">
                     <div className="flex items-center justify-center text-sm font-medium text-orange-800">
                       <MapPin className="h-4 w-4 mr-2" />
-                      Capsule: {guestInfo.unitNumber}
+                      Unit: {guestInfo.unitNumber}
                     </div>
                   </div>
                   

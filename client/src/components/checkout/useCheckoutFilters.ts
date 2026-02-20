@@ -107,7 +107,7 @@ export function useCheckoutFilters(guests: Guest[]) {
       // Specific nationality filtering
       if (filters.specificNationality !== 'any' && g.nationality !== filters.specificNationality) return false;
 
-      // Capsule number filtering
+      // unit number filtering
       if (filters.unitNumber !== 'any' && g.unitNumber !== filters.unitNumber) return false;
 
       // Length of stay filtering (in days)
