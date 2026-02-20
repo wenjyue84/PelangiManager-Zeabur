@@ -11,9 +11,55 @@ var prismaHistory = [];      // { role: 'user'|'assistant', content: string }[]
 var prismaSource = 'knowledge_base';
 var _prismaOpen = false;
 
+// ─── On-demand panel creation (for tabs other than live-chat) ───────
+
+function _ensurePrismaPanel() {
+  if (document.getElementById('prisma-panel')) return;
+  var panel = document.createElement('div');
+  panel.id = 'prisma-panel';
+  panel.className = 'prisma-panel';
+  panel.style.display = 'none';
+  panel.innerHTML =
+    '<div class="prisma-header" id="prisma-header">' +
+      '<div class="prisma-title">✦ Prisma AI</div>' +
+      '<div class="prisma-header-actions">' +
+        '<button class="prisma-btn-icon" onclick="lcMinimisePrisma()" title="Minimise">—</button>' +
+        '<button class="prisma-btn-icon" onclick="lcClosePrismaWindow()" title="Close">✕</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="prisma-sources">' +
+      '<button class="prisma-source-chip active" data-source="knowledge_base" onclick="lcPrismaSetSource(\'knowledge_base\')">Knowledge Base</button>' +
+      '<button class="prisma-source-chip" data-source="mcp_server" onclick="lcPrismaSetSource(\'mcp_server\')">MCP Server</button>' +
+      '<button class="prisma-source-chip" data-source="all_history" onclick="lcPrismaSetSource(\'all_history\')">All History</button>' +
+      '<button class="prisma-source-chip" data-source="internet" onclick="lcPrismaSetSource(\'internet\')">Internet</button>' +
+    '</div>' +
+    '<div class="prisma-messages" id="prisma-messages">' +
+      '<div class="prisma-welcome">Ask me anything about the hostel, guests, or bookings.</div>' +
+    '</div>' +
+    '<div class="prisma-input-area">' +
+      '<textarea class="prisma-input" id="prisma-input" rows="1" placeholder="Ask Prisma..." onkeydown="lcPrismaKeydown(event)" oninput="lcPrismaAutoResize(this)"></textarea>' +
+      '<button class="prisma-send-btn" onclick="lcPrismaSend()" title="Send">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>' +
+      '</button>' +
+    '</div>';
+  document.body.appendChild(panel);
+
+  var fab = document.createElement('button');
+  fab.id = 'prisma-fab';
+  fab.className = 'prisma-fab';
+  fab.style.display = 'none';
+  fab.title = 'Ask Prisma AI';
+  fab.textContent = '✦ Prisma';
+  fab.addEventListener('click', openPrismaWindow);
+  document.body.appendChild(fab);
+
+  initPrismaPanel();
+}
+
 // ─── Open / Close / Minimise ────────────────────────────────────────
 
 export function openPrismaWindow() {
+  _ensurePrismaPanel(); // Create panel DOM on-demand if not yet present
   var panel = document.getElementById('prisma-panel');
   var fab = document.getElementById('prisma-fab');
   if (!panel) return;
