@@ -137,7 +137,7 @@ export async function sendDailyReport(phone?: string): Promise<{ success: boolea
 export function startDailyReportScheduler(): void {
   // 11:30 AM Malaysia time (using Asia/Kuala_Lumpur timezone)
   cron.schedule('30 11 * * *', async () => {
-    console.log('Running scheduled daily capsule report...');
+    console.log('Running scheduled daily unit report...');
     const result = await sendDailyReport();
     if (result.success) {
       console.log('Daily report sent to', JAY_PHONE);
