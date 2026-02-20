@@ -160,7 +160,7 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
               <User className="h-5 w-5 text-orange-600" />
               <DialogTitle className="text-lg font-semibold">Guest Details</DialogTitle>
               <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">
-                {guest.capsuleNumber}
+                {guest.unitNumber}
               </Badge>
             </div>
             {!isEditing ? (
@@ -482,7 +482,7 @@ export default function GuestDetailsModal({ guest, isOpen, onClose }: GuestDetai
                 <div className="mt-1">
                   <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">
                     <MapPin className="h-3 w-3 mr-1" />
-                    {guest.capsuleNumber}
+                    {guest.unitNumber}
                   </Badge>
                 </div>
               </div>

@@ -8,7 +8,7 @@ import { extractDetailedError, createErrorToast } from "@/lib/errorHandler";
 import type { Guest, PaginatedResponse, UpdateGuestTokenCapsule } from "@shared/schema";
 import { isGuestPaid, getGuestBalance } from "@/lib/guest";
 import { formatShortDate } from "./utils";
-import { compareCapsuleNumbers } from "./useGuestSorting";
+import { compareUnitNumbers } from "./useGuestSorting";
 
 // Define proper context interface for checkout mutation
 interface CheckoutMutationContext {
@@ -17,7 +17,7 @@ interface CheckoutMutationContext {
 
 interface UseGuestMutationsArgs {
   guests: Guest[];
-  exportCapsules: Array<{
+  exportUnits: Array<{
     id: string;
     number: string;
     section: string;
@@ -34,7 +34,7 @@ interface UseGuestMutationsArgs {
   activeTokens: Array<{
     id: string;
     token: string;
-    capsuleNumber: string;
+    unitNumber: string;
     guestName: string | null;
     phoneNumber: string | null;
     createdAt: string;
@@ -42,7 +42,7 @@ interface UseGuestMutationsArgs {
   }>;
 }
 
-export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseGuestMutationsArgs) {
+export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGuestMutationsArgs) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -87,12 +87,12 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
       queryClient.invalidateQueries({ queryKey: ["/api/guests/checked-in"] });
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
       queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available-with-status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/cleaning-status/cleaned"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/cleaning-status/to_be_cleaned"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/needs-attention"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/available-with-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/cleaning-status/cleaned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/cleaning-status/to_be_cleaned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/needs-attention"] });
 
       toast({
         title: "Guest Checked Out Successfully",
@@ -162,7 +162,7 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
       console.log(`Guest token cancelled successfully, invalidating queries`);
       queryClient.invalidateQueries({ queryKey: ["/api/guest-tokens/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/available"] });
       toast({
         title: "Success",
         description: "Pending check-in cancelled successfully",
@@ -187,11 +187,11 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ["/api/guests/checked-in"] });
-      queryClient.refetchQueries({ queryKey: ["/api/capsules/needs-attention"] });
+      queryClient.refetchQueries({ queryKey: ["/api/units/needs-attention"] });
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
       queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules/available"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       toast({
         title: "Success",
         description: "Check-out undone successfully",
@@ -208,9 +208,9 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
   });
 
   const updateSettingsMutation = useMutation({
-    mutationFn: async (showAllCapsules: boolean) => {
+    mutationFn: async (showAllUnits: boolean) => {
       const response = await apiRequest("PATCH", "/api/settings", {
-        showAllCapsules: showAllCapsules
+        showAllUnits: showAllUnits
       });
       return response.json();
     },
@@ -226,16 +226,16 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     },
   });
 
-  const updateTokenCapsuleMutation = useMutation({
+  const updateTokenUnitMutation = useMutation({
     mutationFn: async ({ tokenId, updateData }: { tokenId: string; updateData: UpdateGuestTokenCapsule }) => {
-      const response = await apiRequest("PATCH", `/api/guest-tokens/${tokenId}/capsule`, updateData);
+      const response = await apiRequest("PATCH", `/api/guest-tokens/${tokenId}/unit`, updateData);
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/guest-tokens/active"] });
       toast({
-        title: "Capsule Updated",
-        description: data.message || "Guest token capsule assignment updated successfully",
+        title: "Unit Updated",
+        description: data.message || "Guest token unit assignment updated successfully",
       });
     },
     onError: (error: any) => {
@@ -331,11 +331,11 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     cancelTokenMutation.mutate(tokenId);
   };
 
-  const handleTokenCapsuleChange = (tokenId: string, capsuleNumber: string | null, autoAssign?: boolean) => {
+  const handleTokenUnitChange = (tokenId: string, unitNumber: string | null, autoAssign?: boolean) => {
     if (!isAuthenticated) {
       toast({
         title: "Authentication Required",
-        description: "Please log in to update capsule assignments. Redirecting to login page...",
+        description: "Please log in to update unit assignments. Redirecting to login page...",
         variant: "destructive",
         duration: 3000,
       });
@@ -344,8 +344,8 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     }
     const updateData: UpdateGuestTokenCapsule = autoAssign
       ? { autoAssign: true }
-      : { capsuleNumber: capsuleNumber! };
-    updateTokenCapsuleMutation.mutate({ tokenId, updateData });
+      : { unitNumber: unitNumber! };
+    updateTokenUnitMutation.mutate({ tokenId, updateData });
   };
 
   const handleGuestClick = (guest: Guest) => {
@@ -373,12 +373,12 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     setAlertDialogOpen(true);
   };
 
-  const handleCapsuleChange = async (guest: Guest, newCapsuleNumber: string) => {
-    if (newCapsuleNumber === guest.capsuleNumber) return;
+  const handleUnitChange = async (guest: Guest, newUnitNumber: string) => {
+    if (newUnitNumber === guest.unitNumber) return;
     if (!isAuthenticated) {
       toast({
         title: "Authentication Required",
-        description: "Please login to change capsule assignments",
+        description: "Please login to change unit assignments",
         variant: "destructive",
       });
       const currentPath = window.location.pathname;
@@ -386,15 +386,15 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
       return;
     }
     try {
-      const response = await fetch(`/api/guests/${guest.id}/capsule`, {
+      const response = await fetch(`/api/guests/${guest.id}/unit`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
-          capsuleNumber: newCapsuleNumber,
-          reason: 'Capsule change from dashboard'
+          unitNumber: newUnitNumber,
+          reason: 'Unit change from dashboard'
         })
       });
       if (!response.ok) {
@@ -403,17 +403,17 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
       }
       await response.json();
       toast({
-        title: "Capsule Changed",
-        description: `${guest.name} moved to capsule ${newCapsuleNumber}`,
+        title: "Unit Changed",
+        description: `${guest.name} moved to unit ${newUnitNumber}`,
       });
       queryClient.refetchQueries({ queryKey: ["/api/guests/checked-in"] });
-      queryClient.refetchQueries({ queryKey: ["/api/capsules/available"] });
+      queryClient.refetchQueries({ queryKey: ["/api/units/available"] });
       queryClient.refetchQueries({ queryKey: ["/api/occupancy"] });
     } catch (error) {
-      console.error('Error changing capsule:', error);
+      console.error('Error changing unit:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to change capsule. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to change unit. Please try again.",
         variant: "destructive",
       });
     }
@@ -444,24 +444,24 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     }
   };
 
-  const handleEmptyCapsuleClick = (capsuleNumber: string) => {
-    setLocation(`/check-in?capsule=${capsuleNumber}`);
+  const handleEmptyUnitClick = (unitNumber: string) => {
+    setLocation(`/check-in?unit=${unitNumber}`);
   };
 
   const handleWhatsAppExport = useCallback(() => {
     const checkedInGuests = guests || [];
 
-    let whatsappText = "*PELANGI CAPSULE STATUS*\n\n";
+    let whatsappText = "*PELANGI UNIT STATUS*\n\n";
 
     // Handle FRONT SECTION (capsules 11-24)
     whatsappText += '*FRONT SECTION*\n';
-    const frontSectionCapsules = exportCapsules.filter(capsule => {
+    const frontSectionUnits = exportUnits.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 11 && num <= 24;
-    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
+    }).sort((a, b) => compareUnitNumbers(a.number, b.number));
 
-    frontSectionCapsules.forEach(capsule => {
-      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
+    frontSectionUnits.forEach(capsule => {
+      const guest = checkedInGuests.find(g => g.unitNumber === capsule.number);
       if (guest) {
         const isPaid = isGuestPaid(guest);
         const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
@@ -478,13 +478,13 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
 
     // Handle special sections - Living Room (capsules 25, 26)
     whatsappText += '*LIVING ROOM*\n';
-    const livingRoomCapsules = exportCapsules.filter(capsule => {
+    const livingRoomUnits = exportUnits.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num === 25 || num === 26;
-    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
+    }).sort((a, b) => compareUnitNumbers(a.number, b.number));
 
-    livingRoomCapsules.forEach(capsule => {
-      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
+    livingRoomUnits.forEach(capsule => {
+      const guest = checkedInGuests.find(g => g.unitNumber === capsule.number);
       if (guest) {
         const isPaid = isGuestPaid(guest);
         const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
@@ -499,13 +499,13 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
 
     // Handle special sections - Room (capsules 1-6)
     whatsappText += '\n*ROOM*\n';
-    const roomCapsules = exportCapsules.filter(capsule => {
+    const roomUnits = exportUnits.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 1 && num <= 6;
-    }).sort((a, b) => compareCapsuleNumbers(a.number, b.number));
+    }).sort((a, b) => compareUnitNumbers(a.number, b.number));
 
-    roomCapsules.forEach(capsule => {
-      const guest = checkedInGuests.find(g => g.capsuleNumber === capsule.number);
+    roomUnits.forEach(capsule => {
+      const guest = checkedInGuests.find(g => g.unitNumber === capsule.number);
       if (guest) {
         const isPaid = isGuestPaid(guest);
         const checkoutDate = guest.expectedCheckoutDate ? formatShortDate(guest.expectedCheckoutDate) : '';
@@ -525,7 +525,7 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     navigator.clipboard.writeText(whatsappText).then(() => {
       toast({
         title: "WhatsApp Export Ready!",
-        description: "Capsule status copied to clipboard. You can now paste it in WhatsApp!",
+        description: "Unit status copied to clipboard. You can now paste it in WhatsApp!",
         variant: "default",
       });
     }).catch(() => {
@@ -537,11 +537,11 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
       document.body.removeChild(textArea);
       toast({
         title: "WhatsApp Export Ready!",
-        description: "Capsule status copied to clipboard. You can now paste it in WhatsApp!",
+        description: "Unit status copied to clipboard. You can now paste it in WhatsApp!",
         variant: "default",
       });
     });
-  }, [exportCapsules, guests, toast]);
+  }, [exportUnits, guests, toast]);
 
   return {
     // Mutations
@@ -549,7 +549,7 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     cancelTokenMutation,
     undoCheckoutMutation,
     updateSettingsMutation,
-    updateTokenCapsuleMutation,
+    updateTokenUnitMutation,
 
     // Modal state
     selectedGuest,
@@ -574,16 +574,16 @@ export function useGuestMutations({ guests, exportCapsules, activeTokens }: UseG
     handleUndo,
     confirmUndo,
     handleCancelToken,
-    handleTokenCapsuleChange,
+    handleTokenUnitChange,
     handleGuestClick,
     handleExtend,
     openAlertDialog,
-    handleCapsuleChange,
+    handleUnitChange,
     handleCloseModal,
     copyToClipboard,
     getCheckinLink,
     handlePendingCheckinClick,
-    handleEmptyCapsuleClick,
+    handleEmptyUnitClick,
     handleWhatsAppExport,
   };
 }

@@ -1,7 +1,7 @@
 {
   "welcomeTitle": "Welcome to Pelangi Capsule Hostel",
   "completeCheckIn": "Complete your check-in information",
-  "assignedCapsule": "Your assigned capsule",
+  "assignedUnit": "Your assigned capsule",
   "prefilledInfo": "Pre-filled Information:",
 
   "personalInfo": "Personal Information",
@@ -48,7 +48,7 @@
   "checkInTime": "Check-in: From 3:00 PM",
   "checkOutTime": "Check-out: Before 12:00 PM",
   "doorPassword": "Door Password:",
-  "capsuleNumber": "Your Capsule No.:",
+  "unitNumber": "Your Capsule No.:",
   "accessCard": "Capsule Access Card: Placed on your pillow",
   "importantReminders": "Important Reminders:",
   "noCardWarning": "\ud83d\udeab Do not leave your card inside the capsule and close the door",

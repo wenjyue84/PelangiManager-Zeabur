@@ -1,7 +1,7 @@
 {
   "welcomeTitle": "ペランギカプセルホステルへようこそ",
   "completeCheckIn": "チェックイン情報を完了してください",
-  "assignedCapsule": "割り当てられたカプセル",
+  "assignedUnit": "割り当てられたカプセル",
   "prefilledInfo": "事前入力情報:",
 
   "personalInfo": "個人情報",
@@ -48,7 +48,7 @@
   "checkInTime": "チェックイン: 午後3:00から",
   "checkOutTime": "チェックアウト: 午後12:00まで",
   "doorPassword": "ドアパスワード:",
-  "capsuleNumber": "あなたのカプセル番号:",
+  "unitNumber": "あなたのカプセル番号:",
   "accessCard": "カプセルアクセスカード: 枕の上に置いてあります",
   "importantReminders": "重要な注意事項:",
   "noCardWarning": "🚫 カードをカプセル内に置いたままドアを閉めないでください",

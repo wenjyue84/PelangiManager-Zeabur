@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import type { SortField, SortOrder, SortConfig, CombinedDataItem } from "./types";
 
 // Helper for natural capsule number sorting: first by prefix (C, J, R), then by number (1, 2, ..., 10, 11)
-export const parseCapsuleNumber = (cap: string | null | undefined) => {
+export const parseUnitNumber = (cap: string | null | undefined) => {
   if (!cap) return { prefix: 'ZZZ', num: 999999 };
   const match = cap.match(/^([A-Za-z]+)(\d+)$/);
   if (match) {
@@ -11,9 +11,9 @@ export const parseCapsuleNumber = (cap: string | null | undefined) => {
   return { prefix: cap.toUpperCase(), num: 0 };
 };
 
-export const compareCapsuleNumbers = (a: string | null | undefined, b: string | null | undefined): number => {
-  const aParsed = parseCapsuleNumber(a);
-  const bParsed = parseCapsuleNumber(b);
+export const compareUnitNumbers = (a: string | null | undefined, b: string | null | undefined): number => {
+  const aParsed = parseUnitNumber(a);
+  const bParsed = parseUnitNumber(b);
 
   if (aParsed.prefix !== bParsed.prefix) {
     return aParsed.prefix.localeCompare(bParsed.prefix);
@@ -23,7 +23,7 @@ export const compareCapsuleNumbers = (a: string | null | undefined, b: string | 
 
 export function useGuestSorting(filteredData: CombinedDataItem[]) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: 'capsuleNumber',
+    field: 'unitNumber',
     order: 'asc'
   });
 
@@ -39,9 +39,9 @@ export function useGuestSorting(filteredData: CombinedDataItem[]) {
           aValue = (a.type === 'guest' ? a.data.name : a.data.name).toLowerCase();
           bValue = (b.type === 'guest' ? b.data.name : b.data.name).toLowerCase();
           break;
-        case 'capsuleNumber':
+        case 'unitNumber':
           // Natural sort for capsule numbers using helper function
-          const capsuleCompare = compareCapsuleNumbers(a.data.capsuleNumber, b.data.capsuleNumber);
+          const capsuleCompare = compareUnitNumbers(a.data.unitNumber, b.data.unitNumber);
           return sortConfig.order === 'asc' ? capsuleCompare : -capsuleCompare;
         case 'checkinTime':
           aValue = a.type === 'guest' ? new Date(a.data.checkinTime).getTime() : new Date((a.data as any).createdAt).getTime();

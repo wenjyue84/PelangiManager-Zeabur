@@ -2,7 +2,7 @@ import { MCPTool, MCPToolResult, ToolHandler } from '../types/mcp.js';
 
 // Phase 1: Read-only tools
 import { guestTools, listGuests, getGuest, searchGuests } from './guests.js';
-import { capsuleTools, listCapsules, getOccupancy, checkAvailability } from './capsules.js';
+import { unitTools, listUnits, getOccupancy, checkAvailability } from './units.js';
 import { dashboardTools, getDashboard, getOverdueGuests } from './dashboard.js';
 import { problemTools, listProblems, exportWhatsappIssues } from './problems.js';
 
@@ -15,10 +15,10 @@ import {
 } from './guests-write.js';
 
 import {
-  capsuleWriteTools,
+  unitWriteTools,
   markCleaned,
   bulkMarkCleaned
-} from './capsules-write.js';
+} from './units-write.js';
 
 import {
   problemWriteTools,
@@ -34,7 +34,7 @@ import {
 
 import {
   settingsTools,
-  getCapsuleRules
+  getUnitRules
 } from './settings-tools.js';
 
 // Phase 3: WhatsApp integration tools
@@ -60,9 +60,9 @@ class ToolRegistry {
     this.register(guestTools[1], getGuest);
     this.register(guestTools[2], searchGuests);
 
-    this.register(capsuleTools[0], listCapsules);
-    this.register(capsuleTools[1], getOccupancy);
-    this.register(capsuleTools[2], checkAvailability);
+    this.register(unitTools[0], listUnits);
+    this.register(unitTools[1], getOccupancy);
+    this.register(unitTools[2], checkAvailability);
 
     this.register(dashboardTools[0], getDashboard);
     this.register(dashboardTools[1], getOverdueGuests);
@@ -75,9 +75,9 @@ class ToolRegistry {
     this.register(guestWriteTools[1], checkoutGuest);
     this.register(guestWriteTools[2], bulkCheckout);
 
-    // Phase 2: Capsule write operations (2 tools)
-    this.register(capsuleWriteTools[0], markCleaned);
-    this.register(capsuleWriteTools[1], bulkMarkCleaned);
+    // Phase 2: Unit write operations (2 tools)
+    this.register(unitWriteTools[0], markCleaned);
+    this.register(unitWriteTools[1], bulkMarkCleaned);
 
     // Phase 2: Problem operations (1 tool)
     this.register(problemWriteTools[0], getProblemSummary);

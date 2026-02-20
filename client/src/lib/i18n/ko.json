@@ -1,7 +1,7 @@
 {
   "welcomeTitle": "펠랑이 캡슐 호스텔에 오신 것을 환영합니다",
   "completeCheckIn": "체크인 정보를 완료해주세요",
-  "assignedCapsule": "배정된 캡슐",
+  "assignedUnit": "배정된 캡슐",
   "prefilledInfo": "미리 입력된 정보:",
 
   "personalInfo": "개인정보",
@@ -48,7 +48,7 @@
   "checkInTime": "체크인: 오후 3:00부터",
   "checkOutTime": "체크아웃: 오후 12:00까지",
   "doorPassword": "문 비밀번호:",
-  "capsuleNumber": "귀하의 캡슐 번호:",
+  "unitNumber": "귀하의 캡슐 번호:",
   "accessCard": "캡슐 출입 카드: 베개 위에 놓여있습니다",
   "importantReminders": "중요 알림사항:",
   "noCardWarning": "🚫 카드를 캡슐 안에 두고 문을 닫지 마세요",

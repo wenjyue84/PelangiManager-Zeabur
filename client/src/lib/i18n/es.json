@@ -1,7 +1,7 @@
 {
   "welcomeTitle": "Bienvenido a Pelangi Capsule Hostel",
   "completeCheckIn": "Complete su informaci\u00f3n de registro",
-  "assignedCapsule": "Su c\u00e1psula asignada",
+  "assignedUnit": "Su c\u00e1psula asignada",
   "prefilledInfo": "Informaci\u00f3n Pre-rellenada:",
 
   "personalInfo": "Informaci\u00f3n Personal",
@@ -48,7 +48,7 @@
   "checkInTime": "Registro: Desde las 3:00 PM",
   "checkOutTime": "Salida: Antes de las 12:00 PM",
   "doorPassword": "Contrase\u00f1a de la Puerta:",
-  "capsuleNumber": "Su N\u00famero de C\u00e1psula:",
+  "unitNumber": "Su N\u00famero de C\u00e1psula:",
   "accessCard": "Tarjeta de Acceso a C\u00e1psula: Colocada en su almohada",
   "importantReminders": "Recordatorios Importantes:",
   "noCardWarning": "\ud83d\udeab No deje su tarjeta dentro de la c\u00e1psula y cierre la puerta",

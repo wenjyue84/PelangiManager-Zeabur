@@ -23,7 +23,7 @@ interface UseGuestFilteringArgs {
   activeTokens: Array<{
     id: string;
     token: string;
-    capsuleNumber: string;
+    unitNumber: string;
     guestName: string | null;
     phoneNumber: string | null;
     createdAt: string;
@@ -57,7 +57,7 @@ export function useGuestFiltering({
       data: {
         id: token.id,
         name: token.guestName || 'Pending Check-in',
-        capsuleNumber: token.capsuleNumber,
+        unitNumber: token.unitNumber,
         createdAt: token.createdAt,
         expiresAt: token.expiresAt,
         phoneNumber: token.phoneNumber,
@@ -69,8 +69,8 @@ export function useGuestFiltering({
     // Add empty capsules when showAllCapsules is enabled
     if (showAllCapsules && allCapsules.length > 0) {
       const occupiedCapsules = new Set([
-        ...guests.map(g => g.capsuleNumber),
-        ...activeTokens.map(t => t.capsuleNumber)
+        ...guests.map(g => g.unitNumber),
+        ...activeTokens.map(t => t.unitNumber)
       ]);
 
       const emptyCapsules = allCapsules
@@ -80,7 +80,7 @@ export function useGuestFiltering({
           data: {
             id: `empty-${capsule.id}`,
             name: 'Empty',
-            capsuleNumber: capsule.number,
+            unitNumber: capsule.number,
             checkinTime: null as null,
             expectedCheckoutDate: null as null,
             phoneNumber: null as null,

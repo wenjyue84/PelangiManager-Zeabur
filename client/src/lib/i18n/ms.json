@@ -1,7 +1,7 @@
 {
   "welcomeTitle": "Selamat Datang ke Pelangi Capsule Hostel",
   "completeCheckIn": "Lengkapkan maklumat daftar masuk anda",
-  "assignedCapsule": "Kapsul yang ditetapkan untuk anda",
+  "assignedUnit": "Kapsul yang ditetapkan untuk anda",
   "prefilledInfo": "Maklumat Pra-diisi:",
 
   "personalInfo": "Maklumat Peribadi",
@@ -48,7 +48,7 @@
   "checkInTime": "Daftar Masuk: Dari 3:00 PM",
   "checkOutTime": "Daftar Keluar: Sebelum 12:00 PM",
   "doorPassword": "Kata Laluan Pintu:",
-  "capsuleNumber": "Nombor Kapsul Anda:",
+  "unitNumber": "Nombor Kapsul Anda:",
   "accessCard": "Kad Akses Kapsul: Diletakkan di atas bantal anda",
   "importantReminders": "Peringatan Penting:",
   "noCardWarning": "\ud83d\udeab Jangan tinggalkan kad anda di dalam kapsul dan tutup pintu",

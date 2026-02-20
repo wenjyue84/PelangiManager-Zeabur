@@ -10,7 +10,7 @@ export interface CheckoutFilters {
   gender: 'any' | 'male' | 'female';
   nationality: 'any' | 'malaysian' | 'non-malaysian';
   specificNationality: string;
-  capsuleNumber: string;
+  unitNumber: string;
   lengthOfStayMin: string;
   lengthOfStayMax: string;
   outstandingOnly: boolean;
@@ -25,7 +25,7 @@ export const DEFAULT_FILTERS: CheckoutFilters = {
   gender: 'any',
   nationality: 'any',
   specificNationality: 'any',
-  capsuleNumber: 'any',
+  unitNumber: 'any',
   lengthOfStayMin: '',
   lengthOfStayMax: '',
   outstandingOnly: false,

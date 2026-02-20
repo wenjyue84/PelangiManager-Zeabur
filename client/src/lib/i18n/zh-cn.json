@@ -1,7 +1,7 @@
 {
   "welcomeTitle": "欢迎来到彩虹胶囊旅舍",
   "completeCheckIn": "完成您的入住信息",
-  "assignedCapsule": "您被分配的胶囊",
+  "assignedUnit": "您被分配的胶囊",
   "prefilledInfo": "预填信息:",
 
   "personalInfo": "个人信息",
@@ -48,7 +48,7 @@
   "checkInTime": "入住: 下午3:00开始",
   "checkOutTime": "退房: 上午12:00之前",
   "doorPassword": "门密码:",
-  "capsuleNumber": "您的胶囊号码:",
+  "unitNumber": "您的胶囊号码:",
   "accessCard": "胶囊门卡: 放在您的枕头上",
   "importantReminders": "重要提醒:",
   "noCardWarning": "🚫 请勿将门卡留在胶囊内并关闭门",
