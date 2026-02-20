@@ -74,6 +74,7 @@ export class WhatsAppInstance {
     this.sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
+      keepAliveIntervalMs: 10_000, // 10s keepalives — prevents socket from appearing silent during idle periods
       browser: ['PelangiManager', 'Chrome', '1.0.0']
     });
 
