@@ -179,8 +179,8 @@
 }
 
 .lc-chip.active {
-  background: #e7fce3;
-  color: #008069;
+  background: #00a884;
+  color: #fff;
 }
 
 .lc-chat-list {
@@ -227,6 +227,20 @@
   width: 100%; height: 100%;
   border-radius: 50%;
   object-fit: cover;
+}
+
+/* US-007: Colored initials for contacts without profile picture */
+.avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: inherit;
+  letter-spacing: 0.5px;
 }
 
 .lc-chat-info {
