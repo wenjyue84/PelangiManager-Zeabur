@@ -206,6 +206,7 @@ app.get('/health/ready', async (req, res) => {
   // 3. AI provider circuit breakers
   const { circuitBreakerRegistry } = await import('./assistant/circuit-breaker.js');
   const cbStatuses = circuitBreakerRegistry.getAllStatuses();
+  const registeredCount = Object.keys(cbStatuses).length;
   const openCircuits = Object.entries(cbStatuses)
     .filter(([, s]) => s.state === 'OPEN')
     .map(([id]) => id);
@@ -213,7 +214,9 @@ app.get('/health/ready', async (req, res) => {
     ok: openCircuits.length === 0,
     detail: openCircuits.length > 0
       ? `${openCircuits.length} provider(s) circuit-open: ${openCircuits.join(', ')}`
-      : `${Object.keys(cbStatuses).length} provider(s) healthy`
+      : registeredCount > 0
+        ? `${registeredCount} provider(s) healthy`
+        : 'not yet tested (no AI requests since restart)'
   };
 
   // 4. Config store health
@@ -259,13 +262,23 @@ async function getDashboardHtml(_url: string): Promise<string> {
     // (HTML already uses absolute /public/... paths, and Vite prepends base again).
     // Vite's middleware still serves files correctly (strips base from requests).
     let html = readFileSync(DASHBOARD_HTML_PATH, 'utf-8');
-    html = html.replace('<head>', '<head>\n  <script type="module" src="/public/@vite/client"></script>');
+    const adminKeyDev = process.env.RAINBOW_ADMIN_KEY || '';
+    html = html.replace('<head>', `<head>\n  <script>window.__ADMIN_KEY__=${JSON.stringify(adminKeyDev)};</script>\n  <script type="module" src="/public/@vite/client"></script>`);
     return html;
   }
   // Prod: use cached HTML with cache-bust
   let html = _dashboardHtmlCache ?? loadDashboardHtml();
   const v = Date.now();
   html = html.replace(/(src|href)="(\/public\/[^"]+\.(js|css))"/g, `$1="$2?v=${v}"`);
+  // Inject admin key + fetch interceptor for remote browser access.
+  // tabs.js / template-loader.js use raw fetch() (not api()), so we patch window.fetch globally
+  // to auto-add X-Admin-Key on all /api/rainbow/ requests.
+  const adminKey = process.env.RAINBOW_ADMIN_KEY || '';
+  const interceptorScript = `<script>
+window.__ADMIN_KEY__=${JSON.stringify(adminKey)};
+(function(){var _f=window.fetch;window.fetch=function(url,opts){opts=opts||{};if(typeof url==='string'&&url.indexOf('/api/rainbow/')>=0&&window.__ADMIN_KEY__){var h=Object.assign({'X-Admin-Key':window.__ADMIN_KEY__},opts.headers||{});opts=Object.assign({},opts,{headers:h});}return _f.call(this,url,opts);};})();
+</script>`;
+  html = html.replace('<head>', `<head>\n  ${interceptorScript}`);
   return html;
 }
 
