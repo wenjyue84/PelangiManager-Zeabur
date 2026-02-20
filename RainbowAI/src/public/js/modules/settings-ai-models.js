@@ -38,6 +38,11 @@ export function renderAiModelsTab(container) {
   const settingsData = _getSettingsData();
   const providers = (settingsData.ai?.providers || []).sort((a, b) => a.priority - b.priority);
 
+  // US-002: Fetch cloud status and apply Ollama warnings after render
+  api('/status').then(status => {
+    if (status.isCloud) _applyCloudOllamaWarnings(providers);
+  }).catch(() => { /* non-critical — skip cloud detection */ });
+
   const descriptions = {
     'groq-llama': 'Ultra-fast, open-source model optimized for speed. Best for quick chat interactions.',
     'openai-gpt4o': 'High intelligence, reasoning, and instruction following. Best for complex queries.',
@@ -414,6 +419,15 @@ export async function testModelLatency(providerId, isAutoTest = false) {
     } else {
       toast(`Test failed: ${e.message}`, 'error');
     }
+
+    // US-001: Show Ollama troubleshooting guide on error (non-auto tests only)
+    if (!isAutoTest) {
+      const settingsData = _getSettingsData();
+      const provider = (settingsData.ai?.providers || []).find(p => p.id === providerId);
+      if (provider && provider.type === 'ollama') {
+        _showOllamaTroubleshootPanel(providerId);
+      }
+    }
   } finally {
     if (isAutoTest) {
       testSession.completed++;
@@ -425,6 +439,90 @@ export async function testModelLatency(providerId, isAutoTest = false) {
   }
 }
 window.testModelLatency = testModelLatency;
+
+// US-001: Ollama troubleshooting panel — shows below the provider card on speed test error
+function _showOllamaTroubleshootPanel(providerId) {
+  const existing = document.getElementById(`ollama-troubleshoot-${providerId}`);
+  if (existing) { existing.style.display = ''; return; } // Already shown, just unhide
+
+  const card = document.querySelector(`[data-provider-id="${providerId}"]`);
+  if (!card) return;
+
+  const panel = document.createElement('div');
+  panel.id = `ollama-troubleshoot-${providerId}`;
+  panel.className = 'mt-2 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm';
+  panel.innerHTML = `
+    <div class="flex items-start gap-2 mb-2">
+      <span class="text-amber-600 text-lg leading-none">&#x26A0;</span>
+      <div>
+        <strong class="text-amber-800">Ollama is not responding</strong>
+        <p class="text-amber-700 text-xs mt-1">Ollama runs locally on your computer and must be started before use.</p>
+      </div>
+    </div>
+    <details class="mt-2">
+      <summary class="cursor-pointer text-xs font-medium text-amber-800 hover:underline">Troubleshooting steps</summary>
+      <ol class="mt-2 text-xs text-amber-700 space-y-1.5 list-decimal pl-4">
+        <li><strong>Install Ollama</strong> — Visit <code>https://ollama.com</code> and download the installer for your OS</li>
+        <li><strong>Start Ollama</strong> — Open a terminal and run: <code>ollama serve</code></li>
+        <li><strong>Pull the model</strong> — Run: <code>ollama pull &lt;model-name&gt;</code> (e.g. <code>ollama pull gemma3:4b</code>)</li>
+        <li><strong>Verify</strong> — Run: <code>curl http://localhost:11434/api/tags</code> — you should see your models listed</li>
+      </ol>
+    </details>
+    <button onclick="testModelLatency('${esc(providerId)}'); var p=document.getElementById('ollama-troubleshoot-${providerId}'); if(p) p.style.display='none';"
+      class="mt-3 text-xs bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 px-3 py-1.5 rounded-lg transition font-medium">
+      Retry Speed Test
+    </button>
+  `;
+  card.insertAdjacentElement('afterend', panel);
+}
+
+// US-002: Disable Ollama providers on cloud servers and show warning badge
+function _applyCloudOllamaWarnings(providers) {
+  providers.forEach(p => {
+    if (p.type !== 'ollama') return;
+    const card = document.querySelector(`[data-provider-id="${p.id}"]`);
+    if (!card) return;
+
+    // Add warning badge next to the status badge
+    const statusBadge = card.querySelector('.text-success-600, .text-danger-500');
+    if (statusBadge) {
+      statusBadge.outerHTML =
+        '<span class="text-xs text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200 shadow-sm inline-flex items-center gap-1">' +
+        '&#x26A0; Cloud — Not Available</span>';
+    }
+
+    // Disable the toggle switch
+    const toggle = card.querySelector('input[type="checkbox"]');
+    if (toggle) {
+      toggle.disabled = true;
+      toggle.title = 'Ollama requires local installation — not available on cloud server';
+    }
+
+    // Disable Test Speed button
+    const testBtn = card.querySelector('button[onclick*="testModelLatency"]');
+    if (testBtn) {
+      testBtn.disabled = true;
+      testBtn.classList.add('opacity-40', 'cursor-not-allowed');
+      testBtn.title = 'Ollama is not available on cloud server';
+    }
+
+    // Disable Set as Default button
+    const defaultBtn = card.querySelector('button[onclick*="setAsDefaultProvider"]');
+    if (defaultBtn) {
+      defaultBtn.disabled = true;
+      defaultBtn.classList.add('opacity-40', 'cursor-not-allowed');
+    }
+
+    // Add explanation below the provider card
+    if (!document.getElementById(`cloud-ollama-warn-${p.id}`)) {
+      card.insertAdjacentHTML('afterend',
+        '<div id="cloud-ollama-warn-' + p.id + '" class="mb-1 px-4 py-2 bg-amber-50/60 border border-amber-100 rounded-xl text-xs text-amber-700">' +
+        '<strong>Ollama requires local hardware</strong> — This server runs in the cloud (Lightsail). ' +
+        'Ollama models are only available when running Rainbow AI on a local PC with Ollama installed.</div>'
+      );
+    }
+  });
+}
 
 function showTestSummaryToast() {
   const count = testSession.errors.length;
