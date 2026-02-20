@@ -32,13 +32,13 @@ export const analyticsTools: MCPTool[] = [
 
 export async function unitUtilization(args: any): Promise<MCPToolResult> {
   try {
-    const [occupancy, capsules] = await Promise.all([
+    const [occupancy, units] = await Promise.all([
       callAPI('GET', '/api/occupancy'),
       callAPI('GET', '/api/units')
     ]);
 
-    const capsulesArray = capsules as any[];
-    const needsCleaning = capsulesArray.filter(c => c.needsCleaning).length;
+    const unitsArray = units as any[];
+    const needsCleaning = unitsArray.filter(c => c.needsCleaning).length;
 
     return {
       content: [{
@@ -49,7 +49,7 @@ export async function unitUtilization(args: any): Promise<MCPToolResult> {
           available: (occupancy as any).available,
           needsCleaning,
           utilizationRate: (occupancy as any).occupancyRate,
-          unitsNeedingCleaning: capsulesArray.filter(c => c.needsCleaning).map(c => c.number)
+          unitsNeedingCleaning: unitsArray.filter(c => c.needsCleaning).map(c => c.number)
         }, null, 2)
       }]
     };
@@ -121,7 +121,7 @@ export async function exportGuestsCSV(args: any): Promise<MCPToolResult> {
     }
 
     // Generate CSV
-    const headers = ['Name', 'ID Number', 'Nationality', 'Phone', 'Email', 'Capsule', 'Check-in', 'Expected Checkout', 'Payment Amount', 'Payment Method'];
+    const headers = ['Name', 'ID Number', 'Nationality', 'Phone', 'Email', 'Unit', 'Check-in', 'Expected Checkout', 'Payment Amount', 'Payment Method'];
     const rows = guests.map((g: any) => [
       g.name || '',
       g.idNumber || '',
