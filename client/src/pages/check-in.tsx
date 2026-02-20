@@ -269,7 +269,7 @@ export default function CheckIn() {
       pushNotificationManager.showLocalNotification(
         "New Guest Check-In",
         {
-          body: `${guestName} has checked into ${labels.unit} ${unitNumber}`,
+          body: `${guestName} has checked into ${labels.singular} ${unitNumber}`,
           icon: "/icon-192.png",
           badge: "/icon-192.png",
           tag: `checkin-${result.id}`,

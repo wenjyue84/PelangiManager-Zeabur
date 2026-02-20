@@ -57,7 +57,7 @@ export default function SettingsPage() {
 
   // Capsules query for dropdown and capsules management
   const { data: capsules = [] } = useQuery<Capsule[]>({
-    queryKey: ["/api/capsules"],
+    queryKey: ["/api/units"],
     enabled: isAuthenticated && (activeTab === "maintenance" || activeTab === "capsules"),
   });
 

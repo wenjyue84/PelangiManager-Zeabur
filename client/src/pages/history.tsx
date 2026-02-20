@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 interface Guest {
   id: string;
   name: string;
-  capsuleNumber: string;
+  unitNumber: string;
   checkinTime: string;
   checkoutTime?: string;
   nationality?: string;
@@ -234,7 +234,7 @@ export default function History() {
   
   // Sort capsules with numeric awareness (C1, C2, ..., C10, C11 not C1, C10, C11, C2)
   const uniqueCapsules = Array.from(
-    new Set(guestHistory.map(g => g.capsuleNumber).filter(Boolean))
+    new Set(guestHistory.map(g => g.unitNumber).filter(Boolean))
   ).sort((a, b) => {
     const matchA = a.match(/([A-Za-z]+)(\d+)/);
     const matchB = b.match(/([A-Za-z]+)(\d+)/);
@@ -262,7 +262,7 @@ export default function History() {
 
   // Cleaning history
   const { data: cleanedCapsules = [], isLoading: cleaningLoading } = useQuery<Capsule[]>({
-    queryKey: ["/api/capsules/cleaning-status/cleaned"],
+    queryKey: ["/api/units/cleaning-status/cleaned"],
   });
 
   const recheckinMutation = useMutation({
@@ -274,7 +274,7 @@ export default function History() {
       queryClient.invalidateQueries({ queryKey: ["/api/guests/history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/guests/checked-in"] });
       queryClient.invalidateQueries({ queryKey: ["/api/occupancy"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       toast({ title: "Updated", description: "Guest moved back to checked-in." });
     },
     onError: (error: any) => {
@@ -501,12 +501,12 @@ export default function History() {
                             </TableHead>
                             <TableHead 
                               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
-                              onClick={() => handleSort('capsuleNumber')}
+                              onClick={() => handleSort('unitNumber')}
                               data-testid="header-sort-capsule"
                             >
                               <div className="flex items-center">
                                 Capsule
-                                {getSortIcon('capsuleNumber')}
+                                {getSortIcon('unitNumber')}
                               </div>
                             </TableHead>
                             <TableHead 
@@ -548,7 +548,7 @@ export default function History() {
                               <TableCell className="font-medium">{guest.name}</TableCell>
                               <TableCell>
                                 <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                                  {guest.capsuleNumber}
+                                  {guest.unitNumber}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -594,7 +594,7 @@ export default function History() {
                         <div key={record.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">{record.name}</span>
-                            <Badge className="bg-blue-600 text-white">{record.capsuleNumber}</Badge>
+                            <Badge className="bg-blue-600 text-white">{record.unitNumber}</Badge>
                           </div>
                           <div className="text-sm text-gray-600">
                             {new Date(record.checkinTime).toLocaleDateString()} - {record.checkoutTime ? new Date(record.checkoutTime).toLocaleDateString() : 'Present'}
@@ -612,7 +612,7 @@ export default function History() {
                             <CardTitle>{record.name}</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p>Capsule: {record.capsuleNumber}</p>
+                            <p>Capsule: {record.unitNumber}</p>
                             <p>Check-in: {new Date(record.checkinTime).toLocaleString()}</p>
                             <p>Check-out: {record.checkoutTime ? new Date(record.checkoutTime).toLocaleString() : 'Not checked out'}</p>
                           </CardContent>

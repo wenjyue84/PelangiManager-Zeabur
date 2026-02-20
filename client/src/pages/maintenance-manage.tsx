@@ -19,7 +19,7 @@ import { MaintenanceProblemCard } from "@/components/ui/maintenance-problem-card
 import type { Capsule, CapsuleProblem, PaginatedResponse } from "@shared/schema";
 
 export default function MaintenanceManage() {
-  const [selectedCapsule, setSelectedCapsule] = useState<string>("");
+  const [selectedUnit, setselectedUnit] = useState<string>("");
   const [problemDescription, setProblemDescription] = useState("");
   const [expandedProblems, setExpandedProblems] = useState<Set<string>>(new Set());
   const [problemToResolve, setProblemToResolve] = useState<CapsuleProblem | null>(null);
@@ -39,7 +39,7 @@ export default function MaintenanceManage() {
   const currentUser = authContext?.user;
 
   const { data: capsules = [] } = useQuery<Capsule[]>({
-    queryKey: ["/api/capsules"],
+    queryKey: ["/api/units"],
   });
 
   const { data: allProblemsResponse, isLoading: isLoadingProblems } = useQuery<PaginatedResponse<CapsuleProblem>>({
@@ -92,15 +92,15 @@ export default function MaintenanceManage() {
       const response = await apiRequest("POST", "/api/problems", {
         unitNumber,
         description,
-        reportedBy: currentUser?.username || currentUser?.email || "Unknown",
+        reportedBy: currentUser?.email || "Unknown",
       });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
       queryClient.invalidateQueries({ queryKey: ["/api/problems/active"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
-      setSelectedCapsule("");
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      setselectedUnit("");
       setProblemDescription("");
       toast({
         title: "Problem Reported",
@@ -126,7 +126,7 @@ export default function MaintenanceManage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
       queryClient.invalidateQueries({ queryKey: ["/api/problems/active"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       setProblemToResolve(null);
       setShowResolveConfirmation(false);
       toast({
@@ -153,7 +153,7 @@ export default function MaintenanceManage() {
   };
 
   const handleReportProblem = () => {
-    if (!selectedCapsule) {
+    if (!selectedUnit) {
       toast({
         title: "Error",
         description: "Please select a capsule",
@@ -170,7 +170,7 @@ export default function MaintenanceManage() {
       return;
     }
     reportProblemMutation.mutate({
-      unitNumber: selectedCapsule,
+      unitNumber: selectedUnit,
       description: problemDescription,
     });
   };
@@ -311,7 +311,7 @@ export default function MaintenanceManage() {
           <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
             <div>
               <Label htmlFor="capsule">Select Capsule</Label>
-              <Select value={selectedCapsule} onValueChange={setSelectedCapsule}>
+              <Select value={selectedUnit} onValueChange={setselectedUnit}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Choose a capsule" />
                 </SelectTrigger>
@@ -341,7 +341,7 @@ export default function MaintenanceManage() {
 
             <Button 
               onClick={handleReportProblem}
-              disabled={reportProblemMutation.isPending || !selectedCapsule || !problemDescription.trim()}
+              disabled={reportProblemMutation.isPending || !selectedUnit || !problemDescription.trim()}
               className="w-full h-12 sm:h-10 text-sm sm:text-base"
             >
               {reportProblemMutation.isPending ? "Reporting..." : "Report Problem"}

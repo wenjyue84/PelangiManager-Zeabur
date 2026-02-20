@@ -39,7 +39,7 @@ const EnhancedGuestSuccessPage: React.FC<{
 
   const handleShare = () => {
     const guestName = guestInfo?.name || 'Guest';
-    const capsule = guestInfo?.capsuleNumber || '';
+    const capsule = guestInfo?.unitNumber || '';
     const contentToUse = useContextSettings ? contextSettings.content : settings;
     const checkinTime = getContentWithFallback(contentToUse, 'checkinTime', '3:00 PM');
     const checkoutTime = getContentWithFallback(contentToUse, 'checkoutTime', '12:00 PM');
@@ -90,13 +90,13 @@ Welcome to Pelangi Capsule Hostel! 🌈`;
         viewMode="desktop"
         isPreview={false}
         guestInfo={{
-          capsuleNumber: guestInfo.capsuleNumber,
+          unitNumber: guestInfo.unitNumber,
           guestName: guestInfo.name,
           phoneNumber: guestInfo.phoneNumber,
           email: guestInfo.email,
           expectedCheckoutDate: guestInfo.expectedCheckoutDate,
         }}
-        assignedCapsuleNumber={guestInfo.capsuleNumber}
+        assignedunitNumber={guestInfo.unitNumber}
         capsuleIssues={[]}
         // Use the SAME approach as preview: pass settings=null when using context
         settings={useContextSettings ? null : settings}
