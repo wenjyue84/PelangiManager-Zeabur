@@ -1,4 +1,6 @@
 ## Codebase Patterns
+- **Schema rename backward-compat pattern**: When renaming Drizzle tables/columns, add `export const oldName = newName` and `export type OldType = NewType` with `@deprecated` JSDoc. This lets downstream code compile during incremental migration. Table aliases must come AFTER the primary table declaration (not re-declare with pgTable).
+- **Schema rename causes ~173 downstream TS errors**: After renaming capsules→units in schema-tables.ts, all consumer files referencing `capsuleNumber` break. These are fixed by stories US-003 through US-011. The schema file itself compiles cleanly.
 - **esbuild bundle path resolution**: In bundled production builds, `__dirname` via `fileURLToPath(import.meta.url)` resolves to `dist/`, NOT the source layout. Use `process.cwd()` for paths to files in `src/public/` (templates, assets). Process CWD is set at launch time = `RainbowAI/`. Example: `join(process.cwd(), 'src/public/templates/tabs', name)`.
 - **dist/public must be synced after src/public changes**: The esbuild bundle only rebuilds TS → `dist/index.js`. Static files (`src/public/js/**`) must be manually copied: `node -e "require('fs').cpSync('src/public','dist/public',{recursive:true,force:true})"`. Otherwise old compiled JS runs in production.
 - **Route naming convention for new endpoints**: Backend `GET /autotest/reports` (not `/tests/scan-reports`) matches the frontend fetch call in `autotest-history.js`. Always verify URL alignment between frontend fetch and backend router registration before implementing.
@@ -875,4 +877,33 @@ Previous iterations completed the investigation and confirmed the fix was in pla
 ### Gotchas
 - The `diff` command between src/ and dist/ returns exit code 1 on MINGW64 even when files are identical (likely CRLF/LF difference in how diff reads the files). Use `node -e "fs.readFileSync().equals()"` for reliable comparison.
 - Previous iterations created `test-browser-api.mjs` and `test-mark.mjs` test scripts — these should be cleaned up.
+
+## Iteration 1 (Multi-Business PRD) - Thu, Feb 20, 2026
+
+### What was implemented
+- **US-001**: Rename capsules table to units in schema definitions — COMPLETE
+
+### Changes made
+1. `shared/schema-tables.ts:80-100` — Renamed `capsules` pgTable to `units` (DB table name: `'units'`). All 5 index names updated: `idx_capsules_*` → `idx_units_*`. Comments updated from "capsule" to "unit".
+2. `shared/schema-tables.ts:102-116` — Renamed `capsuleProblems` pgTable to `unitProblems` (DB: `'unit_problems'`). Column `capsuleNumber` → `unitNumber` (DB: `'unit_number'`). 3 index names updated: `idx_capsule_problems_*` → `idx_unit_problems_*`.
+3. `shared/schema-tables.ts:47` — `guests.capsuleNumber` → `guests.unitNumber` (DB: `'unit_number'`). Index renamed: `idx_guests_capsule_number` → `idx_guests_unit_number`.
+4. `shared/schema-tables.ts:123` — `guestTokens.capsuleNumber` → `guestTokens.unitNumber` (DB: `'unit_number'`). Index renamed: `idx_guest_tokens_capsule_number` → `idx_guest_tokens_unit_number`.
+5. `shared/schema-tables.ts:149` — `adminNotifications.capsuleNumber` → `adminNotifications.unitNumber` (DB: `'unit_number'`).
+6. `shared/schema-tables.ts:343-352` — New types: `Unit`, `UnitProblem`, `InsertUnitProblem`. Deprecated aliases: `Capsule = Unit`, `CapsuleProblem = UnitProblem`, `InsertCapsuleProblem = InsertUnitProblem`.
+7. `shared/schema-tables.ts:355-358` — Table backward-compat aliases: `export const capsules = units`, `export const capsuleProblems = unitProblems` (both `@deprecated`).
+
+### Patterns discovered
+- **Backward-compat aliases for Drizzle tables**: `export const capsules = units` lets all downstream code that imports `capsules` continue to compile. Since Drizzle table objects are just JS objects, aliasing them works perfectly. The type aliases (`Capsule = Unit`) similarly prevent type errors in ~100 consumer files.
+- **Index name changes are metadata only**: PostgreSQL index names in Drizzle's `index()` calls are used during `drizzle-kit push` to generate SQL. Renaming them here means the migration SQL must also rename the indexes (US-012).
+
+### Gotchas
+- **173 downstream TS errors expected**: All from consumers referencing `capsuleNumber` (now `unitNumber`). These errors guide stories US-003 through US-011. The schema-tables.ts file itself has ZERO errors.
+- **Table aliases must come after type aliases**: `export const capsules = units` references the `units` const, so it must appear after the `units` declaration. Placed in the types section at the bottom.
+- **TS error baseline shift**: Previous baseline was ~240 (pre-existing Drizzle rootDir issues). After this rename, the count is 173 — this is a NET DECREASE because the old rootDir errors are now overshadowed by the rename errors. Once all consumer files are updated, the count should return to ~48 (root tsconfig errors only).
+
+### Useful context for future iterations
+- US-002 (add unitType, maxOccupancy, pricePerNight columns) can be done immediately — no dependencies beyond US-001
+- US-003 (validation schemas) should rename `capsule-validation.ts` → `unit-validation.ts` and update all capsule refs
+- US-004-US-006 (storage + routes) should update all `capsuleNumber` → `unitNumber` column references in Drizzle queries
+- The backward-compat aliases (`export const capsules = units`) should be removed once all consumer code is migrated
 
