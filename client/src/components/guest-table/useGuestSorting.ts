@@ -21,6 +21,11 @@ export const compareUnitNumbers = (a: string | null | undefined, b: string | nul
   return aParsed.num - bParsed.num;
 };
 
+/** @deprecated Use parseUnitNumber */
+export const parseunitNumber = parseUnitNumber;
+/** @deprecated Use compareUnitNumbers */
+export const compareunitNumbers = compareUnitNumbers;
+
 export function useGuestSorting(filteredData: CombinedDataItem[]) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'unitNumber',
@@ -40,9 +45,11 @@ export function useGuestSorting(filteredData: CombinedDataItem[]) {
           bValue = (b.type === 'guest' ? b.data.name : b.data.name).toLowerCase();
           break;
         case 'unitNumber':
-          // Natural sort for capsule numbers using helper function
-          const capsuleCompare = compareUnitNumbers(a.data.unitNumber, b.data.unitNumber);
-          return sortConfig.order === 'asc' ? capsuleCompare : -capsuleCompare;
+        case 'unitNumber':
+          const aUnit = a.data.unitNumber ?? (a.data as any).unitNumber;
+          const bUnit = b.data.unitNumber ?? (b.data as any).unitNumber;
+          const unitCompare = compareUnitNumbers(aUnit, bUnit);
+          return sortConfig.order === 'asc' ? unitCompare : -unitCompare;
         case 'checkinTime':
           aValue = a.type === 'guest' ? new Date(a.data.checkinTime).getTime() : new Date((a.data as any).createdAt).getTime();
           bValue = b.type === 'guest' ? new Date(b.data.checkinTime).getTime() : new Date((b.data as any).createdAt).getTime();

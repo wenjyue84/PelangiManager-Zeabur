@@ -17,7 +17,7 @@ import {
   formatShortDateTime,
   formatShortDate,
 } from "./utils";
-import { compareCapsuleNumbers } from "./useGuestSorting";
+import { compareunitNumbers } from "./useGuestSorting";
 import type { SortConfig, SortField, CombinedDataItem, AvailableCapsule } from "./types";
 import { useAccommodationLabels } from "@/hooks/useAccommodationLabels";
 
@@ -93,7 +93,7 @@ interface GuestDesktopTableProps {
   activeTokens: Array<{
     id: string;
     token: string;
-    capsuleNumber: string;
+    unitNumber: string;
     guestName: string | null;
     phoneNumber: string | null;
     createdAt: string;
@@ -108,12 +108,12 @@ interface GuestDesktopTableProps {
   onGuestClick: (guest: Guest) => void;
   onExtend: (guest: Guest) => void;
   openAlertDialog: (guest: Guest) => void;
-  onCapsuleChange: (guest: Guest, newCapsuleNumber: string) => void;
+  onCapsuleChange: (guest: Guest, newunitNumber: string) => void;
   onCancelToken: (tokenId: string) => void;
-  onTokenCapsuleChange: (tokenId: string, capsuleNumber: string | null, autoAssign?: boolean) => void;
+  onTokenUnitChange: (tokenId: string, unitNumber: string | null, autoAssign?: boolean) => void;
   copyToClipboard: (text: string) => void;
   getCheckinLink: (token: string) => string;
-  onEmptyCapsuleClick: (capsuleNumber: string) => void;
+  onEmptyUnitClick: (unitNumber: string) => void;
 }
 
 export function GuestDesktopTable({
@@ -134,10 +134,10 @@ export function GuestDesktopTable({
   openAlertDialog,
   onCapsuleChange,
   onCancelToken,
-  onTokenCapsuleChange,
+  onTokenUnitChange,
   copyToClipboard,
   getCheckinLink,
-  onEmptyCapsuleClick,
+  onEmptyUnitClick,
 }: GuestDesktopTableProps) {
   const labels = useAccommodationLabels();
   const [toggledOutstandingGuests, setToggledOutstandingGuests] = useState<Set<string>>(new Set());
@@ -162,7 +162,7 @@ export function GuestDesktopTable({
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[100px]">
               <div className="flex items-center gap-1">
                 {labels.singular}
-                <SortButton field="capsuleNumber" currentSort={sortConfig} onSort={onSort} />
+                <SortButton field="unitNumber" currentSort={sortConfig} onSort={onSort} />
               </div>
             </th>
             <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
@@ -233,7 +233,7 @@ export function GuestDesktopTable({
                   cancelTokenMutation={cancelTokenMutation}
                   updateTokenCapsuleMutation={updateTokenCapsuleMutation}
                   onCancelToken={onCancelToken}
-                  onTokenCapsuleChange={onTokenCapsuleChange}
+                  onTokenUnitChange={onTokenUnitChange}
                   copyToClipboard={copyToClipboard}
                   getCheckinLink={getCheckinLink}
                 />
@@ -244,7 +244,7 @@ export function GuestDesktopTable({
                   key={`empty-${item.data.id}`}
                   emptyData={item.data}
                   isCondensedView={isCondensedView}
-                  onEmptyCapsuleClick={onEmptyCapsuleClick}
+                  onEmptyUnitClick={onEmptyUnitClick}
                 />
               );
             }
@@ -269,7 +269,7 @@ interface GuestRowProps {
   onGuestClick: (guest: Guest) => void;
   onExtend: (guest: Guest) => void;
   openAlertDialog: (guest: Guest) => void;
-  onCapsuleChange: (guest: Guest, newCapsuleNumber: string) => void;
+  onCapsuleChange: (guest: Guest, newunitNumber: string) => void;
   toggledOutstandingGuests: Set<string>;
   onToggleOutstanding: (guestId: string) => void;
 }
@@ -451,7 +451,7 @@ interface PendingRowProps {
   activeTokens: Array<{
     id: string;
     token: string;
-    capsuleNumber: string;
+    unitNumber: string;
     guestName: string | null;
     phoneNumber: string | null;
     createdAt: string;
@@ -460,7 +460,7 @@ interface PendingRowProps {
   cancelTokenMutation: any;
   updateTokenCapsuleMutation: any;
   onCancelToken: (tokenId: string) => void;
-  onTokenCapsuleChange: (tokenId: string, capsuleNumber: string | null, autoAssign?: boolean) => void;
+  onTokenUnitChange: (tokenId: string, unitNumber: string | null, autoAssign?: boolean) => void;
   copyToClipboard: (text: string) => void;
   getCheckinLink: (token: string) => string;
 }
@@ -474,7 +474,7 @@ function PendingRow({
   cancelTokenMutation,
   updateTokenCapsuleMutation,
   onCancelToken,
-  onTokenCapsuleChange,
+  onTokenUnitChange,
   copyToClipboard,
   getCheckinLink,
 }: PendingRowProps) {
@@ -485,12 +485,12 @@ function PendingRow({
         <div className="flex items-center gap-1">
           {isAuthenticated ? (
             <Select
-              value={pendingData.capsuleNumber || 'auto-assign'}
+              value={pendingData.unitNumber || 'auto-assign'}
               onValueChange={(value) => {
                 if (value === 'auto-assign') {
-                  onTokenCapsuleChange(pendingData.id, null, true);
+                  onTokenUnitChange(pendingData.id, null, true);
                 } else {
-                  onTokenCapsuleChange(pendingData.id, value);
+                  onTokenUnitChange(pendingData.id, value);
                 }
               }}
               disabled={updateTokenCapsuleMutation.isPending}
@@ -503,7 +503,7 @@ function PendingRow({
                   <span className="font-medium">Auto-assign</span>
                 </SelectItem>
                 {availableCapsules
-                  .sort((a, b) => compareCapsuleNumbers(a.number, b.number))
+                  .sort((a, b) => compareunitNumbers(a.number, b.number))
                   .map((capsule) => (
                     <SelectItem key={capsule.number} value={capsule.number} className="text-xs">
                       <div className="flex items-center justify-between w-full">
@@ -517,7 +517,7 @@ function PendingRow({
             </Select>
           ) : (
             <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">
-              {pendingData.capsuleNumber || 'Auto-assign'}
+              {pendingData.unitNumber || 'Auto-assign'}
             </Badge>
           )}
           <Button
@@ -597,20 +597,20 @@ function PendingRow({
 interface EmptyRowProps {
   emptyData: any;
   isCondensedView: boolean;
-  onEmptyCapsuleClick: (capsuleNumber: string) => void;
+  onEmptyUnitClick: (unitNumber: string) => void;
 }
 
-function EmptyRow({ emptyData, isCondensedView, onEmptyCapsuleClick }: EmptyRowProps) {
+function EmptyRow({ emptyData, isCondensedView, onEmptyUnitClick }: EmptyRowProps) {
   return (
     <tr
       className="bg-red-50 hover:bg-red-100 cursor-pointer transition-colors"
-      onClick={() => onEmptyCapsuleClick(emptyData.capsuleNumber)}
-      title={`Click to check-in guest to ${emptyData.capsuleNumber}`}
+      onClick={() => onEmptyUnitClick(emptyData.unitNumber)}
+      title={`Click to check-in guest to ${emptyData.unitNumber}`}
     >
       {/* Accommodation column - sticky first column */}
       <td className="px-3 py-3 whitespace-nowrap sticky left-0 bg-red-50 z-10 min-w-[100px]">
         <Badge variant="outline" className="bg-red-600 text-white border-red-600">
-          {emptyData.capsuleNumber}
+          {emptyData.unitNumber}
         </Badge>
       </td>
       {/* Guest column */}

@@ -1,6 +1,6 @@
 import type { Guest } from "@shared/schema";
 
-export type SortField = 'name' | 'capsuleNumber' | 'checkinTime' | 'expectedCheckoutDate';
+export type SortField = 'name' | 'unitNumber' | 'unitNumber' | 'checkinTime' | 'expectedCheckoutDate';
 export type SortOrder = 'asc' | 'desc';
 
 export interface SortConfig {
@@ -18,7 +18,8 @@ export interface GuestFilters {
 export interface PendingData {
   id: string;
   name: string;
-  capsuleNumber: string;
+  unitNumber: string;
+  unitNumber?: string;
   createdAt: string;
   expiresAt: string;
   phoneNumber: string | null;
@@ -27,7 +28,8 @@ export interface PendingData {
 export interface EmptyData {
   id: string;
   name: string;
-  capsuleNumber: string;
+  unitNumber: string;
+  unitNumber?: string;
   checkinTime: null;
   expectedCheckoutDate: null;
   phoneNumber: null;
@@ -60,7 +62,7 @@ export type CombinedDataItem =
   | { type: 'pending'; data: PendingData }
   | { type: 'empty'; data: EmptyData };
 
-export interface AvailableCapsule {
+export interface AvailableUnit {
   id: string;
   number: string;
   section: string;
@@ -70,7 +72,7 @@ export interface AvailableCapsule {
   position: string | null;
 }
 
-export interface AllCapsule {
+export interface AllUnit {
   id: string;
   number: string;
   section: string;
@@ -84,3 +86,8 @@ export interface AllCapsule {
   position: string | null;
   remark: string | null;
 }
+
+/** @deprecated Use AvailableUnit */
+export type AvailableCapsule = AvailableUnit;
+/** @deprecated Use AllUnit */
+export type AllCapsule = AllUnit;

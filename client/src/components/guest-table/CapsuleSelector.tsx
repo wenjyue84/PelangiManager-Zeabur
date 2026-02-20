@@ -6,7 +6,7 @@ interface CapsuleSelectorProps {
   guest: Guest;
   isAuthenticated: boolean;
   availableCapsules: AvailableCapsule[];
-  onCapsuleChange: (guest: Guest, newCapsuleNumber: string) => void;
+  onCapsuleChange: (guest: Guest, newunitNumber: string) => void;
 }
 
 // Backward-compatible wrapper while migration from capsule -> unit completes.

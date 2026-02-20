@@ -9,7 +9,7 @@ import { phoneUtils } from "@/lib/validation";
 import { SwipeableGuestCard } from "./SwipeableGuestCard";
 import { CapsuleSelector } from "./CapsuleSelector";
 import { truncateName, formatShortDate } from "./utils";
-import { compareCapsuleNumbers } from "./useGuestSorting";
+import { compareunitNumbers } from "./useGuestSorting";
 import { getGuestStatusInfo } from "./GuestTableRow";
 import type { CombinedDataItem, AvailableCapsule } from "./types";
 
@@ -21,7 +21,8 @@ interface GuestCardViewProps {
   activeTokens: Array<{
     id: string;
     token: string;
-    capsuleNumber: string;
+    unitNumber: string;
+    unitNumber?: string;
     guestName: string | null;
     phoneNumber: string | null;
     createdAt: string;
@@ -36,10 +37,10 @@ interface GuestCardViewProps {
   onGuestClick: (guest: Guest) => void;
   onExtend: (guest: Guest) => void;
   openAlertDialog: (guest: Guest) => void;
-  onCapsuleChange: (guest: Guest, newCapsuleNumber: string) => void;
-  onTokenCapsuleChange: (tokenId: string, capsuleNumber: string | null, autoAssign?: boolean) => void;
+  onCapsuleChange: (guest: Guest, newunitNumber: string) => void;
+  onTokenUnitChange: (tokenId: string, unitNumber: string | null, autoAssign?: boolean) => void;
   onPendingCheckinClick: (tokenId: string) => void;
-  onEmptyCapsuleClick: (capsuleNumber: string) => void;
+  onEmptyUnitClick: (unitNumber: string) => void;
 }
 
 export function GuestCardView({
@@ -56,9 +57,9 @@ export function GuestCardView({
   onExtend,
   openAlertDialog,
   onCapsuleChange,
-  onTokenCapsuleChange,
+  onTokenUnitChange,
   onPendingCheckinClick,
-  onEmptyCapsuleClick,
+  onEmptyUnitClick,
 }: GuestCardViewProps) {
   return (
     <div className="md:hidden space-y-3">
@@ -89,7 +90,7 @@ export function GuestCardView({
               availableCapsules={availableCapsules}
               cancelTokenMutation={cancelTokenMutation}
               updateTokenCapsuleMutation={updateTokenCapsuleMutation}
-              onTokenCapsuleChange={onTokenCapsuleChange}
+              onTokenUnitChange={onTokenUnitChange}
               onPendingCheckinClick={onPendingCheckinClick}
             />
           );
@@ -99,7 +100,7 @@ export function GuestCardView({
               key={`empty-${item.data.id}`}
               emptyData={item.data}
               isCondensedView={isCondensedView}
-              onEmptyCapsuleClick={onEmptyCapsuleClick}
+              onEmptyUnitClick={onEmptyUnitClick}
             />
           );
         }
@@ -121,7 +122,7 @@ interface GuestCardProps {
   onGuestClick: (guest: Guest) => void;
   onExtend: (guest: Guest) => void;
   openAlertDialog: (guest: Guest) => void;
-  onCapsuleChange: (guest: Guest, newCapsuleNumber: string) => void;
+  onCapsuleChange: (guest: Guest, newunitNumber: string) => void;
 }
 
 function GuestCard({
@@ -265,7 +266,7 @@ interface PendingCardProps {
   availableCapsules: AvailableCapsule[];
   cancelTokenMutation: any;
   updateTokenCapsuleMutation: any;
-  onTokenCapsuleChange: (tokenId: string, capsuleNumber: string | null, autoAssign?: boolean) => void;
+  onTokenUnitChange: (tokenId: string, unitNumber: string | null, autoAssign?: boolean) => void;
   onPendingCheckinClick: (tokenId: string) => void;
 }
 
@@ -276,7 +277,7 @@ function PendingCard({
   availableCapsules,
   cancelTokenMutation,
   updateTokenCapsuleMutation,
-  onTokenCapsuleChange,
+  onTokenUnitChange,
   onPendingCheckinClick,
 }: PendingCardProps) {
   return (
@@ -289,12 +290,12 @@ function PendingCard({
           >
             {isAuthenticated ? (
               <Select
-                value={pendingData.capsuleNumber || 'auto-assign'}
+                value={pendingData.unitNumber || pendingData.unitNumber || 'auto-assign'}
                 onValueChange={(value) => {
                   if (value === 'auto-assign') {
-                    onTokenCapsuleChange(pendingData.id, null, true);
+                    onTokenUnitChange(pendingData.id, null, true);
                   } else {
-                    onTokenCapsuleChange(pendingData.id, value);
+                    onTokenUnitChange(pendingData.id, value);
                   }
                 }}
                 disabled={updateTokenCapsuleMutation.isPending}
@@ -307,7 +308,7 @@ function PendingCard({
                     <span className="font-medium">Auto-assign</span>
                   </SelectItem>
                   {availableCapsules
-                    .sort((a, b) => compareCapsuleNumbers(a.number, b.number))
+                    .sort((a, b) => compareunitNumbers(a.number, b.number))
                     .map((capsule) => (
                       <SelectItem key={capsule.number} value={capsule.number} className="text-xs">
                         <div className="flex items-center justify-between w-full">
@@ -321,7 +322,7 @@ function PendingCard({
               </Select>
             ) : (
               <Badge variant="outline" className="bg-orange-500 text-white border-orange-500">
-                {pendingData.capsuleNumber || 'Auto-assign'}
+                {pendingData.unitNumber || pendingData.unitNumber || 'Auto-assign'}
               </Badge>
             )}
             <span className="font-medium cursor-pointer underline-offset-2 hover:underline">{truncateName(pendingData.name)}</span>
@@ -363,19 +364,19 @@ function PendingCard({
 interface EmptyCardProps {
   emptyData: any;
   isCondensedView: boolean;
-  onEmptyCapsuleClick: (capsuleNumber: string) => void;
+  onEmptyUnitClick: (unitNumber: string) => void;
 }
 
-function EmptyCard({ emptyData, isCondensedView, onEmptyCapsuleClick }: EmptyCardProps) {
+function EmptyCard({ emptyData, isCondensedView, onEmptyUnitClick }: EmptyCardProps) {
   return (
     <Card
       className="p-3 bg-red-50/60 hover-card-pop cursor-pointer"
-      onClick={() => onEmptyCapsuleClick(emptyData.capsuleNumber)}
+      onClick={() => onEmptyUnitClick(emptyData.unitNumber ?? emptyData.unitNumber)}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-red-600 text-white border-red-600">{emptyData.capsuleNumber}</Badge>
+            <Badge variant="outline" className="bg-red-600 text-white border-red-600">{emptyData.unitNumber ?? emptyData.unitNumber}</Badge>
             <span className="font-medium text-red-700">Empty</span>
           </div>
           <div className="text-xs text-red-700 mt-1">

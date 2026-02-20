@@ -17,7 +17,22 @@ interface CheckoutMutationContext {
 
 interface UseGuestMutationsArgs {
   guests: Guest[];
-  exportUnits: Array<{
+  exportUnits?: Array<{
+    id: string;
+    number: string;
+    section: string;
+    isAvailable: boolean;
+    cleaningStatus: string;
+    toRent: boolean;
+    lastCleanedAt: string | null;
+    lastCleanedBy: string | null;
+    color: string | null;
+    purchaseDate: string | null;
+    position: string | null;
+    remark: string | null;
+  }>;
+  /** @deprecated Use exportUnits */
+  exportCapsules?: Array<{
     id: string;
     number: string;
     section: string;
@@ -42,7 +57,8 @@ interface UseGuestMutationsArgs {
   }>;
 }
 
-export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGuestMutationsArgs) {
+export function useGuestMutations({ guests, exportUnits, exportCapsules, activeTokens }: UseGuestMutationsArgs) {
+  const exportUnitsData = exportUnits ?? exportCapsules ?? [];
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -455,7 +471,7 @@ export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGues
 
     // Handle FRONT SECTION (capsules 11-24)
     whatsappText += '*FRONT SECTION*\n';
-    const frontSectionUnits = exportUnits.filter(capsule => {
+    const frontSectionUnits = exportUnitsData.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 11 && num <= 24;
     }).sort((a, b) => compareUnitNumbers(a.number, b.number));
@@ -478,7 +494,7 @@ export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGues
 
     // Handle special sections - Living Room (capsules 25, 26)
     whatsappText += '*LIVING ROOM*\n';
-    const livingRoomUnits = exportUnits.filter(capsule => {
+    const livingRoomUnits = exportUnitsData.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num === 25 || num === 26;
     }).sort((a, b) => compareUnitNumbers(a.number, b.number));
@@ -499,7 +515,7 @@ export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGues
 
     // Handle special sections - Room (capsules 1-6)
     whatsappText += '\n*ROOM*\n';
-    const roomUnits = exportUnits.filter(capsule => {
+    const roomUnits = exportUnitsData.filter(capsule => {
       const num = parseInt(capsule.number.replace('C', ''));
       return num >= 1 && num <= 6;
     }).sort((a, b) => compareUnitNumbers(a.number, b.number));
@@ -541,7 +557,7 @@ export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGues
         variant: "default",
       });
     });
-  }, [exportUnits, guests, toast]);
+  }, [exportUnitsData, guests, toast]);
 
   return {
     // Mutations
@@ -550,6 +566,8 @@ export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGues
     undoCheckoutMutation,
     updateSettingsMutation,
     updateTokenUnitMutation,
+    /** @deprecated Use updateTokenUnitMutation */
+    updateTokenCapsuleMutation: updateTokenUnitMutation,
 
     // Modal state
     selectedGuest,
@@ -575,15 +593,21 @@ export function useGuestMutations({ guests, exportUnits, activeTokens }: UseGues
     confirmUndo,
     handleCancelToken,
     handleTokenUnitChange,
+    /** @deprecated Use handleTokenUnitChange */
+    handleTokenCapsuleChange: handleTokenUnitChange,
     handleGuestClick,
     handleExtend,
     openAlertDialog,
     handleUnitChange,
+    /** @deprecated Use handleUnitChange */
+    handleCapsuleChange: handleUnitChange,
     handleCloseModal,
     copyToClipboard,
     getCheckinLink,
     handlePendingCheckinClick,
     handleEmptyUnitClick,
+    /** @deprecated Use handleEmptyUnitClick */
+    handleEmptyCapsuleClick: handleEmptyUnitClick,
     handleWhatsAppExport,
   };
 }

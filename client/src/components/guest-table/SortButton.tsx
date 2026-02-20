@@ -1,6 +1,6 @@
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
-type SortField = 'name' | 'capsuleNumber' | 'checkinTime' | 'expectedCheckoutDate';
+type SortField = 'name' | 'unitNumber' | 'checkinTime' | 'expectedCheckoutDate';
 type SortOrder = 'asc' | 'desc';
 
 interface SortButtonProps {
