@@ -116,7 +116,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-001",
@@ -140,7 +140,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-002",
@@ -166,7 +166,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-019",
@@ -192,7 +192,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-021",
@@ -220,7 +220,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-022",
@@ -245,7 +245,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-020",
@@ -272,7 +272,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-007",
@@ -300,7 +300,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-003",
@@ -328,7 +328,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-004",
@@ -360,7 +360,7 @@
         "US-003"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-005",
@@ -389,7 +389,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-008",
@@ -417,7 +417,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-014",
@@ -445,7 +445,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-009",
@@ -469,7 +469,7 @@
       ],
       "dependencies": [],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-010",
@@ -501,7 +501,7 @@
         "US-009"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-011",
@@ -530,7 +530,7 @@
         "US-010"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-012",
@@ -558,7 +558,7 @@
         "US-011"
       ],
       "estimatedComplexity": "medium",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-013",
@@ -586,7 +586,7 @@
         "US-011"
       ],
       "estimatedComplexity": "small",
-      "passes": false
+      "passes": true
     },
     {
       "id": "US-015",
@@ -629,7 +629,33 @@
         "US-014"
       ],
       "estimatedComplexity": "large",
-      "passes": false
+      "passes": true
+    },
+    {
+      "id": "US-023",
+      "title": "Fix admin auth blocking Rainbow AI dashboard tabs at production IP",
+      "priority": 1,
+      "description": "As a staff member accessing the Rainbow AI dashboard at http://18.142.14.142:3002, I want all tabs (#dashboard, #live-chat, #understanding) to load without 'Failed to load X tab' errors. Root cause: the adminAuth middleware in the production dist requires an X-Admin-Key header for all remote (non-localhost) requests, but the browser JS was not sending it. Secondary cause: tabs.js, template-loader.js, help.js all use raw fetch() calls that bypass the api() utility which sends the header.",
+      "acceptanceCriteria": [
+        "Set RAINBOW_ADMIN_KEY=pelangi-admin-2026 in /var/www/pelangi/RainbowAI/.env",
+        "Set CORS_ORIGIN=http://18.142.14.142:3002 in /var/www/pelangi/RainbowAI/.env",
+        "Inject window.__ADMIN_KEY__ + fetch interceptor into served HTML via getDashboardHtml() in index.ts",
+        "Fetch interceptor auto-adds X-Admin-Key header to ALL /api/rainbow/* requests including raw fetch() calls",
+        "Navigate to http://18.142.14.142:3002/#dashboard — tab loads without 'Failed to load' error",
+        "Navigate to http://18.142.14.142:3002/#live-chat — loads cleanly",
+        "Navigate to http://18.142.14.142:3002/#understanding — loads cleanly"
+      ],
+      "technicalNotes": [
+        "Real root cause: adminAuth middleware blocks remote IPs unless X-Admin-Key header matches RAINBOW_ADMIN_KEY env var",
+        "CORS was a secondary symptom (also fixed via CORS_ORIGIN env var)",
+        "tabs.js, template-loader.js, help.js, intent-manager.js all use raw fetch() not api() — so utils.js header injection alone is insufficient",
+        "Fix: inject a window.fetch interceptor in getDashboardHtml() that auto-adds X-Admin-Key to all /api/rainbow/ requests",
+        "Production dist patched: dist/public/rainbow-admin.html has fetch interceptor injected; dist/index.js restored from bak2 + watchdog no-op",
+        "Local source updated: index.ts getDashboardHtml() now injects full fetch interceptor (not just window.__ADMIN_KEY__)"
+      ],
+      "dependencies": [],
+      "estimatedComplexity": "small",
+      "passes": true
     }
   ],
   "technicalContext": {
