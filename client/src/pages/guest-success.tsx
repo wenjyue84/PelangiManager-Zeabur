@@ -39,7 +39,7 @@ const EnhancedGuestSuccessPage: React.FC<{
 
   const handleShare = () => {
     const guestName = guestInfo?.name || 'Guest';
-    const capsule = guestInfo?.unitNumber || '';
+    const unit = guestInfo?.unitNumber || '';
     const contentToUse = useContextSettings ? contextSettings.content : settings;
     const checkinTime = getContentWithFallback(contentToUse, 'checkinTime', '3:00 PM');
     const checkoutTime = getContentWithFallback(contentToUse, 'checkoutTime', '12:00 PM');
@@ -49,7 +49,7 @@ const EnhancedGuestSuccessPage: React.FC<{
     const shareText = `🏨 Pelangi Capsule Hostel - My Stay Information
 
 Name: ${guestName}
-Unit: ${capsule}
+Unit: ${unit}
 Arrival: ${checkinTime}
 Departure: ${checkoutTime}
 Door Password: ${doorPassword}

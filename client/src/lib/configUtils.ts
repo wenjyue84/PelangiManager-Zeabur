@@ -88,13 +88,13 @@ export const useFormFieldConfig = () => {
     }),
 
     /**
-     * Gets capsule configuration for forms
+     * Gets unit configuration for forms
      */
-    getCapsuleConfig: () => ({
+    getUnitConfig: () => ({
       totalUnits: config.totalUnits,
       sections: config.unitSections,
       numberFormat: config.unitNumberFormat,
-      statuses: CONFIG_DEFAULTS.DEFAULT_CAPSULE_STATUSES,
+      statuses: CONFIG_DEFAULTS.DEFAULT_UNIT_STATUSES,
     }),
   };
 };

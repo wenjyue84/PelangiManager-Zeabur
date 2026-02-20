@@ -123,11 +123,11 @@ export function useTokenValidation({ t, form }: UseTokenValidationProps): TokenV
       const response = await fetch(`/api/guest-tokens/${tokenValue}`);
       if (response.ok) {
         const data = await response.json();
-        let position = 'Available capsule will be assigned';
-        
+        let position = 'Available unit will be assigned';
+
         if (data.unitNumber) {
-          const capsuleNum = parseInt(data.unitNumber.replace('C', ''));
-          position = capsuleNum % 2 === 0 ? 'Bottom (Preferred)' : 'Top';
+          const unitNum = parseInt(data.unitNumber.replace('C', ''));
+          position = unitNum % 2 === 0 ? 'Bottom (Preferred)' : 'Top';
         }
         
         setGuestInfo({

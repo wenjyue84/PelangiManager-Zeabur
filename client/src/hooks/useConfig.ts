@@ -174,10 +174,10 @@ export function usePaymentConfig() {
 }
 
 /**
- * Provides capsule management configuration and validation helpers
+ * Provides unit management configuration and validation helpers
  * Defines hostel layout and numbering system
  */
-export function useCapsuleConfig() {
+export function useUnitConfig() {
   const totalUnits = useConfigValue('totalUnits');
   const sections = useConfigValue('unitSections');
   const numberFormat = useConfigValue('unitNumberFormat');

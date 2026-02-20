@@ -27,7 +27,7 @@ interface Guest {
   idNumber?: string;
 }
 
-interface Capsule {
+interface Unit {
   id: string;
   number: string;
   lastCleanedAt?: string;
@@ -261,7 +261,7 @@ export default function History() {
   };
 
   // Cleaning history
-  const { data: cleanedUnits = [], isLoading: cleaningLoading } = useQuery<Capsule[]>({
+  const { data: cleanedUnits = [], isLoading: cleaningLoading } = useQuery<Unit[]>({
     queryKey: ["/api/units/cleaning-status/cleaned"],
   });
 
@@ -445,7 +445,7 @@ export default function History() {
           </Select>
           
           <Select value={unitFilter} onValueChange={(value) => handleFilterChange('unit', value)}>
-            <SelectTrigger className="w-[140px]" data-testid="select-capsule-filter">
+            <SelectTrigger className="w-[140px]" data-testid="select-unit-filter">
               <SelectValue placeholder="All Units" />
             </SelectTrigger>
             <SelectContent>
