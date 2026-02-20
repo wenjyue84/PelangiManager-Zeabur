@@ -306,11 +306,25 @@ export function openMessageContextMenu(idx, event) {
   var menu = document.getElementById('lc-msg-context-menu');
   if (!menu) return;
 
+  // US-005: Position menu adjacent to the message bubble, right-aligned for outgoing
   var bubbleWrap = document.querySelector('#lc-messages [data-msg-idx="' + idx + '"]');
   if (bubbleWrap) {
     var rect = bubbleWrap.getBoundingClientRect();
-    menu.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - 260)) + 'px';
-    menu.style.top = (rect.bottom + 8) + 'px';
+    var isOutgoing = bubbleWrap.classList.contains('lc-out');
+    var menuWidth = 260;
+    var menuHeight = 260;
+    // Right-align for outgoing, left-align for incoming
+    if (isOutgoing) {
+      menu.style.left = Math.max(12, rect.right - menuWidth) + 'px';
+    } else {
+      menu.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth)) + 'px';
+    }
+    // Open upward if near bottom of viewport
+    if (rect.bottom + 8 + menuHeight > window.innerHeight) {
+      menu.style.top = Math.max(8, rect.top - menuHeight - 8) + 'px';
+    } else {
+      menu.style.top = (rect.bottom + 8) + 'px';
+    }
   }
   menu.style.display = '';
 
