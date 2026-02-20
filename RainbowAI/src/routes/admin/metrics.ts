@@ -55,7 +55,8 @@ router.get('/status', async (_req: Request, res: Response) => {
   res.json({
     servers: {
       mcp: {
-        name: 'MCP Server',
+        name: 'Rainbow AI',
+        description: 'WhatsApp AI + Admin Dashboard (MCP tools moved to port 5000)',
         port: parseInt(process.env.MCP_SERVER_PORT || '3002', 10),
         online: true,
         responseTime: 0,
@@ -99,7 +100,8 @@ router.get('/status', async (_req: Request, res: Response) => {
       providers: aiProviders
     },
     config_files: ['knowledge', 'intents', 'templates', 'settings', 'workflow', 'workflows', 'routing'],
-    response_modes: settings.response_modes || { default_mode: 'autopilot' }
+    response_modes: settings.response_modes || { default_mode: 'autopilot' },
+    isCloud: process.env.RAINBOW_ROLE === 'primary'
   });
 });
 

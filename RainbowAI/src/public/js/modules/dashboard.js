@@ -525,6 +525,7 @@ function renderServerCard(serverKey, server) {
         <h4 class="font-medium text-neutral-800">${esc(server.name)}</h4>
         <span class="${statusColor} px-2 py-1 rounded-full text-xs font-medium">${statusIcon} ${server.online ? 'Online' : 'Offline'}</span>
       </div>
+      ${server.description ? `<p class="text-xs text-neutral-400 mb-2">${esc(server.description)}</p>` : ''}
       <div class="text-sm text-neutral-600 space-y-1">
         <div class="flex justify-between">
           <span class="text-neutral-500">Port:</span>
