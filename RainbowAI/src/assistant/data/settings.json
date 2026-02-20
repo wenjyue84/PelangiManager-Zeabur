@@ -266,7 +266,15 @@
       "auto_approve_intents": [
         "greeting",
         "thanks",
-        "wifi"
+        "wifi",
+        "directions",
+        "checkin_info",
+        "checkout_info",
+        "facilities_info",
+        "rules_policy",
+        "payment_info",
+        "luggage_storage",
+        "extra_amenity_request"
       ],
       "queue_timeout_minutes": 30,
       "auto_approve_confidence": 0.95
