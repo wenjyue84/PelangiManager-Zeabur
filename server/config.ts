@@ -14,7 +14,7 @@ export const DEFAULT_CONFIG: UpdateSettings = {
   defaultPaymentMethod: "cash",
   maxPaymentAmount: 9999.99,
   
-  // Capsule Settings
+  // unit Settings
   totalUnits: 24,
   unitSections: ["front", "middle", "back"],
   unitNumberFormat: "A01",
@@ -35,8 +35,8 @@ export const DEFAULT_CONFIG: UpdateSettings = {
   maxGuestAge: 120,
   
   // Contact Information
-  defaultAdminEmail: "admin@pelangicapsule.com",
-  supportEmail: "support@pelangicapsule.com",
+  defaultAdminEmail: "admin@pelangiunit.com",
+  supportEmail: "support@pelangiunit.com",
   supportPhone: "+60123456789",
   
   // Application Settings
@@ -51,9 +51,9 @@ export const CONFIG_DESCRIPTIONS: Record<keyof UpdateSettings, string> = {
   maxGuestStayDays: "Maximum number of days a guest can stay",
   defaultPaymentMethod: "Default payment method selected in forms",
   maxPaymentAmount: "Maximum payment amount allowed per transaction (RM)",
-  totalUnits: "Total number of capsules in the hostel",
-  unitSections: "Available capsule sections/areas",
-  unitNumberFormat: "Format pattern for capsule numbers",
+  totalUnits: "Total number of units in the hostel",
+  unitSections: "Available unit sections/areas",
+  unitNumberFormat: "Format pattern for unit numbers",
   notificationRetentionDays: "How long to keep notifications before auto-deletion (days)",
   cacheTimeMinutes: "How long to cache frequently accessed data (minutes)",
   queryRefreshIntervalSeconds: "Auto-refresh interval for live data (seconds)",
@@ -372,7 +372,7 @@ export class ConfigUtils {
   }
 
   /**
-   * Get capsule number pattern for validation
+   * Get unit number pattern for validation
    */
   async getUnitNumberPattern(): Promise<RegExp> {
     const format = await this.config.get('unitNumberFormat');

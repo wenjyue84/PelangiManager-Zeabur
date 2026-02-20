@@ -44,7 +44,6 @@ const corsOptions = {
     }
 
     const allowedOrigins = [
-      'https://pelangi-manager.vercel.app',
       process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
       process.env.PRODUCTION_URL || '',
       ...extraOrigins,
@@ -162,37 +161,57 @@ app.use((req, res, next) => {
     if (units.length === 0) {
       console.log("Initializing units...");
 
-      // Back section: C1-C6
-      for (let i = 1; i <= 6; i++) {
-        await storage.createUnit({
-          number: `C${i}`,
-          section: 'back',
-          isAvailable: true,
-          cleaningStatus: 'cleaned',
-        } as any);
-      }
+      const seedUnitsStr = process.env.SEED_UNITS;
+      if (seedUnitsStr) {
+        // Custom seed data from env: number:section[:unitType[:maxOccupancy]] comma-separated
+        const seedItems = seedUnitsStr.split(',').map(s => s.trim()).filter(Boolean);
+        for (const item of seedItems) {
+          const [number, section, unitType, maxOccupancy] = item.split(':');
+          if (number && section) {
+            await storage.createUnit({
+              number,
+              section,
+              unitType: unitType || null,
+              maxOccupancy: maxOccupancy ? parseInt(maxOccupancy, 10) : null,
+              isAvailable: true,
+              cleaningStatus: 'cleaned',
+            } as any);
+          }
+        }
+        console.log(`✅ Initialized ${seedItems.length} custom units from SEED_UNITS`);
+      } else {
+        // Fallback to default Pelangi layout
+        // Back section: C1-C6
+        for (let i = 1; i <= 6; i++) {
+          await storage.createUnit({
+            number: `C${i}`,
+            section: 'back',
+            isAvailable: true,
+            cleaningStatus: 'cleaned',
+          } as any);
+        }
 
-      // Middle section: C25, C26
-      for (const num of [25, 26]) {
-        await storage.createUnit({
-          number: `C${num}`,
-          section: 'middle',
-          isAvailable: true,
-          cleaningStatus: 'cleaned',
-        } as any);
-      }
+        // Middle section: C25, C26
+        for (const num of [25, 26]) {
+          await storage.createUnit({
+            number: `C${num}`,
+            section: 'middle',
+            isAvailable: true,
+            cleaningStatus: 'cleaned',
+          } as any);
+        }
 
-      // Front section: C11-C24
-      for (let i = 11; i <= 24; i++) {
-        await storage.createUnit({
-          number: `C${i}`,
-          section: 'front',
-          isAvailable: true,
-          cleaningStatus: 'cleaned',
-        } as any);
+        // Front section: C11-C24
+        for (let i = 11; i <= 24; i++) {
+          await storage.createUnit({
+            number: `C${i}`,
+            section: 'front',
+            isAvailable: true,
+            cleaningStatus: 'cleaned',
+          } as any);
+        }
+        console.log("✅ Initialized 22 default units");
       }
-
-      console.log("✅ Initialized 22 units");
     }
   } catch (e) {
     console.warn("Warning: could not initialize units:", e);

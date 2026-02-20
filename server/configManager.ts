@@ -89,7 +89,7 @@ export class AppConfig {
     return this.config!.get('maxPaymentAmount');
   }
 
-  // Accommodation and capsule configuration
+  // Accommodation and unit configuration
   static async getTotalUnits(): Promise<number> {
     return this.config!.get('totalUnits');
   }
