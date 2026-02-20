@@ -157,6 +157,9 @@ class PushNotificationManager {
       }
 
       const data = await response.json();
+      if (!data?.publicKey || typeof data.publicKey !== 'string') {
+        throw new Error('Invalid VAPID key response');
+      }
       this.vapidPublicKey = data.publicKey;
       return this.vapidPublicKey;
     } catch (error) {
@@ -461,7 +464,7 @@ export function usePushNotifications() {
       // Auto-request permission and subscribe if supported but not subscribed
       if (pushNotificationManager.getState().supported && !isSubscribed && Notification.permission === 'default') {
         // Only auto-request on PWA (when installed as app)
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
           pushNotificationManager.requestPermission().then(permission => {
             if (permission === 'granted') {
               pushNotificationManager.subscribeToPush().catch(console.error);

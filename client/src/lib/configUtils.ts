@@ -91,9 +91,9 @@ export const useFormFieldConfig = () => {
      * Gets capsule configuration for forms
      */
     getCapsuleConfig: () => ({
-      totalCapsules: config.totalCapsules,
-      sections: config.capsuleSections,
-      numberFormat: config.capsuleNumberFormat,
+      totalUnits: config.totalUnits,
+      sections: config.unitSections,
+      numberFormat: config.unitNumberFormat,
       statuses: CONFIG_DEFAULTS.DEFAULT_CAPSULE_STATUSES,
     }),
   };
@@ -341,7 +341,7 @@ export const useUIConfig = () => {
       enableAdvancedReports: true, // Could be made configurable
       enableBulkOperations: true,
       enableGuestProfiles: true,
-      maxConcurrentGuests: config.totalCapsules,
+      maxConcurrentGuests: config.totalUnits,
     }),
 
     /**
@@ -398,7 +398,7 @@ export const useConfigManagement = () => {
      * Gets configuration summary for debugging
      */
     getConfigSummary: () => ({
-      totalCapsules: config.totalCapsules,
+      totalUnits: config.totalUnits,
       paymentMethod: config.defaultPaymentMethod,
       maxAmount: config.maxPaymentAmount,
       cacheTime: config.cacheTimeMinutes,
